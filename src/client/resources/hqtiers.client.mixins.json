@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "me.micahcode.hqtiers.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "LunarPlayerEntityMixin",
+    "PlayerEntityRendererMixin",
+    "PlayerListHudMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

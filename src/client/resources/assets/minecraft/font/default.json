@@ -1,0 +1,14 @@
+{
+  "providers": [
+    { "type": "bitmap", "file": "hqtiers:font/sword_icon.png",       "ascent": 7, "height": 8, "chars": ["\uE001"] },
+    { "type": "bitmap", "file": "hqtiers:font/axe_icon.png",         "ascent": 7, "height": 8, "chars": ["\uE002"] },
+    { "type": "bitmap", "file": "hqtiers:font/crystal_icon.png",     "ascent": 7, "height": 8, "chars": ["\uE003"] },
+    { "type": "bitmap", "file": "hqtiers:font/heart_icon.png",       "ascent": 7, "height": 8, "chars": ["\uE004"] },
+    { "type": "bitmap", "file": "hqtiers:font/mace_icon.png",        "ascent": 7, "height": 8, "chars": ["\uE005"] },
+    { "type": "bitmap", "file": "hqtiers:font/nethpot_icon.png",     "ascent": 7, "height": 8, "chars": ["\uE006"] },
+    { "type": "bitmap", "file": "hqtiers:font/pot_icon.png",         "ascent": 7, "height": 8, "chars": ["\uE007"] },
+    { "type": "bitmap", "file": "hqtiers:font/smp_icon.png",         "ascent": 7, "height": 8, "chars": ["\uE008"] },
+    { "type": "bitmap", "file": "hqtiers:font/diamond_smp.png",      "ascent": 7, "height": 8, "chars": ["\uE009"] },
+    { "type": "bitmap", "file": "hqtiers:font/overall.png",          "ascent": 7, "height": 8, "chars": ["\uE00A"] }
+  ]
+}

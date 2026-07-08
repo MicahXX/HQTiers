@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "hqtiers",
+  "version": "${version}",
+  "name": "HQTiers",
+  "description": "Unofficial Tier Tagger built by a member of the server's staff team",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "../resources/icon.webp",
+  "environment": "*",
+  "entrypoints": {
+    "modmenu": [
+      "me.micahcode.hqtiers.client.config.HqTiersModMenu"
+    ],
+    "client": [
+      "me.micahcode.hqtiers.client.HqTiersClient"
+    ],
+    "main": [
+      "me.micahcode.hqtiers.Hqtiers"
+    ]
+  },
+  "mixins": [
+    {
+      "config": "hqtiers.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}",
+    "cloth-config": "*",
+    "modmenu": "*"
+  }
+}
