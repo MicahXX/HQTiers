@@ -171,7 +171,7 @@ public final class HqTiersFormatter {
 
 	public static Text icon(String ladder) {
 		return Text.literal(String.valueOf(iconGlyph(ladder)))
-				.setStyle(HqTiersMinecraftCompat.fontStyle(Identifier.of("assets", "default"))
+				.setStyle(HqTiersMinecraftCompat.fontStyle(Identifier.of("hqtiers", "default"))
 						.withColor(0xFFFFFF));
 	}
 
