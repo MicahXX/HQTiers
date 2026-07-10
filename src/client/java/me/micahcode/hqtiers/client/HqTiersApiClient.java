@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public class HqTiersApiClient {
-    private static final URI BASE_URI = URI.create("https://flowpvp.gg/api/"); // waiting for the api
+    private static final URI BASE_URI = URI.create("https://pvphq.com/api");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final String USER_AGENT = "HQTiers/1.0 (micahcode)";
     private static final Gson GSON = new Gson();
@@ -40,7 +40,7 @@ public class HqTiersApiClient {
         }
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException("FlowPvP API returned HTTP " + response.statusCode());
+            throw new IOException("HQPvP API returned HTTP " + response.statusCode());
         }
 
         JsonObject root = GSON.fromJson(response.body(), JsonObject.class);

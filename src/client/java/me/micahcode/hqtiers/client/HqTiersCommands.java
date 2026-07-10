@@ -20,7 +20,7 @@ public final class HqTiersCommands {
 
 	public static void register(HqTiersCache cache) {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-				ClientCommandManager.literal("hqtiers")
+				ClientCommandManager.literal("assets")
 						.executes(context -> showSelf(context.getSource(), cache))
 						.then(ClientCommandManager.argument("player", StringArgumentType.word())
 								.executes(context -> showPlayer(context.getSource(), cache, StringArgumentType.getString(context, "player"))))
@@ -42,7 +42,7 @@ public final class HqTiersCommands {
 									UUID uuid = client.player.getUuid();
 									cache.invalidate(uuid);
 									cache.fetch(uuid);
-									source.sendFeedback(Text.literal("FlowTiers cache refreshed.").formatted(Formatting.GREEN));
+									source.sendFeedback(Text.literal("HQTiers cache refreshed.").formatted(Formatting.GREEN));
 									return 1;
 								}))
 		));
@@ -51,7 +51,7 @@ public final class HqTiersCommands {
 	private static int showSelf(FabricClientCommandSource source, HqTiersCache cache) {
 		MinecraftClient client = MinecraftClient.getInstance();
 		if (client.player == null) {
-			source.sendError(Text.literal("You need to be in-game to use FlowTiers."));
+			source.sendError(Text.literal("You need to be in-game to use HQTiers."));
 			return 0;
 		}
 
