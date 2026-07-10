@@ -115,9 +115,12 @@ public final class HqTiersFormatter {
 					}
 					wrotePart = true;
 				}
+				case SEPARATOR -> {
+					if (!HqTiersClientConfig.separatorEnabled || !wrotePart) continue;
+					text.append(Text.literal(" | ").formatted(Formatting.DARK_GRAY));
+				}
 				case ELO -> {
 					if (!HqTiersClientConfig.eloEnabled) continue;
-					if (wrotePart) text.append(Text.literal(" | ").formatted(Formatting.DARK_GRAY));
 					Style eloStyle = Style.EMPTY.withColor(HqTiersClientConfig.coloredElo ? ratingColor(ladder.totalRating()) : 0xFFFFFF);
 					text.append(Text.literal(Integer.toString(ladder.totalRating())).setStyle(eloStyle));
 					if (HqTiersClientConfig.eloLabelEnabled)
@@ -126,7 +129,6 @@ public final class HqTiersFormatter {
 				}
 				case POSITION -> {
 					if (!HqTiersClientConfig.positionEnabled || !ladder.hasPosition()) continue;
-					if (wrotePart) text.append(Text.literal(" | ").formatted(Formatting.DARK_GRAY));
 					int posColor = HqTiersClientConfig.coloredPosition ? positionColor(ladder.tierLabel(), ladder.position()) : 0xFFFFFF;
 					if (HqTiersClientConfig.positionLabelEnabled)
 						text.append(Text.literal("#").setStyle(Style.EMPTY.withColor(posColor)));
@@ -169,7 +171,7 @@ public final class HqTiersFormatter {
 
 	public static Text icon(String ladder) {
 		return Text.literal(String.valueOf(iconGlyph(ladder)))
-				.setStyle(HqTiersMinecraftCompat.fontStyle(Identifier.of("flowtiers", "default"))
+				.setStyle(HqTiersMinecraftCompat.fontStyle(Identifier.of("assets", "default"))
 						.withColor(0xFFFFFF));
 	}
 

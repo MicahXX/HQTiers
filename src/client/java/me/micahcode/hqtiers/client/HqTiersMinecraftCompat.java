@@ -93,7 +93,7 @@ public final class HqTiersMinecraftCompat {
 			return categorizedKeyBinding(translationKey, code,
 					FabricLoader.getInstance().getMappingResolver());
 		} catch (ReflectiveOperationException exception) {
-			throw new IllegalStateException("Could not create FlowTiers keybinding.", exception);
+			throw new IllegalStateException("Could not create HQTiers keybinding.", exception);
 		}
 	}
 
@@ -111,7 +111,7 @@ public final class HqTiersMinecraftCompat {
 				);
 				Method create = categoryClass.getMethod(createName, Identifier.class);
 				create.setAccessible(true);
-				cachedCategory = create.invoke(null, Identifier.of("hqtiers", "category"));
+				cachedCategory = create.invoke(null, Identifier.of("assets", "category"));
 			} catch (ReflectiveOperationException exception) {
 				for (Class<?> categoryClass : KeyBinding.class.getDeclaredClasses()) {
 					for (Method create : categoryClass.getDeclaredMethods()) {
@@ -120,7 +120,7 @@ public final class HqTiersMinecraftCompat {
 								&& create.getParameterTypes()[0] == Identifier.class
 								&& create.getReturnType() == categoryClass) {
 							create.setAccessible(true);
-							cachedCategory = create.invoke(null, Identifier.of("hqtiers", "category"));
+							cachedCategory = create.invoke(null, Identifier.of("assets", "category"));
 							break;
 						}
 					}

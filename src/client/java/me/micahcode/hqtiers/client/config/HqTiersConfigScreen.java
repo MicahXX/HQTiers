@@ -20,7 +20,7 @@ public final class HqTiersConfigScreen {
 	public static Screen create(Screen parent) {
 		ConfigBuilder builder = ConfigBuilder.create()
 				.setParentScreen(parent)
-				.setTitle(Text.literal("FlowTiers"));
+				.setTitle(Text.literal("HQTiers"));
 		ConfigEntryBuilder entries = builder.entryBuilder();
 
 		ConfigCategory general = builder.getOrCreateCategory(Text.literal("General"));
