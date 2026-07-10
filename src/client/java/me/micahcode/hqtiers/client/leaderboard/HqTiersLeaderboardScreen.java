@@ -303,7 +303,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
                             }
                             if (stats == null) {
                                 resolvedSearchEntry = null;
-                                searchStatus = "Player has not played FlowPvP ranked.";
+                                searchStatus = "Player has not played PvPHQ ranked.";
                                 return;
                             }
                             resolvedSearchEntry = new HqTiersLeaderboardClient.Entry(position, result.profile().uuid().toString(), result.profile().name(), elo);

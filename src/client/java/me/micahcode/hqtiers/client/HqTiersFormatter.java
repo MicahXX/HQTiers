@@ -44,17 +44,17 @@ public final class HqTiersFormatter {
 		HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
 
 		if (ladder == null) {
-			return Text.literal("HQPvP: Unranked").formatted(Formatting.GRAY);
+			return Text.literal("PvPHQ: Unranked").formatted(Formatting.GRAY);
 		}
 
-		return Text.literal("FlowPvP: ").formatted(Formatting.GRAY)
+		return Text.literal("PvPHQ: ").formatted(Formatting.GRAY)
 				.append(Text.literal(stats.name()).formatted(Formatting.WHITE))
 				.append(Text.literal(" "))
 				.append(decorated(ladder));
 	}
 
 	public static Text details(HqTiersStats stats) {
-		return Text.literal("FlowPvP stats for ").formatted(Formatting.GRAY)
+		return Text.literal("PvPHQ stats for ").formatted(Formatting.GRAY)
 				.append(Text.literal(stats.name()).formatted(Formatting.WHITE))
 				.append(Text.literal(":").formatted(Formatting.GRAY));
 	}

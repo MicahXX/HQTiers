@@ -22,7 +22,7 @@ import net.minecraft.client.MinecraftClient;
 
 public final class HqTiersLeaderboardClient {
     // todo: a lot will change here
-    private static final URI BASE_URI = URI.create("https://flowpvp.gg/api/"); // todo: not sure what this will be?
+    private static final URI BASE_URI = URI.create("https://pvphq.com/api");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final String USER_AGENT = "HQTiers/1 (micahcode)";
     private static final Gson GSON = new Gson();
