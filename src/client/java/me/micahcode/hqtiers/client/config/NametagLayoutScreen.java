@@ -37,13 +37,15 @@ public class NametagLayoutScreen extends Screen {
 
             if (i > 0) {
                 addDrawableChild(ButtonWidget.builder(Text.literal("↑"), btn -> {
-                    swap(idx - 1, idx); init();
+                    swap(idx - 1, idx);
+                    init();
                 }).dimensions(left + 190, y, 20, 18).build());
             }
 
             if (i < order.size() - 1) {
                 addDrawableChild(ButtonWidget.builder(Text.literal("↓"), btn -> {
-                    swap(idx, idx + 1); init();
+                    swap(idx, idx + 1);
+                    init();
                 }).dimensions(left + 214, y, 20, 18).build());
             }
 
@@ -92,10 +94,10 @@ public class NametagLayoutScreen extends Screen {
         context.drawCenteredTextWithShadow(textRenderer, "Nametag Layout", cx, 10, 0xFF00BFFF);
         context.drawCenteredTextWithShadow(textRenderer, "↑↓ reorder  •  toggle ON/OFF", cx, 22, 0xFF888888);
 
-        context.drawTextWithShadow(textRenderer, "Component", left,       START_Y - 14, 0xFFAAAAAA);
-        context.drawTextWithShadow(textRenderer, "Move",      left + 190, START_Y - 14, 0xFFAAAAAA);
-        context.drawTextWithShadow(textRenderer, "Show",      left + 244, START_Y - 14, 0xFFAAAAAA);
-        context.drawTextWithShadow(textRenderer, "Label",     left + 298, START_Y - 14, 0xFFAAAAAA);
+        context.drawTextWithShadow(textRenderer, "Component", left, START_Y - 14, 0xFFAAAAAA);
+        context.drawTextWithShadow(textRenderer, "Move", left + 190, START_Y - 14, 0xFFAAAAAA);
+        context.drawTextWithShadow(textRenderer, "Show", left + 244, START_Y - 14, 0xFFAAAAAA);
+        context.drawTextWithShadow(textRenderer, "Label", left + 298, START_Y - 14, 0xFFAAAAAA);
         context.fill(left - 4, START_Y - 4, left + rowW + 4, START_Y - 3, 0xFF444444);
 
         for (int i = 0; i < order.size(); i++) {
@@ -137,6 +139,7 @@ public class NametagLayoutScreen extends Screen {
         switch (comp) {
             case GAMEMODE_ICON -> HqTiersClientConfig.gamemodeIconEnabled = !HqTiersClientConfig.gamemodeIconEnabled;
             case TIER -> HqTiersClientConfig.tierEnabled = !HqTiersClientConfig.tierEnabled;
+            case SEPARATOR -> HqTiersClientConfig.separatorEnabled = !HqTiersClientConfig.separatorEnabled;
             case ELO -> HqTiersClientConfig.eloEnabled = !HqTiersClientConfig.eloEnabled;
             case POSITION -> HqTiersClientConfig.positionEnabled = !HqTiersClientConfig.positionEnabled;
         }
@@ -146,7 +149,7 @@ public class NametagLayoutScreen extends Screen {
         return switch (comp) {
             case GAMEMODE_ICON -> "Gamemode Icon";
             case TIER -> "Tier";
-            case SEPARATOR -> null;
+            case SEPARATOR -> "Separator";
             case ELO -> "SR";
             case POSITION -> "Position";
         };
@@ -160,5 +163,7 @@ public class NametagLayoutScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() { return false; }
+    public boolean shouldPause() {
+        return false;
+    }
 }

@@ -39,7 +39,7 @@ public class HqTiersCache {
                 return stats;
             } catch (Exception exception) {
                 cache.put(key, new CacheEntry(null, System.currentTimeMillis(), FAILED_TTL));
-                Hqtiers.logger.warn("Failed to fetch FlowPvP ranked stats for {}", key, exception);
+                Hqtiers.logger.warn("Failed to fetch HQPvP ranked stats for {}", key, exception);
                 return null;
             }
         }).whenComplete((stats, throwable) -> inFlight.remove(key)));

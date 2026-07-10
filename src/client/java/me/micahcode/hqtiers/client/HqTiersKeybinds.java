@@ -8,35 +8,35 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.util.Formatting;
 
 public final class HqTiersKeybinds {
 	private HqTiersKeybinds() {
 	}
 
-	// todo: rename
 	public static void register() {
 		KeyBinding leaderboard = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.open_leaderboard",
 				InputUtil.GLFW_KEY_L,
-				"category.flowtiers"
+				"category.hqtiers"
 		));
 
 		KeyBinding cycleForward = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.cycle_mode",
 				-1,
-				"category.flowtiers"
+				"category.hqtiers"
 		));
 
 		KeyBinding cycleBack = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.cycle_mode_back",
 				-1,
-				"category.flowtiers"
+				"category.hqtiers"
 		));
 
         KeyBinding viewStats = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.view_stats",
                 InputUtil.GLFW_KEY_K,
-                "category.flowtiers"
+                "category.hqtiers"
         ));
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -110,8 +110,8 @@ public final class HqTiersKeybinds {
 					: next.equals("MODE:HIGHEST_TIER") ? "Highest Tier"
 					: HqTiersFormatter.displayName(next);
 
-			net.minecraft.text.MutableText msg = net.minecraft.text.Text.literal("FlowTiers: " + label + " ")
-					.formatted(net.minecraft.util.Formatting.GREEN);
+			net.minecraft.text.MutableText msg = net.minecraft.text.Text.literal("HQTiers: " + label + " ")
+					.formatted(Formatting.GOLD);
 
 			if (next.equals("MODE:GLOBAL") || next.equals("MODE:HIGHEST_TIER")) {
 				msg.append(HqTiersFormatter.icon("GLOBAL"));

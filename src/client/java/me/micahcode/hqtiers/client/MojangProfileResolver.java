@@ -20,7 +20,6 @@ import com.google.gson.JsonObject;
 import me.micahcode.hqtiers.Hqtiers;
 
 public final class MojangProfileResolver {
-    // this should be fine
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final Gson GSON = new Gson();
 

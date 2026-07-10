@@ -4,11 +4,17 @@
   "version": "${version}",
   "name": "HQTiers",
   "description": "Unofficial Tier Tagger built by a member of the server's staff team",
-  "authors": [],
-  "contact": {},
+  "authors": [
+    "micahcode"
+  ],
+  "contact": {
+    "homepage": "https://pvphq.com/",
+    "issues": "https://github.com/MicahXX/hqtiers/issues"
+  },
   "license": "MIT",
-  "icon": "../resources/icon.webp",
+  "icon": "assets/hqtiers/icon.png",
   "environment": "*",
+
   "entrypoints": {
     "modmenu": [
       "me.micahcode.hqtiers.client.config.HqTiersModMenu"
@@ -20,17 +26,31 @@
       "me.micahcode.hqtiers.Hqtiers"
     ]
   },
+
   "mixins": [
     {
       "config": "hqtiers.client.mixins.json",
       "environment": "client"
     }
   ],
+
   "depends": {
-    "fabricloader": ">=${loader_version}",
+    "fabricloader": ">=0.17.2",
     "fabric-api": "*",
     "minecraft": "${minecraft_version}",
     "cloth-config": "*",
     "modmenu": "*"
+  },
+
+  "custom": {
+    "modmenu": {
+      "links": {
+        "modmenu.discord": "https://discord.gg/pvphq"
+      },
+      "badges": [
+        "Tier Tagger"
+      ],
+      "update_checker": true
+    }
   }
 }

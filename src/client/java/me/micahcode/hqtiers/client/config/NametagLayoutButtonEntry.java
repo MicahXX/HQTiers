@@ -31,16 +31,23 @@ public class NametagLayoutButtonEntry extends TooltipListEntry<Void> {
     }
 
     @Override
-    public Void getValue() { return null; }
+    public Void getValue() {
+        return null;
+    }
 
     @Override
-    public Optional<Void> getDefaultValue() { return Optional.empty(); }
+    public Optional<Void> getDefaultValue() {
+        return Optional.empty();
+    }
 
     @Override
-    public void save() {}
+    public void save() {
+    }
 
     @Override
-    public boolean isEdited() { return false; }
+    public boolean isEdited() {
+        return false;
+    }
 
     @Override
     public List<? extends net.minecraft.client.gui.Element> children() {
