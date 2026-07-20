@@ -2,6 +2,7 @@ package me.micahcode.hqtiers.client;
 
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
+import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
@@ -109,7 +110,7 @@ public final class HqTiersFormatter {
 					if (!HqTiersClientConfig.tierEnabled) continue;
 					if (wrotePart) text.append(Text.literal(" "));
 					if (HqTiersClientConfig.coloredTier) {
-						text.append(Text.literal(tierLabel(ladder)).setStyle(Style.EMPTY.withColor(tierColor(ladder.tierLabel(), ladder.position()))));
+						text.append(Text.literal(tierLabel(ladder)).setStyle(Style.EMPTY.withColor(tierColor(ladder.tier()))));
 					} else {
 						text.append(Text.literal(tierLabel(ladder)).formatted(Formatting.WHITE));
 					}
@@ -129,7 +130,7 @@ public final class HqTiersFormatter {
 				}
 				case POSITION -> {
 					if (!HqTiersClientConfig.positionEnabled || !ladder.hasPosition()) continue;
-					int posColor = HqTiersClientConfig.coloredPosition ? positionColor(ladder.tierLabel(), ladder.position()) : 0xFFFFFF;
+					int posColor = HqTiersClientConfig.coloredPosition ? tierColor(ladder.tier()) : 0xFFFFFF;
 					if (HqTiersClientConfig.positionLabelEnabled)
 						text.append(Text.literal("#").setStyle(Style.EMPTY.withColor(posColor)));
 					text.append(Text.literal(Integer.toString(ladder.position())).setStyle(Style.EMPTY.withColor(posColor)));
@@ -218,20 +219,6 @@ public final class HqTiersFormatter {
 		};
 	}
 
-	@Deprecated
-	private static Text oldDetailsLine(HqTiersStats.LadderStats ladder) {
-		return Text.literal("")
-				.append(Text.literal(ladder.ladder()).formatted(Formatting.AQUA))
-				.append(Text.literal(" "))
-				.append(Text.literal(ladder.tierLabel()).formatted(Formatting.GOLD))
-				.append(Text.literal(", ").formatted(Formatting.GRAY))
-				.append(Text.literal(ratingText(ladder.totalRating())).formatted(Formatting.GREEN))
-				.append(Text.literal(", ").formatted(Formatting.GRAY))
-				.append(Text.literal(ladder.wins() + "W/" + ladder.losses() + "L").formatted(Formatting.WHITE))
-				.append(Text.literal(", #").formatted(Formatting.GRAY))
-				.append(Text.literal(Integer.toString(ladder.position())).formatted(Formatting.WHITE));
-	}
-
 	public static Optional<HqTiersStats.LadderStats> bestLadder(Map<String, HqTiersStats.LadderStats> ladders) {
 		return ladders.values().stream()
 				.filter(HqTiersStats.LadderStats::hasPlayedRanked)
@@ -239,11 +226,7 @@ public final class HqTiersFormatter {
 				.max(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating));
 	}
 
-	private static int tierColor(String tier, int position) {
-		return HqTiersRankSystem.tierColor(tier, position);
-	}
-
-	private static int positionColor(String tier, int position) {
-		return HqTiersRankSystem.tierColor(tier, position);
+	private static int tierColor(HqTiersRanks tier) {
+		return HqTiersRankSystem.tierColor(tier);
 	}
 }

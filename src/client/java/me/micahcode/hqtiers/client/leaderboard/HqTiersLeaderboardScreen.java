@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
+import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import me.micahcode.hqtiers.client.MojangProfileResolver;
@@ -90,7 +91,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int top = tableTop();
         int bottom = height - 28;
         int rowHeight = 16;
-        
+
         context.fill(panelLeft, top - 18, panelRight, bottom, 0xCC1A1408);
         context.fill(panelLeft, top - 18, panelRight, top - 2, 0xDD2A1E0C);
         context.drawTextWithShadow(textRenderer, "#", panelLeft + 10, top - 14, 0xFFFFE7A3);
@@ -131,10 +132,10 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 context.fill(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1, 0x22000000);
             }
 
-            String tier = tierFor(entry);
+            HqTiersStats.LadderStats rowStats = ladderStatsFor(entry);
             context.drawTextWithShadow(textRenderer, entry.position() > 0 ? Integer.toString(entry.position()) : "-", panelLeft + 10, y + 3, rankColor(entry.position()));
             context.drawTextWithShadow(textRenderer, trim(entry.name(), 18), panelLeft + 46, y + 3, nameColor(entry.position()));
-            context.drawTextWithShadow(textRenderer, trim(tier, 12), panelRight - 132, y + 3, tierColor(tier, entry.position()));
+            context.drawTextWithShadow(textRenderer, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, tierColor(rowStats.tier()));
             context.drawTextWithShadow(textRenderer, entry.elo() + " SR", panelRight - 54, y + 3, eloColor(entry.elo()));
         }
         context.disableScissor();
@@ -340,8 +341,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         };
     }
 
-    private static String tierFor(HqTiersLeaderboardClient.Entry entry) {
-        return new HqTiersStats.LadderStats("LEADERBOARD", entry.elo(), 1, 0, 0, 1, null, entry.position()).tierLabel();
+    private static HqTiersStats.LadderStats ladderStatsFor(HqTiersLeaderboardClient.Entry entry) {
+        return new HqTiersStats.LadderStats("LEADERBOARD", entry.elo(), 1, 0, 0, 1, null, entry.position());
     }
 
     private static String trim(String value, int max) {
@@ -361,8 +362,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return 0xFFFFFFFF;
     }
 
-    private static int tierColor(String tier, int position) {
-        int color = HqTiersRankSystem.tierColor(tier, position);
+    private static int tierColor(HqTiersRanks tier) {
+        int color = HqTiersRankSystem.tierColor(tier);
         return color == 0xFFFFFF ? 0xFFAAAAAA : 0xFF000000 | color;
     }
 
