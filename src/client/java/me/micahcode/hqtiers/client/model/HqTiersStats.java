@@ -48,17 +48,21 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
             return position > 0;
         }
 
-        public String tierLabel() {
-            // this is funny
+        public HqTiersRanks tier() {
             if (position == 1) {
-                return "HT1";
+                return HqTiersRanks.HT1;
             }
 
-            if (currentRank == null || currentRank.isBlank()) {
-                return hasPlayedRanked() ? HqTiersRankSystem.fallbackTierLabel(totalRating) : "Unranked";
+            if (currentRank != null && !currentRank.isBlank()) {
+                return HqTiersRankSystem.normalizeRank(currentRank);
             }
 
-            return HqTiersRankSystem.normalizeRankLabel(currentRank);
+            return hasPlayedRanked() ? HqTiersRankSystem.fallbackTier(totalRating) : null;
+        }
+
+        public String tierLabel() {
+            HqTiersRanks tier = tier();
+            return tier != null ? tier.getDisplayName() : "Unranked";
         }
     }
 }
