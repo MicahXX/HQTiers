@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
+import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -265,7 +266,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
             // Tier
             ctx.drawTextWithShadow(textRenderer, l.tierLabel(),
-                    pl + col(pw, 1), y + 4, tierColor(l.tierLabel(), l.position()));
+                    pl + col(pw, 1), y + 4, tierColor(l.tier()));
 
             // SR with mini-bar
             int sr = l.totalRating();
@@ -328,7 +329,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                     + "   " + ladder.totalRating() + " SR"
                     + "   " + ladder.wins() + "W / " + ladder.losses() + "L";
             ctx.drawCenteredTextWithShadow(textRenderer, summary, width / 2, tt + 17,
-                    tierColor(ladder.tierLabel(), ladder.position()));
+                    tierColor(ladder.tier()));
         }
 
         // Graph bounds
@@ -385,7 +386,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
 
         // Derive fill color from tier (gold for gold, purple for T1, etc.)
-        int tierRaw = ladder != null ? HqTiersRankSystem.tierColor(ladder.tierLabel(), ladder.position()) : 0x3B82F6;
+        int tierRaw = ladder != null ? HqTiersRankSystem.tierColor(ladder.tier()) : 0x3B82F6;
         int fillColor = (0x22 << 24) | (tierRaw & 0xFFFFFF);
         int lineColor = (0xCC << 24) | (tierRaw & 0xFFFFFF);
 
@@ -497,9 +498,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
     private static List<HqTiersStats.LadderStats> sortedLadders(HqTiersStats stats) {
         return stats.ladders().values().stream()
-                .filter(l -> l.ladder().equals("GLOBAL")
-                        ? (l.wins() > 0 || l.losses() > 0)
-                        : (l.wins() > 0 || l.losses() > 0))
+                .filter(l -> (l.wins() > 0 || l.losses() > 0))
                 .sorted(Comparator
                         .comparingInt((HqTiersStats.LadderStats l) -> l.ladder().equals("GLOBAL") ? 0 : 1)
                         .thenComparing(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating).reversed()))
@@ -529,8 +528,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         return TEXT_DIM;
     }
 
-    private static int tierColor(String tier, int pos) {
-        int c = HqTiersRankSystem.tierColor(tier, pos);
+    private static int tierColor(HqTiersRanks tier) {
+        int c = HqTiersRankSystem.tierColor(tier);
         return c == 0xFFFFFF ? 0xFFB0B8CC : 0xFF000000 | c;
     }
 
