@@ -9,7 +9,6 @@ import java.util.UUID;
 
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
-import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -260,9 +259,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             ctx.drawTextWithShadow(textRenderer, HqTiersFormatter.icon(l.ladder()), pl + col(pw, 0), y + 4, TEXT_WHITE);
             ctx.drawTextWithShadow(textRenderer, HqTiersFormatter.displayName(l.ladder()), pl + col(pw, 0) + 12, y + 4, TEXT_WHITE);
 
-            // Tier
+            // Tier - color now comes straight from the API's tierColor field
             ctx.drawTextWithShadow(textRenderer, l.tierLabel(),
-                    pl + col(pw, 1), y + 4, tierColor(l.tier()));
+                    pl + col(pw, 1), y + 4, 0xFF000000 | l.tierColorInt());
 
             // SR with mini-bar
             int sr = l.totalRating();
@@ -325,7 +324,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                     + "   " + ladder.totalRating() + " SR"
                     + "   " + ladder.wins() + "W / " + ladder.losses() + "L";
             ctx.drawCenteredTextWithShadow(textRenderer, summary, width / 2, tt + 17,
-                    tierColor(ladder.tier()));
+                    0xFF000000 | ladder.tierColorInt());
         }
 
         // Graph bounds
@@ -381,8 +380,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             graphYPositions[i] = gbt - (historyPoints.get(i).elo() - minElo) * gh / eloRange;
         }
 
-        // Derive fill color from tier (gold for gold, purple for T1, etc.)
-        int tierRaw = ladder != null ? HqTiersRankSystem.tierColor(ladder.tier()) : 0x3B82F6;
+        // Derive fill color from tier (color now comes from the API directly when we have it)
+        int tierRaw = ladder != null ? ladder.tierColorInt() : 0x3B82F6;
         int fillColor = (0x22 << 24) | (tierRaw & 0xFFFFFF);
         int lineColor = (0xCC << 24) | (tierRaw & 0xFFFFFF);
 
@@ -518,11 +517,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (s < -2) return 0xFFF87171;
         if (s < 0) return 0xFFFCA5A5;
         return TEXT_DIM;
-    }
-
-    private static int tierColor(HqTiersRanks tier) {
-        int c = HqTiersRankSystem.tierColor(tier);
-        return c == 0xFFFFFF ? 0xFFB0B8CC : 0xFF000000 | c;
     }
 
     private static int eloColor(int elo) {

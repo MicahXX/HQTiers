@@ -6,7 +6,6 @@ import java.util.Set;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
-import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import me.micahcode.hqtiers.client.MojangProfileResolver;
@@ -163,7 +162,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
             HqTiersStats.LadderStats rowStats = ladderStatsFor(entry);
             context.drawTextWithShadow(textRenderer, entry.position() > 0 ? Integer.toString(entry.position()) : "-", panelLeft + 10, y + 3, rankColor(entry.position()));
             context.drawTextWithShadow(textRenderer, trim(entry.name(), 18), panelLeft + 46, y + 3, nameColor(entry.position()));
-            context.drawTextWithShadow(textRenderer, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, tierColor(rowStats.tier()));
+            context.drawTextWithShadow(textRenderer, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, 0xFF000000 | rowStats.tierColorInt());
             context.drawTextWithShadow(textRenderer, entry.elo() + " SR", panelRight - 54, y + 3, eloColor(entry.elo()));
         }
         context.disableScissor();
@@ -383,7 +382,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     private static HqTiersStats.LadderStats ladderStatsFor(HqTiersLeaderboardClient.Entry entry) {
-        return new HqTiersStats.LadderStats("LEADERBOARD", entry.elo(), 1, 0, 0, 1, null, entry.position());
+        return HqTiersStats.LadderStats.minimal("LEADERBOARD", entry.elo(), 1, 0, 0, null, entry.position());
     }
 
     private static String trim(String value, int max) {
@@ -401,11 +400,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private static int nameColor(int rank) {
         if (rank <= 3) return rankColor(rank);
         return 0xFFFFFFFF;
-    }
-
-    private static int tierColor(HqTiersRanks tier) {
-        int color = HqTiersRankSystem.tierColor(tier);
-        return color == 0xFFFFFF ? 0xFFAAAAAA : 0xFF000000 | color;
     }
 
     private static int eloColor(int elo) {
