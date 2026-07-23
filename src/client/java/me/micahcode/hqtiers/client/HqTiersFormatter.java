@@ -95,6 +95,7 @@ public final class HqTiersFormatter {
 	private static Text decorated(HqTiersStats.LadderStats ladder) {
 		MutableText text = Text.empty();
 		boolean wrotePart = false;
+		int separatorOccurrence = -1;
 
 		for (HqTiersClientConfig.NametagComponent component : HqTiersClientConfig.nametagOrder) {
 			switch (component) {
@@ -115,7 +116,8 @@ public final class HqTiersFormatter {
 					wrotePart = true;
 				}
 				case SEPARATOR -> {
-					if (!HqTiersClientConfig.separatorEnabled || !wrotePart) continue;
+					separatorOccurrence++;
+					if (!HqTiersClientConfig.isSeparatorEnabled(separatorOccurrence) || !wrotePart) continue;
 					text.append(Text.literal(" | ").formatted(Formatting.DARK_GRAY));
 				}
 				case ELO -> {
