@@ -2,7 +2,6 @@ package me.micahcode.hqtiers.client;
 
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
-import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
@@ -34,9 +33,8 @@ public final class HqTiersFormatter {
 							.getIfFresh(client.player.getUuid()).orElse(null);
 			if (real != null) return compact(real);
 		}
-		HqTiersStats.LadderStats fake = new HqTiersStats.LadderStats(
-				HqTiersClientConfig.preferredLadder,
-				800, 10, 5, 2, 10, "MT4", 123
+		HqTiersStats.LadderStats fake = HqTiersStats.LadderStats.minimal(
+				HqTiersClientConfig.preferredLadder, 800, 10, 5, 10, "MT4", 123
 		);
 		return decorated(fake);
 	}
@@ -110,7 +108,7 @@ public final class HqTiersFormatter {
 					if (!HqTiersClientConfig.tierEnabled) continue;
 					if (wrotePart) text.append(Text.literal(" "));
 					if (HqTiersClientConfig.coloredTier) {
-						text.append(Text.literal(tierLabel(ladder)).setStyle(Style.EMPTY.withColor(tierColor(ladder.tier()))));
+						text.append(Text.literal(tierLabel(ladder)).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())));
 					} else {
 						text.append(Text.literal(tierLabel(ladder)).formatted(Formatting.WHITE));
 					}
@@ -130,7 +128,7 @@ public final class HqTiersFormatter {
 				}
 				case POSITION -> {
 					if (!HqTiersClientConfig.positionEnabled || !ladder.hasPosition()) continue;
-					int posColor = HqTiersClientConfig.coloredPosition ? tierColor(ladder.tier()) : 0xFFFFFF;
+					int posColor = HqTiersClientConfig.coloredPosition ? ladder.tierColorInt() : 0xFFFFFF;
 					if (HqTiersClientConfig.positionLabelEnabled)
 						text.append(Text.literal("#").setStyle(Style.EMPTY.withColor(posColor)));
 					text.append(Text.literal(Integer.toString(ladder.position())).setStyle(Style.EMPTY.withColor(posColor)));
@@ -224,9 +222,5 @@ public final class HqTiersFormatter {
 				.filter(HqTiersStats.LadderStats::hasPlayedRanked)
 				.filter(ladder -> !ladder.ladder().equals("GLOBAL"))
 				.max(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating));
-	}
-
-	private static int tierColor(HqTiersRanks tier) {
-		return HqTiersRankSystem.tierColor(tier);
 	}
 }
