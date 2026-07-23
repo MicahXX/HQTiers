@@ -50,10 +50,10 @@ public class NametagLayoutScreen extends Screen {
             }
 
             addDrawableChild(ButtonWidget.builder(
-                    Text.literal(isEnabled(comp) ? "ON" : "OFF"),
+                    Text.literal(isEnabled(idx) ? "ON" : "OFF"),
                     btn -> {
-                        toggle(order.get(idx));
-                        btn.setMessage(Text.literal(isEnabled(order.get(idx)) ? "ON" : "OFF"));
+                        toggle(idx);
+                        btn.setMessage(Text.literal(isEnabled(idx) ? "ON" : "OFF"));
                     }
             ).dimensions(left + 238, y, 50, 18).build());
 
@@ -101,15 +101,14 @@ public class NametagLayoutScreen extends Screen {
         context.fill(left - 4, START_Y - 4, left + rowW + 4, START_Y - 3, 0xFF444444);
 
         for (int i = 0; i < order.size(); i++) {
-            HqTiersClientConfig.NametagComponent comp = order.get(i);
             int y = START_Y + i * ROW_H;
             if (i % 2 == 0) {
                 context.fill(left - 4, y - 2, left + rowW + 4, y + ROW_H - 4, 0x22FFFFFF);
             }
             context.drawTextWithShadow(textRenderer,
-                    (i + 1) + ". " + componentName(comp),
+                    (i + 1) + ". " + componentName(i),
                     left, y + 4,
-                    isEnabled(comp) ? 0xFFFFFFFF : 0xFF777777);
+                    isEnabled(i) ? 0xFFFFFFFF : 0xFF777777);
         }
 
         int previewY = START_Y + order.size() * ROW_H + 14;
@@ -119,37 +118,67 @@ public class NametagLayoutScreen extends Screen {
     }
 
     private void swap(int a, int b) {
-        HqTiersClientConfig.NametagComponent tmp = order.get(a);
-        order.set(a, order.get(b));
-        order.set(b, tmp);
+        HqTiersClientConfig.NametagComponent compA = order.get(a);
+        HqTiersClientConfig.NametagComponent compB = order.get(b);
+
+        // If we're swapping two separators past each other, carry each one's
+        // own enabled state along with it so a reorder doesn't silently flip
+        // which separator is on/off.
+        if (compA == HqTiersClientConfig.NametagComponent.SEPARATOR
+                && compB == HqTiersClientConfig.NametagComponent.SEPARATOR) {
+            int occA = separatorOccurrence(a);
+            int occB = separatorOccurrence(b);
+            boolean stateA = HqTiersClientConfig.isSeparatorEnabled(occA);
+            boolean stateB = HqTiersClientConfig.isSeparatorEnabled(occB);
+            HqTiersClientConfig.setSeparatorEnabled(occA, stateB);
+            HqTiersClientConfig.setSeparatorEnabled(occB, stateA);
+        }
+
+        order.set(a, compB);
+        order.set(b, compA);
         HqTiersClientConfig.nametagOrder = new ArrayList<>(order);
     }
 
-    private static boolean isEnabled(HqTiersClientConfig.NametagComponent comp) {
+    /** Which separator (0-based) the entry at `index` is, counting separators only. */
+    private int separatorOccurrence(int index) {
+        int occurrence = -1;
+        for (int i = 0; i <= index; i++) {
+            if (order.get(i) == HqTiersClientConfig.NametagComponent.SEPARATOR) occurrence++;
+        }
+        return occurrence;
+    }
+
+    private boolean isEnabled(int index) {
+        HqTiersClientConfig.NametagComponent comp = order.get(index);
         return switch (comp) {
             case GAMEMODE_ICON -> HqTiersClientConfig.gamemodeIconEnabled;
             case TIER -> HqTiersClientConfig.tierEnabled;
-            case SEPARATOR -> false;
+            case SEPARATOR -> HqTiersClientConfig.isSeparatorEnabled(separatorOccurrence(index));
             case ELO -> HqTiersClientConfig.eloEnabled;
             case POSITION -> HqTiersClientConfig.positionEnabled;
         };
     }
 
-    private static void toggle(HqTiersClientConfig.NametagComponent comp) {
+    private void toggle(int index) {
+        HqTiersClientConfig.NametagComponent comp = order.get(index);
         switch (comp) {
             case GAMEMODE_ICON -> HqTiersClientConfig.gamemodeIconEnabled = !HqTiersClientConfig.gamemodeIconEnabled;
             case TIER -> HqTiersClientConfig.tierEnabled = !HqTiersClientConfig.tierEnabled;
-            case SEPARATOR -> HqTiersClientConfig.separatorEnabled = !HqTiersClientConfig.separatorEnabled;
+            case SEPARATOR -> {
+                int occurrence = separatorOccurrence(index);
+                HqTiersClientConfig.setSeparatorEnabled(occurrence, !HqTiersClientConfig.isSeparatorEnabled(occurrence));
+            }
             case ELO -> HqTiersClientConfig.eloEnabled = !HqTiersClientConfig.eloEnabled;
             case POSITION -> HqTiersClientConfig.positionEnabled = !HqTiersClientConfig.positionEnabled;
         }
     }
 
-    private static String componentName(HqTiersClientConfig.NametagComponent comp) {
+    private String componentName(int index) {
+        HqTiersClientConfig.NametagComponent comp = order.get(index);
         return switch (comp) {
             case GAMEMODE_ICON -> "Gamemode Icon";
             case TIER -> "Tier";
-            case SEPARATOR -> "Separator";
+            case SEPARATOR -> "Separator " + (separatorOccurrence(index) + 1);
             case ELO -> "SR";
             case POSITION -> "Position";
         };
