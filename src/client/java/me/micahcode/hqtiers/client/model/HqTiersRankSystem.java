@@ -7,7 +7,6 @@ public final class HqTiersRankSystem {
     }
 
     public static HqTiersRanks fallbackTier(int rating) {
-        // todo: will be different
         if (rating >= 2175) return HqTiersRanks.HT1;
         if (rating >= 1900) return HqTiersRanks.MT1;
         if (rating >= 1770) return HqTiersRanks.LT1;
@@ -54,7 +53,7 @@ public final class HqTiersRankSystem {
         return tierColor(fallbackTier(rating));
     }
 
-    private static int hexToColor(String hex) {
+    public static int hexToColor(String hex) {
         if (hex == null || hex.isBlank()) return 0xFFFFFF;
         String cleaned = hex.startsWith("#") ? hex.substring(1) : hex;
         try {

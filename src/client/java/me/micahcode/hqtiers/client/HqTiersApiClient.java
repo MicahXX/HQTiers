@@ -1,6 +1,7 @@
 package me.micahcode.hqtiers.client;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
@@ -16,29 +17,18 @@ import java.util.Map;
 import java.util.UUID;
 
 public class HqTiersApiClient {
-    private static final URI BASE_URI = URI.create("https://pvphq.com/api");
+    private static final URI BASE_URI = URI.create("https://pvphq.com/api/v1/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final String USER_AGENT = "HQTiers/1.0 (micahcode)";
     private static final Gson GSON = new Gson();
-
-    // Sentinel value the API uses for globalPosition when a player is unranked globally.
-    private static final int UNRANKED_GLOBAL_POSITION = 99999;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(TIMEOUT)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
-    /**
-     * Fetches a player's ranked stats across all ladders.
-     * <p>
-     * NOTE: the /ranked/{playerId} response contains no player name field at all
-     * (only _id, data, globalPosition, rank) - the caller is responsible for
-     * supplying a display name from elsewhere (online player list, leaderboard
-     * entry, or the Mojang profile resolver).
-     */
     public HqTiersStats fetchRanked(UUID uuid) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(BASE_URI.resolve("ranked/" + uuid))
+        HttpRequest request = HttpRequest.newBuilder(BASE_URI.resolve("players/" + uuid))
                 .timeout(TIMEOUT)
                 .header("Accept", "application/json")
                 .header("User-Agent", USER_AGENT)
@@ -51,7 +41,7 @@ public class HqTiersApiClient {
         }
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException("HQPvP API returned HTTP " + response.statusCode());
+            throw new IOException("PvPHQ API returned HTTP " + response.statusCode());
         }
 
         JsonObject root = GSON.fromJson(response.body(), JsonObject.class);
@@ -59,74 +49,79 @@ public class HqTiersApiClient {
             return null;
         }
 
-        UUID playerUuid = UUID.fromString(string(root, "_id", uuid.toString()));
-        Map<String, HqTiersStats.LadderStats> ladders = readLadders(root.getAsJsonObject("data"));
-        addGlobalStats(root, ladders);
+        UUID playerUuid = UUID.fromString(string(root, "uuid", uuid.toString()));
+        String name = string(root, "name", playerUuid.toString());
 
-        // No name field on this endpoint - fall back to the UUID string; callers
-        // that already know the player's name should overwrite this themselves.
-        return new HqTiersStats(playerUuid, playerUuid.toString(), ladders, System.currentTimeMillis());
+        Map<String, HqTiersStats.LadderStats> ladders = readLadders(root.getAsJsonArray("ranked"));
+        ladders.put("GLOBAL", buildGlobal(root));
+
+        return new HqTiersStats(playerUuid, name, ladders, System.currentTimeMillis());
     }
 
-    /**
-     * Reads the "data" object: a map of ladder key (RankedLadder enum, e.g. SWORD,
-     * AXE, MACE, UHC, NETHERITE_POT, POT, SMP, DIAMOND_SMP, VANILLA) to per-ladder
-     * Glicko-2 stats. Ladder keys are translated to this mod's internal naming via
-     * HqTiersClientConfig.fromApiLadder (e.g. API "POT" -> internal "DIAMOND_POT").
-     */
-    private static Map<String, HqTiersStats.LadderStats> readLadders(JsonObject data) {
+    private static Map<String, HqTiersStats.LadderStats> readLadders(JsonArray ranked) {
         Map<String, HqTiersStats.LadderStats> ladders = new HashMap<>();
-        if (data == null) {
+        if (ranked == null) {
             return ladders;
         }
 
-        for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
-            if (!entry.getValue().isJsonObject()) {
+        for (JsonElement element : ranked) {
+            if (!element.isJsonObject()) {
                 continue;
             }
 
-            JsonObject ladder = entry.getValue().getAsJsonObject();
-            String key = HqTiersClientConfig.fromApiLadder(entry.getKey());
+            JsonObject entry = element.getAsJsonObject();
+            String apiGametype = string(entry, "gametype", null);
+            if (apiGametype == null) {
+                continue;
+            }
+
+            String key = HqTiersClientConfig.fromApiLadder(apiGametype.toUpperCase());
+
             ladders.put(key, new HqTiersStats.LadderStats(
                     key,
-                    intValue(ladder, "rating", 0),
-                    intValue(ladder, "wins", 0),
-                    intValue(ladder, "losses", 0),
-                    0, // API does not expose a currentStreak field for ranked ladders
-                    intValue(ladder, "placementGames", 0),
-                    firstString(ladder, null, "grantedTier"),
-                    intValue(ladder, "leaderboardPosition", 0)
+                    intValue(entry, "rating", 1000),
+                    intValue(entry, "peakRating", 1000),
+                    intValue(entry, "rd", 350),
+                    intValue(entry, "wins", 0),
+                    intValue(entry, "losses", 0),
+                    intValue(entry, "gamesPlayed", 0),
+                    doubleValue(entry, "winRate", 0.0),
+                    string(entry, "tier", null),
+                    string(entry, "tierColor", null),
+                    intValue(entry, "tierProgress", 0),
+                    boolValue(entry, "unranked", true),
+                    boolValue(entry, "inactive", false),
+                    intValue(entry, "placementGames", 0),
+                    intValue(entry, "placementTarget", 10),
+                    longValue(entry, "lastPlayedAt", 0L),
+                    intValue(entry, "tierFloor", 0),
+                    intValue(entry, "tierCeiling", 0),
+                    string(entry, "nextTier", null),
+                    string(entry, "nextTierColor", null),
+                    boolValue(entry, "nextIsTournamentGated", false),
+                    boolValue(entry, "atRatingCap", false),
+                    intValue(entry, "ratingAboveCap", 0),
+                    boolValue(entry, "fromTournament", false),
+                    intValue(entry, "promoProgress", 0),
+                    0
             ));
         }
 
         return ladders;
     }
 
-    /**
-     * Synthesizes a "GLOBAL" pseudo-ladder from the top-level globalPosition and
-     * rank fields. There is no global numeric SR/ELO on this API - only a tier id
-     * string (rank) and a leaderboard position (99999 = unranked sentinel).
-     * Global wins/losses/placements are summed across the known per-ladder stats
-     * since the API does not expose separate global counters for these.
-     */
-    private static void addGlobalStats(JsonObject root, Map<String, HqTiersStats.LadderStats> ladders) {
-        int wins = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::wins).sum();
-        int losses = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::losses).sum();
-        int placements = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::placementMatchesPlayed).sum();
+    private static HqTiersStats.LadderStats buildGlobal(JsonObject root) {
+        JsonObject stats = root.getAsJsonObject("stats");
+        int wins = stats != null ? intValue(stats, "wins", 0) : 0;
+        int losses = stats != null ? intValue(stats, "losses", 0) : 0;
+        int gamesPlayed = stats != null ? intValue(stats, "gamesPlayed", 0) : 0;
+        double winRate = stats != null ? doubleValue(stats, "winRate", 0.0) : 0.0;
 
-        int globalPosition = intValue(root, "globalPosition", 0);
-        String globalRank = string(root, "rank", null);
-
-        ladders.put("GLOBAL", new HqTiersStats.LadderStats(
-                "GLOBAL",
-                0, // no numeric global rating exists on this API
-                wins,
-                losses,
-                0,
-                placements,
-                globalRank,
-                globalPosition == UNRANKED_GLOBAL_POSITION ? 0 : globalPosition
-        ));
+        return new HqTiersStats.LadderStats(
+                "GLOBAL", 0, 0, 0, wins, losses, gamesPlayed, winRate,
+                null, null, 0, true, false, 0, 10, 0L, 0, 0,
+                null, null, false, false, 0, false, 0, 0
+        );
     }
 
     private static String string(JsonObject object, String key, String fallback) {
@@ -139,13 +134,18 @@ public class HqTiersApiClient {
         return value == null || value.isJsonNull() ? fallback : value.getAsInt();
     }
 
-    private static String firstString(JsonObject object, String fallback, String... keys) {
-        for (String key : keys) {
-            JsonElement value = object.get(key);
-            if (value != null && !value.isJsonNull()) {
-                return value.getAsString();
-            }
-        }
-        return fallback;
+    private static long longValue(JsonObject object, String key, long fallback) {
+        JsonElement value = object.get(key);
+        return value == null || value.isJsonNull() ? fallback : value.getAsLong();
+    }
+
+    private static double doubleValue(JsonObject object, String key, double fallback) {
+        JsonElement value = object.get(key);
+        return value == null || value.isJsonNull() ? fallback : value.getAsDouble();
+    }
+
+    private static boolean boolValue(JsonObject object, String key, boolean fallback) {
+        JsonElement value = object.get(key);
+        return value == null || value.isJsonNull() ? fallback : value.getAsBoolean();
     }
 }
