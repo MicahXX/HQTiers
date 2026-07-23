@@ -33,7 +33,6 @@ public final class HqTiersClientConfig {
     public static NametagAlignment nametagAlignment = NametagAlignment.LEFT;
     public static boolean gamemodeIconEnabled = true;
     public static boolean tierEnabled = true;
-    public static boolean separatorEnabled = true;
     public static boolean eloEnabled = false;
     public static boolean eloLabelEnabled = false;
     public static boolean positionEnabled = false;
@@ -42,6 +41,8 @@ public final class HqTiersClientConfig {
     public static boolean coloredTier = true;
     public static boolean coloredPosition = true;
     public static List<NametagComponent> nametagOrder = defaultNametagOrder();
+
+    public static List<Boolean> nametagSeparatorStates = new ArrayList<>(defaultSeparatorStates());
 
     private HqTiersClientConfig() {}
 
@@ -69,7 +70,7 @@ public final class HqTiersClientConfig {
         }
         return Optional.of(INTERNAL_TO_API.getOrDefault(normalized, normalized));
     }
-        public static String fromApiLadder(String apiLadder) {
+    public static String fromApiLadder(String apiLadder) {
         String normalized = normalizeLadder(apiLadder);
         return API_TO_INTERNAL.getOrDefault(normalized, normalized);
     }
@@ -79,6 +80,11 @@ public final class HqTiersClientConfig {
                 NametagComponent.GAMEMODE_ICON, NametagComponent.TIER, NametagComponent.SEPARATOR,
                 NametagComponent.ELO, NametagComponent.SEPARATOR, NametagComponent.POSITION
         ));
+    }
+
+    private static List<Boolean> defaultSeparatorStates() {
+        // Matches the two SEPARATOR entries in defaultNametagOrder().
+        return List.of(true, true);
     }
 
     public static void load() {
@@ -123,7 +129,9 @@ public final class HqTiersClientConfig {
             } else {
                 nametagOrder = defaultNametagOrder();
             }
-            separatorEnabled = data.separatorEnabled;
+            nametagSeparatorStates = data.nametagSeparatorStates != null
+                    ? new ArrayList<>(data.nametagSeparatorStates)
+                    : new ArrayList<>();
             normalizeNametagOrder();
         } catch (IOException exception) {
             Hqtiers.logger.warn("Failed to load HqTiers config.", exception);
@@ -178,6 +186,7 @@ public final class HqTiersClientConfig {
     public static void normalizeNametagOrder() {
         nametagOrder = hasNametagPart(nametagOrder) ? new ArrayList<>(nametagOrder) : defaultNametagOrder();
         ensureSeparatorComponents();
+        ensureSeparatorStatesSize();
     }
 
     private static boolean hasNametagPart(List<NametagComponent> components) {
@@ -215,6 +224,36 @@ public final class HqTiersClientConfig {
         return count;
     }
 
+    /**
+     * Pads or trims nametagSeparatorStates so it has exactly one entry per
+     * SEPARATOR currently in nametagOrder. New separators default to enabled.
+     */
+    private static void ensureSeparatorStatesSize() {
+        int needed = separatorCount();
+        while (nametagSeparatorStates.size() < needed) {
+            nametagSeparatorStates.add(true);
+        }
+        while (nametagSeparatorStates.size() > needed) {
+            nametagSeparatorStates.remove(nametagSeparatorStates.size() - 1);
+        }
+    }
+
+    /** Whether the Nth separator (0-based, in list order) is enabled. */
+    public static boolean isSeparatorEnabled(int occurrenceIndex) {
+        if (occurrenceIndex < 0 || occurrenceIndex >= nametagSeparatorStates.size()) {
+            return true;
+        }
+        return nametagSeparatorStates.get(occurrenceIndex);
+    }
+
+    /** Sets whether the Nth separator (0-based, in list order) is enabled. */
+    public static void setSeparatorEnabled(int occurrenceIndex, boolean enabled) {
+        ensureSeparatorStatesSize();
+        if (occurrenceIndex >= 0 && occurrenceIndex < nametagSeparatorStates.size()) {
+            nametagSeparatorStates.set(occurrenceIndex, enabled);
+        }
+    }
+
     private static final class Data {
         boolean nametagEnabled = true;
         boolean tabListEnabled = true;
@@ -225,7 +264,6 @@ public final class HqTiersClientConfig {
         boolean shortTierNames = false;
         boolean gamemodeIconEnabled = true;
         boolean tierEnabled = false;
-        boolean separatorEnabled = true;
         boolean eloEnabled = false;
         boolean eloLabelEnabled = false;
         boolean coloredElo = true;
@@ -233,6 +271,7 @@ public final class HqTiersClientConfig {
         boolean positionLabelEnabled = false;
         String nametagAlignment = NametagAlignment.LEFT.name();
         List<String> nametagOrder = null;
+        List<Boolean> nametagSeparatorStates = null;
         boolean suppressRankedDuplicates = true;
         boolean coloredTier = true;
         boolean coloredPosition = false;
@@ -247,7 +286,6 @@ public final class HqTiersClientConfig {
             data.rankSectionEnabled = HqTiersClientConfig.gamemodeIconEnabled || HqTiersClientConfig.tierEnabled;
             data.gamemodeIconEnabled = HqTiersClientConfig.gamemodeIconEnabled;
             data.tierEnabled = HqTiersClientConfig.tierEnabled;
-            data.separatorEnabled = HqTiersClientConfig.separatorEnabled;
             data.shortTierNames = HqTiersClientConfig.shortTierNames;
             data.eloEnabled = HqTiersClientConfig.eloEnabled;
             data.eloLabelEnabled = HqTiersClientConfig.eloLabelEnabled;
@@ -257,6 +295,7 @@ public final class HqTiersClientConfig {
             data.nametagAlignment = HqTiersClientConfig.nametagAlignment.name();
             data.nametagOrder = HqTiersClientConfig.nametagOrder.stream()
                     .map(Enum::name).collect(Collectors.toList());
+            data.nametagSeparatorStates = new ArrayList<>(HqTiersClientConfig.nametagSeparatorStates);
             data.suppressRankedDuplicates = HqTiersClientConfig.suppressRankedDuplicates;
             data.coloredTier = HqTiersClientConfig.coloredTier;
             data.coloredPosition = HqTiersClientConfig.coloredPosition;
