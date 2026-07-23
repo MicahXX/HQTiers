@@ -2,6 +2,7 @@ package me.micahcode.hqtiers.client.leaderboard;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
@@ -18,9 +19,14 @@ import net.minecraft.text.Text;
 
 public final class HqTiersLeaderboardScreen extends Screen {
     private static final String[] LADDERS = {
-            "GLOBAL", "SWORD", "AXE", "UHC", "VANILLA",
-            "MACE", "DIAMOND_POT", "NETHERITE_OP", "SMP", "DIAMOND_SMP"
+            "SWORD", "AXE", "MACE", "SPEAR_MACE", "UHC", "VANILLA",
+            "CART", "DIAMOND_POT", "NETHERITE_OP", "SMP", "DIAMOND_SMP"
     };
+    private static final Set<String> LADDERS_COMING_SOON = Set.of("CART", "SPEAR_MACE");
+
+    private static final int TAB_HEIGHT = 18;
+    private static final int TAB_GAP = 6;
+    private static final int TAB_COLUMNS = 4;
 
     private final HqTiersLeaderboardClient leaderboardClient;
     private String ladder = initialLadder();
@@ -39,29 +45,31 @@ public final class HqTiersLeaderboardScreen extends Screen {
     @Override
     protected void init() {
         clearChildren();
-        int tabWidth = 68;
-        int tabHeight = 18;
-        int gap = 6;
         int panelLeft = panelLeft();
+        int panelRight = panelRight();
         int startX = panelLeft + 8;
+        int availableWidth = (panelRight - 8) - startX;
+        int tabWidth = (availableWidth - (TAB_COLUMNS - 1) * TAB_GAP) / TAB_COLUMNS;
 
         for (int i = 0; i < LADDERS.length; i++) {
             String tabLadder = LADDERS[i];
-            int row = i / 5;
-            int col = i % 5;
-            int x = startX + col * (tabWidth + gap);
-            int y = 22 + row * (tabHeight + 4);
-            ButtonWidget tab = ButtonWidget.builder(Text.literal((tabLadder.equals(ladder) ? "> " : "") + tabButtonLabel(tabLadder)), button -> {
+            int row = i / TAB_COLUMNS;
+            int col = i % TAB_COLUMNS;
+            int x = startX + col * (tabWidth + TAB_GAP);
+            int y = 22 + row * (TAB_HEIGHT + 4);
+            String prefix = tabLadder.equals(ladder) ? "> " : "";
+            ButtonWidget tab = ButtonWidget.builder(Text.literal(prefix + tabButtonLabel(tabLadder)), button -> {
                 ladder = tabLadder;
                 scrollOffset = 0;
                 leaderboardClient.load(ladder);
                 init();
-            }).dimensions(x, y, tabWidth, tabHeight).build();
+            }).dimensions(x, y, tabWidth, TAB_HEIGHT).build();
             tab.active = !tabLadder.equals(ladder);
             addDrawableChild(tab);
         }
 
-        searchField = new TextFieldWidget(textRenderer, panelLeft + 8, 72, 220, 18, Text.literal("Search player"));
+        int searchY = searchRowY();
+        searchField = new TextFieldWidget(textRenderer, panelLeft + 8, searchY, 220, 18, Text.literal("Search player"));
         searchField.setMaxLength(32);
         searchField.setPlaceholder(Text.literal("Search player..."));
         searchField.setText(searchQuery);
@@ -73,7 +81,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         });
         addDrawableChild(searchField);
         addDrawableChild(ButtonWidget.builder(Text.literal("Search"), button -> searchPlayer())
-                .dimensions(panelLeft + 234, 72, 68, 18)
+                .dimensions(panelLeft + 234, searchY, 68, 18)
                 .build());
         leaderboardClient.load(ladder);
     }
@@ -91,6 +99,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int top = tableTop();
         int bottom = height - 28;
         int rowHeight = 16;
+        int searchY = searchRowY();
 
         context.fill(panelLeft, top - 18, panelRight, bottom, 0xCC1A1408);
         context.fill(panelLeft, top - 18, panelRight, top - 2, 0xDD2A1E0C);
@@ -99,18 +108,37 @@ public final class HqTiersLeaderboardScreen extends Screen {
         context.drawTextWithShadow(textRenderer, "Tier", panelRight - 132, top - 14, 0xFFFFE7A3);
         context.drawTextWithShadow(textRenderer, "SR", panelRight - 54, top - 14, 0xFFFFE7A3);
 
+        context.drawTextWithShadow(textRenderer, "* not yet tracked on PvPHQ", panelLeft + 8, legendY() + 1, 0xFF6B5D3A);
+
         if (resolvedSearchEntry != null) {
-            context.drawTextWithShadow(textRenderer, "Found: " + resolvedSearchEntry.name(), panelLeft + 310, 77, 0xFF55FF55);
+            context.drawTextWithShadow(textRenderer, "Found: " + resolvedSearchEntry.name(), panelLeft + 310, searchY + 5, 0xFF55FF55);
         } else if (searchStatus != null && !searchStatus.isBlank()) {
-            context.drawTextWithShadow(textRenderer, searchStatus, panelLeft + 310, 77, 0xFF7C8BA1);
+            context.drawTextWithShadow(textRenderer, searchStatus, panelLeft + 310, searchY + 5, 0xFF7C8BA1);
         }
 
         if (visibleEntries.isEmpty()) {
-            String message = state.error() != null ? state.error() : state.loading() ? "Loading..." : "No leaderboard data.";
+            String message;
+            int color;
+            if (state.unsupported()) {
+                message = HqTiersFormatter.displayName(ladder) + " leaderboard is coming soon to PvPHQ.";
+                color = 0xFFD4AF37; // gold accent - reads as "planned", not "broken"
+            } else if (state.error() != null) {
+                message = state.error();
+                color = 0xFFAAAAAA;
+            } else if (state.loading()) {
+                message = "Loading...";
+                color = 0xFFAAAAAA;
+            } else {
+                message = "No leaderboard data.";
+                color = 0xFFAAAAAA;
+            }
+
             if (!entries.isEmpty() && !searchText().isBlank()) {
                 message = resolvedSearchEntry == null ? "No loaded rows match. Resolving player..." : "Press Search to open found player.";
+                color = 0xFFAAAAAA;
             }
-            context.drawCenteredTextWithShadow(textRenderer, message, width / 2, top + 28, 0xFFAAAAAA);
+
+            context.drawCenteredTextWithShadow(textRenderer, message, width / 2, top + 28, color);
             return;
         }
 
@@ -152,7 +180,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         scrollOffset -= (int) (verticalAmount * 18);
         scrollOffset = Math.max(0, scrollOffset);
         HqTiersLeaderboardClient.PageState state = leaderboardClient.state(ladder);
-        int visibleRows = Math.max(1, (height - 110) / 16);
+        int visibleRows = Math.max(1, (height - tableTop() - 40) / 16);
         if (searchText().isBlank() && scrollOffset > Math.max(0, state.entries().size() - visibleRows - 4) * 16) {
             leaderboardClient.loadMore(ladder);
         }
@@ -164,8 +192,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         if (click.button() == 0) {
             HqTiersLeaderboardClient.Entry entry = rowAt(click.x(), click.y());
             if (entry != null && client != null) {
-                String autoLadder = ladder.equals("GLOBAL") ? null : ladder;
-                client.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), autoLadder));
+                client.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
                 return true;
             }
         }
@@ -178,7 +205,9 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     private static String initialLadder() {
-        return "GLOBAL";
+        // SWORD is used as the default because GLOBAL has no leaderboard
+        // endpoint on the API at all - that tab used to load nothing forever.
+        return "SWORD";
     }
 
     private HqTiersLeaderboardClient.Entry rowAt(double mouseX, double mouseY) {
@@ -204,8 +233,20 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return Math.min(width - 20, width / 2 + 190);
     }
 
+    private int tabRows() {
+        return (LADDERS.length + TAB_COLUMNS - 1) / TAB_COLUMNS;
+    }
+
+    private int legendY() {
+        return 22 + tabRows() * (TAB_HEIGHT + 4);
+    }
+
+    private int searchRowY() {
+        return legendY() + 12;
+    }
+
     private int tableTop() {
-        return 124;
+        return searchRowY() + TAB_HEIGHT + 34;
     }
 
     private List<HqTiersLeaderboardClient.Entry> visibleEntries(List<HqTiersLeaderboardClient.Entry> entries) {
@@ -232,16 +273,15 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private void searchPlayer() {
         String query = searchText();
         if (query.isBlank() || client == null) return;
-        String autoLadder = ladder.equals("GLOBAL") ? null : ladder;
 
         if (resolvedSearchEntry != null && resolvedSearchEntry.name().equalsIgnoreCase(query)) {
-            client.setScreen(new HqTiersPlayerStatsScreen(this, resolvedSearchEntry.uuid(), resolvedSearchEntry.name(), autoLadder));
+            client.setScreen(new HqTiersPlayerStatsScreen(this, resolvedSearchEntry.uuid(), resolvedSearchEntry.name(), ladder));
             return;
         }
 
         for (HqTiersLeaderboardClient.Entry entry : leaderboardClient.state(ladder).entries()) {
             if (entry.name().equalsIgnoreCase(query)) {
-                client.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), autoLadder));
+                client.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
                 return;
             }
         }
@@ -249,7 +289,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         searchStatus = "Searching...";
         try {
             UUID uuid = parseUuid(query);
-            client.setScreen(new HqTiersPlayerStatsScreen(this, uuid.toString(), query, autoLadder));
+            client.setScreen(new HqTiersPlayerStatsScreen(this, uuid.toString(), query, ladder));
             return;
         } catch (IllegalArgumentException ignored) {
         }
@@ -258,7 +298,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
             if (client == null) return;
             client.execute(() -> {
                 if (result.status() == MojangProfileResolver.Status.FOUND) {
-                    client.setScreen(new HqTiersPlayerStatsScreen(this, result.profile().uuid().toString(), result.profile().name(), autoLadder));
+                    client.setScreen(new HqTiersPlayerStatsScreen(this, result.profile().uuid().toString(), result.profile().name(), ladder));
                 } else if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
                     searchStatus = "Player not found.";
                 } else {
@@ -332,13 +372,14 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     private static String tabButtonLabel(String ladder) {
-        return switch (ladder) {
-            case "GLOBAL" -> "Global";
+        String label = switch (ladder) {
             case "DIAMOND_POT" -> "Pot";
             case "NETHERITE_OP" -> "NethOP";
             case "DIAMOND_SMP" -> "D.SMP";
+            case "SPEAR_MACE" -> "S.Mace";
             default -> HqTiersFormatter.displayName(ladder);
         };
+        return LADDERS_COMING_SOON.contains(ladder) ? label + "*" : label;
     }
 
     private static HqTiersStats.LadderStats ladderStatsFor(HqTiersLeaderboardClient.Entry entry) {

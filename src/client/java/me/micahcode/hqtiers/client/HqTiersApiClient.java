@@ -21,11 +21,22 @@ public class HqTiersApiClient {
     private static final String USER_AGENT = "HQTiers/1.0 (micahcode)";
     private static final Gson GSON = new Gson();
 
+    // Sentinel value the API uses for globalPosition when a player is unranked globally.
+    private static final int UNRANKED_GLOBAL_POSITION = 99999;
+
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(TIMEOUT)
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
+    /**
+     * Fetches a player's ranked stats across all ladders.
+     * <p>
+     * NOTE: the /ranked/{playerId} response contains no player name field at all
+     * (only _id, data, globalPosition, rank) - the caller is responsible for
+     * supplying a display name from elsewhere (online player list, leaderboard
+     * entry, or the Mojang profile resolver).
+     */
     public HqTiersStats fetchRanked(UUID uuid) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder(BASE_URI.resolve("ranked/" + uuid))
                 .timeout(TIMEOUT)
@@ -49,58 +60,72 @@ public class HqTiersApiClient {
         }
 
         UUID playerUuid = UUID.fromString(string(root, "_id", uuid.toString()));
-        String name = string(root, "lastKnownName", playerUuid.toString());
-        long lastUpdated = longValue(root, "lastUpdated", 0L);
-        Map<String, HqTiersStats.LadderStats> ladders = readLadders(root.getAsJsonObject("perLadder"));
+        Map<String, HqTiersStats.LadderStats> ladders = readLadders(root.getAsJsonObject("data"));
         addGlobalStats(root, ladders);
-        return new HqTiersStats(playerUuid, name, ladders, lastUpdated);
+
+        // No name field on this endpoint - fall back to the UUID string; callers
+        // that already know the player's name should overwrite this themselves.
+        return new HqTiersStats(playerUuid, playerUuid.toString(), ladders, System.currentTimeMillis());
     }
 
-    private static Map<String, HqTiersStats.LadderStats> readLadders(JsonObject perLadder) {
+    /**
+     * Reads the "data" object: a map of ladder key (RankedLadder enum, e.g. SWORD,
+     * AXE, MACE, UHC, NETHERITE_POT, POT, SMP, DIAMOND_SMP, VANILLA) to per-ladder
+     * Glicko-2 stats. Ladder keys are translated to this mod's internal naming via
+     * HqTiersClientConfig.fromApiLadder (e.g. API "POT" -> internal "DIAMOND_POT").
+     */
+    private static Map<String, HqTiersStats.LadderStats> readLadders(JsonObject data) {
         Map<String, HqTiersStats.LadderStats> ladders = new HashMap<>();
-        if (perLadder == null) {
+        if (data == null) {
             return ladders;
         }
 
-        for (Map.Entry<String, JsonElement> entry : perLadder.entrySet()) {
+        for (Map.Entry<String, JsonElement> entry : data.entrySet()) {
             if (!entry.getValue().isJsonObject()) {
                 continue;
             }
 
             JsonObject ladder = entry.getValue().getAsJsonObject();
-            String key = HqTiersClientConfig.normalizeLadder(entry.getKey());
+            String key = HqTiersClientConfig.fromApiLadder(entry.getKey());
             ladders.put(key, new HqTiersStats.LadderStats(
                     key,
-                    ratingValue(ladder),
+                    intValue(ladder, "rating", 0),
                     intValue(ladder, "wins", 0),
                     intValue(ladder, "losses", 0),
-                    intValue(ladder, "currentStreak", 0),
-                    intValue(ladder, "placementMatchesPlayed", 0),
-                    firstString(ladder, null, "currentRank", "tier", "tierTag", "rank"),
-                    intValue(ladder, "position", 0)
+                    0, // API does not expose a currentStreak field for ranked ladders
+                    intValue(ladder, "placementGames", 0),
+                    firstString(ladder, null, "grantedTier"),
+                    intValue(ladder, "leaderboardPosition", 0)
             ));
         }
 
         return ladders;
     }
 
+    /**
+     * Synthesizes a "GLOBAL" pseudo-ladder from the top-level globalPosition and
+     * rank fields. There is no global numeric SR/ELO on this API - only a tier id
+     * string (rank) and a leaderboard position (99999 = unranked sentinel).
+     * Global wins/losses/placements are summed across the known per-ladder stats
+     * since the API does not expose separate global counters for these.
+     */
     private static void addGlobalStats(JsonObject root, Map<String, HqTiersStats.LadderStats> ladders) {
-        if (!hasAny(root, "globalElo", "globalSr", "globalSkillRating", "globalRating")) {
-            return;
-        }
-
         int wins = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::wins).sum();
         int losses = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::losses).sum();
         int placements = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::placementMatchesPlayed).sum();
+
+        int globalPosition = intValue(root, "globalPosition", 0);
+        String globalRank = string(root, "rank", null);
+
         ladders.put("GLOBAL", new HqTiersStats.LadderStats(
                 "GLOBAL",
-                firstInt(root, 0, "globalSr", "globalSkillRating", "globalRating", "globalElo"),
+                0, // no numeric global rating exists on this API
                 wins,
                 losses,
                 0,
                 placements,
-                null,
-                intValue(root, "globalPosition", 0)
+                globalRank,
+                globalPosition == UNRANKED_GLOBAL_POSITION ? 0 : globalPosition
         ));
     }
 
@@ -114,20 +139,6 @@ public class HqTiersApiClient {
         return value == null || value.isJsonNull() ? fallback : value.getAsInt();
     }
 
-    private static int ratingValue(JsonObject object) {
-        return firstInt(object, 0, "sr", "skillRating", "rating", "totalRating", "elo");
-    }
-
-    private static int firstInt(JsonObject object, int fallback, String... keys) {
-        for (String key : keys) {
-            JsonElement value = object.get(key);
-            if (value != null && !value.isJsonNull()) {
-                return value.getAsInt();
-            }
-        }
-        return fallback;
-    }
-
     private static String firstString(JsonObject object, String fallback, String... keys) {
         for (String key : keys) {
             JsonElement value = object.get(key);
@@ -136,19 +147,5 @@ public class HqTiersApiClient {
             }
         }
         return fallback;
-    }
-
-    private static boolean hasAny(JsonObject object, String... keys) {
-        for (String key : keys) {
-            if (object.has(key)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static long longValue(JsonObject object, String key, long fallback) {
-        JsonElement value = object.get(key);
-        return value == null || value.isJsonNull() ? fallback : value.getAsLong();
     }
 }

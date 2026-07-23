@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,10 +19,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import me.micahcode.hqtiers.Hqtiers;
+import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import net.minecraft.client.MinecraftClient;
 
 public final class HqTiersLeaderboardClient {
-    // todo: a lot will change here
     private static final URI BASE_URI = URI.create("https://pvphq.com/api");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final String USER_AGENT = "HQTiers/1 (micahcode)";
@@ -65,6 +66,17 @@ public final class HqTiersLeaderboardClient {
             return;
         }
 
+        if (HqTiersClientConfig.toApiLadder(ladder).isEmpty()) {
+            state.entries.clear();
+            state.page = 0;
+            state.hasMore = false;
+            state.loading = false;
+            state.unsupported = true;
+            state.error = null;
+            return;
+        }
+
+        state.unsupported = false;
         state.loading = true;
         state.error = null;
         CompletableFuture.supplyAsync(() -> {
@@ -122,8 +134,13 @@ public final class HqTiersLeaderboardClient {
     }
 
     private List<Entry> fetchPage(String ladder, int page) {
+        Optional<String> apiLadder = HqTiersClientConfig.toApiLadder(ladder);
+        if (apiLadder.isEmpty()) {
+            return List.of();
+        }
+
         try {
-            URI uri = BASE_URI.resolve("leaderboard/" + ladder + "?page=" + page);
+            URI uri = BASE_URI.resolve("leaderboard/" + apiLadder.get() + "?page=" + page);
             HttpRequest request = HttpRequest.newBuilder(uri)
                     .timeout(TIMEOUT)
                     .header("Accept", "application/json")
@@ -152,7 +169,7 @@ public final class HqTiersLeaderboardClient {
                         intValue(object, "position", entries.size() + 1),
                         string(object, "uuid", ""),
                         string(object, "name", "Unknown"),
-                        ratingValue(object)
+                        intValue(object, "elo", 0)
                 ));
             }
             return entries;
@@ -171,16 +188,6 @@ public final class HqTiersLeaderboardClient {
         return value == null || value.isJsonNull() ? fallback : value.getAsInt();
     }
 
-    private static int ratingValue(JsonObject object) {
-        for (String key : new String[]{"sr", "skillRating", "rating", "elo"}) {
-            JsonElement value = object.get(key);
-            if (value != null && !value.isJsonNull()) {
-                return value.getAsInt();
-            }
-        }
-        return 0;
-    }
-
     public record Entry(int position, String uuid, String name, int elo) {
     }
 
@@ -193,6 +200,7 @@ public final class HqTiersLeaderboardClient {
         private boolean loading;
         private boolean hasMore = true;
         private String error;
+        private boolean unsupported;
 
         public List<Entry> entries() {
             return entries;
@@ -213,15 +221,30 @@ public final class HqTiersLeaderboardClient {
         public String error() {
             return error;
         }
+
+        /** True if this ladder has no leaderboard endpoint on PvPHQ yet (e.g. CART, SPEAR_MACE). */
+        public boolean unsupported() {
+            return unsupported;
+        }
     }
 
     public record HistoryPoint(int elo, long timestamp) {
     }
 
+    /**
+     * Fetches ELO/SR history for a player on a ladder. Points come back from the
+     * API as {playerUuid, ladder, rating, playedAt} - rating is the SR after that
+     * match and playedAt is a unix millisecond timestamp.
+     */
     public CompletableFuture<List<HistoryPoint>> fetchHistory(String playerUuid, String ladder) {
+        Optional<String> apiLadder = HqTiersClientConfig.toApiLadder(ladder);
+        if (apiLadder.isEmpty()) {
+            return CompletableFuture.completedFuture(List.of());
+        }
+
         return CompletableFuture.supplyAsync(() -> {
             try {
-                URI uri = BASE_URI.resolve("ranked-history?playerId=" + playerUuid + "&ladder=" + ladder);
+                URI uri = BASE_URI.resolve("ranked-history?playerId=" + playerUuid + "&ladder=" + apiLadder.get());
                 HttpRequest request = HttpRequest.newBuilder(uri)
                         .timeout(TIMEOUT)
                         .header("Accept", "application/json")
@@ -240,8 +263,8 @@ public final class HqTiersLeaderboardClient {
                     if (!el.isJsonObject()) continue;
                     JsonObject obj = el.getAsJsonObject();
                     points.add(new HistoryPoint(
-                            historyRatingValue(obj),
-                            obj.has("date") ? obj.get("date").getAsLong() : 0L
+                            intValue(obj, "rating", 0),
+                            obj.has("playedAt") ? obj.get("playedAt").getAsLong() : 0L
                     ));
                 }
                 return points;
@@ -249,15 +272,5 @@ public final class HqTiersLeaderboardClient {
                 return List.of();
             }
         });
-    }
-
-    private static int historyRatingValue(JsonObject object) {
-        for (String key : new String[]{"srAfter", "skillRatingAfter", "ratingAfter", "eloAfter", "elo"}) {
-            JsonElement value = object.get(key);
-            if (value != null && !value.isJsonNull()) {
-                return value.getAsInt();
-            }
-        }
-        return 0;
     }
 }
