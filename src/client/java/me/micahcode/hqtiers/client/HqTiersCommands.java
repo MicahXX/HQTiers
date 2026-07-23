@@ -20,7 +20,7 @@ public final class HqTiersCommands {
 
 	public static void register(HqTiersCache cache) {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-				ClientCommandManager.literal("assets")
+				ClientCommandManager.literal("hqtiers")
 						.executes(context -> showSelf(context.getSource(), cache))
 						.then(ClientCommandManager.argument("player", StringArgumentType.word())
 								.executes(context -> showPlayer(context.getSource(), cache, StringArgumentType.getString(context, "player"))))
