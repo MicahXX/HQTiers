@@ -18,6 +18,7 @@ public class HqTiersClient implements ClientModInitializer {
         HqTiersCommands.register(cache);
         HqTiersKeybinds.register();
 
+        // does not work tbh
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             if (message.getString().contains("SR Change")) {
                 MinecraftClient client = MinecraftClient.getInstance();

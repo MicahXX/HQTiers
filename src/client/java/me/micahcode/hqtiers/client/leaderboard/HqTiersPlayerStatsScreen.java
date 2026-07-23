@@ -113,13 +113,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             }
         }).dimensions(panelLeft(), height - 26, 78, 18).build());
 
-        // Invisible ladder-row hit-boxes
         if (selectedLadder == null) {
             var cached = HqTiersClientState.cache().getIfFresh(uuid);
             if (cached.isPresent()) addLadderButtons(cached.get());
         }
 
-        // Async data fetch
         HqTiersClientState.cache().fetch(uuid).thenAccept(stats -> {
             if (!loaded) {
                 loaded = true;
@@ -128,7 +126,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             }
         });
 
-        // History fetch
         if (selectedLadder != null && historyPoints == null && historyLoading) {
             HqTiersClientState.leaderboardClient()
                     .fetchHistory(uuid.toString(), selectedLadder)
@@ -145,7 +142,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         List<HqTiersStats.LadderStats> ladders = sortedLadders(stats);
         int pl = panelLeft() + 2;
         int pr = panelRight() - 2;
-        // Must match renderTable: first data row starts at tt + rowH() + 4
         int y = tableTop() + rowH() + 4;
 
         for (HqTiersStats.LadderStats l : ladders) {
@@ -157,7 +153,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                 btn.setAlpha(0f);
                 addDrawableChild(btn);
             }
-            y += rowH(); // always increment, matching renderTable
+            y += rowH();
         }
     }
 
@@ -483,13 +479,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
-    /**
-     * Fills the trapezoid between two line endpoints and the bottom baseline.
-     */
     private static void fillTrapezoid(DrawContext ctx, int x1, int y1, int x2, int y2, int baseline, int color) {
         if (x2 <= x1) return;
         for (int x = x1; x < x2; x++) {
-            // linear interpolate Y on the line at this x
             int lineY = y1 + (y2 - y1) * (x - x1) / Math.max(1, x2 - x1);
             if (lineY < baseline)
                 ctx.fill(x, lineY, x + 1, baseline, color);

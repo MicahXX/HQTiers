@@ -7,6 +7,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
@@ -41,6 +44,35 @@ public final class HqTiersClientConfig {
     public static List<NametagComponent> nametagOrder = defaultNametagOrder();
 
     private HqTiersClientConfig() {}
+
+    private static final Map<String, String> INTERNAL_TO_API = Map.of(
+            "DIAMOND_POT", "POT",
+            "NETHERITE_OP", "NETHERITE_POT"
+    );
+    private static final Map<String, String> API_TO_INTERNAL = Map.of(
+            "POT", "DIAMOND_POT",
+            "NETHERITE_POT", "NETHERITE_OP"
+    );
+    // Ladders the mod knows about (or that a person could type into a config/
+    // command) that have no backing endpoint on the real API at all.
+    private static final Set<String> UNSUPPORTED_BY_API = Set.of("GLOBAL", "CART", "SPEAR_MACE");
+
+    /**
+     * Translates an internal ladder key to the key the PvPHQ API expects.
+     * Returns empty if this ladder has no leaderboard/history/ranked-stats
+     * support on the real API (e.g. GLOBAL, CART, SPEAR_MACE).
+     */
+    public static Optional<String> toApiLadder(String internalLadder) {
+        String normalized = normalizeLadder(internalLadder);
+        if (UNSUPPORTED_BY_API.contains(normalized)) {
+            return Optional.empty();
+        }
+        return Optional.of(INTERNAL_TO_API.getOrDefault(normalized, normalized));
+    }
+        public static String fromApiLadder(String apiLadder) {
+        String normalized = normalizeLadder(apiLadder);
+        return API_TO_INTERNAL.getOrDefault(normalized, normalized);
+    }
 
     public static List<NametagComponent> defaultNametagOrder() {
         return new ArrayList<>(List.of(
