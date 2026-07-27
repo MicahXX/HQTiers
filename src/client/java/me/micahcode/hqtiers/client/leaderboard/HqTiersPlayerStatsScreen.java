@@ -55,7 +55,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         this.parent = parent;
         this.uuid = UUID.fromString(uuid);
         this.fallbackName = fallbackName;
-        this.selectedLadder = autoOpenLadder;
+        this.selectedLadder = autoOpenLadder == null ? null : autoOpenLadder.toLowerCase();
         if (autoOpenLadder != null) this.historyLoading = true;
     }
 
@@ -157,7 +157,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     private void openLadder(String id) {
-        selectedLadder = id;
+        selectedLadder = id.toLowerCase();
         historyPoints = null;
         graphXPositions = null;
         graphYPositions = null;
@@ -312,7 +312,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private void renderGraph(DrawContext ctx, HqTiersStats stats,
                              int pl, int pr, int tt, int tb, int mx, int my) {
         // selectedLadder is the raw map key (e.g. "SWORD"), always use it directly
-        HqTiersStats.LadderStats ladder = stats.ladders().get(selectedLadder);
+        HqTiersStats.LadderStats ladder = stats.ladders().get(
+                selectedLadder.toUpperCase()
+        );
 
         // Ladder title row
         ctx.drawCenteredTextWithShadow(textRenderer,

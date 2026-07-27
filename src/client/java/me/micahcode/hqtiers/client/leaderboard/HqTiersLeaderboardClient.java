@@ -23,7 +23,7 @@ import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import net.minecraft.client.MinecraftClient;
 
 public final class HqTiersLeaderboardClient {
-    private static final URI BASE_URI = URI.create("https://pvphq.com/api");
+    private static final URI BASE_URI = URI.create("https://pvphq.com/api/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final String USER_AGENT = "HQTiers/1 (micahcode)";
     private static final Gson GSON = new Gson();
@@ -231,20 +231,22 @@ public final class HqTiersLeaderboardClient {
     public record HistoryPoint(int elo, long timestamp) {
     }
 
-    /**
-     * Fetches ELO/SR history for a player on a ladder. Points come back from the
-     * API as {playerUuid, ladder, rating, playedAt} - rating is the SR after that
-     * match and playedAt is a unix millisecond timestamp.
-     */
     public CompletableFuture<List<HistoryPoint>> fetchHistory(String playerUuid, String ladder) {
         Optional<String> apiLadder = HqTiersClientConfig.toApiLadder(ladder);
+
         if (apiLadder.isEmpty()) {
             return CompletableFuture.completedFuture(List.of());
         }
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                URI uri = BASE_URI.resolve("ranked-history?playerId=" + playerUuid + "&ladder=" + apiLadder.get());
+                URI uri = BASE_URI.resolve(
+                        "v1/players/" + playerUuid
+                                + "/rating-history/"
+                                + apiLadder.get().toLowerCase()
+                                + "?limit=100"
+                );
+
                 HttpRequest request = HttpRequest.newBuilder(uri)
                         .timeout(TIMEOUT)
                         .header("Accept", "application/json")
@@ -252,23 +254,59 @@ public final class HqTiersLeaderboardClient {
                         .GET()
                         .build();
 
-                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                if (response.statusCode() < 200 || response.statusCode() >= 300) return List.of();
 
-                JsonArray array = GSON.fromJson(response.body(), JsonArray.class);
+                HttpResponse<String> response =
+                        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+
+                if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                    Hqtiers.logger.warn(
+                            "History API failed: {} {}",
+                            response.statusCode(),
+                            response.body()
+                    );
+                    return List.of();
+                }
+
+
+                JsonObject root = GSON.fromJson(response.body(), JsonObject.class);
+
+                JsonArray array = root.getAsJsonArray("points");
+
                 List<HistoryPoint> points = new ArrayList<>();
-                if (array == null) return points;
+
+                if (array == null) {
+                    return points;
+                }
+
 
                 for (JsonElement el : array) {
-                    if (!el.isJsonObject()) continue;
+
+                    if (!el.isJsonObject())
+                        continue;
+
+
                     JsonObject obj = el.getAsJsonObject();
+
+
                     points.add(new HistoryPoint(
-                            intValue(obj, "rating", 0),
-                            obj.has("playedAt") ? obj.get("playedAt").getAsLong() : 0L
+                            obj.get("rating").getAsInt(),
+                            obj.get("playedAt").getAsLong()
                     ));
                 }
+
+
                 return points;
+
+
             } catch (Exception e) {
+                Hqtiers.logger.warn(
+                        "Failed fetching rating history for {} {}",
+                        playerUuid,
+                        ladder,
+                        e
+                );
+
                 return List.of();
             }
         });

@@ -1,15 +1,15 @@
 package me.micahcode.hqtiers.client.mixin;
 
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
-import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
+import me.micahcode.hqtiers.client.model.HqTiersStats;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.entity.PlayerEntityRenderer;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import net.minecraft.entity.PlayerLikeEntity;
@@ -18,6 +18,7 @@ import net.minecraft.text.Text;
 
 @Mixin(PlayerEntityRenderer.class)
 public class PlayerEntityRendererMixin {
+
 
     @Inject(
             method = "updateRenderState(Lnet/minecraft/entity/PlayerLikeEntity;Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;F)V",
@@ -29,57 +30,51 @@ public class PlayerEntityRendererMixin {
             float tickProgress,
             CallbackInfo ci
     ) {
+
         if (!HqTiersClientConfig.nametagEnabled) {
             return;
         }
 
+
+        Text currentName = renderName(player, state);
+
+
+        // Don't spam fetch every render tick
+        if (HqTiersClientState.cache()
+                .getIfFresh(player.getUuid())
+                .isEmpty()) {
+
+            HqTiersClientState.cache()
+                    .fetch(player.getUuid());
+        }
+
+
         HqTiersClientState.cache()
-                .fetch(player.getUuid())
-                .thenAccept(stats -> {
+                .getIfFresh(player.getUuid())
+                .ifPresent(stats -> {
 
-                    MinecraftClient.getInstance().execute(() -> {
+                    Text tier = HqTiersFormatter.compact(stats);
 
-                        if (stats == null) {
-                            Text currentName = renderName(player, state);
+                    if (tier.getString().isEmpty()) {
+                        return;
+                    }
 
-                            state.displayName = Text.literal("Unranked | ")
-                                    .append(currentName == null ? Text.empty() : currentName);
 
-                            return;
-                        }
+                    // Prevent duplicate tiers
+                    if (currentName != null &&
+                            currentName.getString()
+                                    .contains(tier.getString())) {
+                        return;
+                    }
 
-                        Text suffix = HqTiersFormatter.compact(stats);
 
-                        if (suffix.getString().isEmpty()) {
-                            return;
-                        }
-
-                        Text currentName = renderName(player, state);
-
-                        if (currentName != null &&
-                                currentName.getString().contains(suffix.getString())) {
-                            return;
-                        }
-
-                        if (HqTiersClientConfig.nametagAlignment ==
-                                HqTiersClientConfig.NametagAlignment.LEFT) {
-
-                            state.displayName = suffix.copy()
-                                    .append(Text.literal(" | "))
-                                    .append(currentName == null
+                    state.displayName =
+                            HqTiersFormatter.nametag(
+                                    stats,
+                                    currentName == null
                                             ? Text.empty()
-                                            : currentName);
-
-                        } else {
-
-                            state.displayName = (currentName == null
-                                    ? Text.empty()
-                                    : currentName.copy())
-                                    .append(Text.literal(" | "))
-                                    .append(suffix);
-                        }
-
-                    });
+                                            : currentName
+                            );
                 });
     }
 
@@ -88,13 +83,17 @@ public class PlayerEntityRendererMixin {
             PlayerLikeEntity player,
             PlayerEntityRenderState state
     ) {
+
+        // PvPHQ/Lunar already modified name
         if (state.displayName != null) {
             return state.displayName;
         }
 
+
         if (state.playerName != null) {
             return state.playerName;
         }
+
 
         Text displayName = player.getDisplayName();
 
