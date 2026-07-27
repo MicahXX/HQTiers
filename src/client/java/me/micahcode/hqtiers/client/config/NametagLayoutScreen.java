@@ -179,7 +179,7 @@ public class NametagLayoutScreen extends Screen {
             case GAMEMODE_ICON -> "Gamemode Icon";
             case TIER -> "Tier";
             case SEPARATOR -> "Separator " + (separatorOccurrence(index) + 1);
-            case ELO -> "SR";
+            case ELO -> "TR";
             case POSITION -> "Position";
         };
     }

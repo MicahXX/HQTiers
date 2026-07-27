@@ -230,7 +230,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         ctx.drawTextWithShadow(textRenderer, "LADDER", pl + col(pw, 0), hy + 4, TEXT_HEADER);
         ctx.drawTextWithShadow(textRenderer, "TIER", pl + col(pw, 1), hy + 4, TEXT_HEADER);
-        ctx.drawTextWithShadow(textRenderer, "SR", pl + col(pw, 2), hy + 4, TEXT_HEADER);
+        ctx.drawTextWithShadow(textRenderer, "TR", pl + col(pw, 2), hy + 4, TEXT_HEADER);
         ctx.drawTextWithShadow(textRenderer, "RANK", pl + col(pw, 3), hy + 4, TEXT_HEADER);
         ctx.drawTextWithShadow(textRenderer, "W / L", pl + col(pw, 4), hy + 4, TEXT_HEADER);
         ctx.drawTextWithShadow(textRenderer, "STREAK", pl + col(pw, 5), hy + 4, TEXT_HEADER);
@@ -263,9 +263,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             ctx.drawTextWithShadow(textRenderer, l.tierLabel(),
                     pl + col(pw, 1), y + 4, 0xFF000000 | l.tierColorInt());
 
-            // SR with mini-bar
-            int sr = l.totalRating();
-            ctx.drawTextWithShadow(textRenderer, sr + " SR", pl + col(pw, 2), y + 4, eloColor(sr));
+            // TR with mini-bar
+            int tr = l.totalRating();
+            ctx.drawTextWithShadow(textRenderer, tr + " TR", pl + col(pw, 2), y + 4, eloColor(tr));
 
             // Rank
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
@@ -318,12 +318,12 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         // Ladder title row
         ctx.drawCenteredTextWithShadow(textRenderer,
-                HqTiersFormatter.displayName(selectedLadder) + "  ·  SR History",
+                HqTiersFormatter.displayName(selectedLadder) + "  ·  TR History",
                 width / 2, tt + 5, TEXT_HEADER);
 
         if (ladder != null) {
             String summary = ladder.tierLabel()
-                    + "   " + ladder.totalRating() + " SR"
+                    + "   " + ladder.totalRating() + " TR"
                     + "   " + ladder.wins() + "W / " + ladder.losses() + "L";
             ctx.drawCenteredTextWithShadow(textRenderer, summary, width / 2, tt + 17,
                     0xFF000000 | ladder.tierColorInt());
@@ -454,7 +454,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(tx - 2, ty - 2, tx + tw + 2, ty - 1, ACCENT_GOLD);
         ctx.fill(tx - 2, ty - 2, tx - 1, ty + th + 2, ACCENT_DIM);
 
-        ctx.drawTextWithShadow(textRenderer, elo + " SR", tx + 2, ty + 2, eloColor(elo));
+        ctx.drawTextWithShadow(textRenderer, elo + " TR", tx + 2, ty + 2, eloColor(elo));
         ctx.drawTextWithShadow(textRenderer, deltaStr, tx + 2, ty + 12, deltaColor);
         if (!date.isEmpty())
             ctx.drawTextWithShadow(textRenderer, date, tx + 2, ty + 22, TEXT_HEADER);

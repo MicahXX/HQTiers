@@ -63,7 +63,7 @@ public final class HqTiersConfigScreen {
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.coloredTier = value)
 				.build());
-		overlay.addEntry(entries.startBooleanToggle(Text.literal("Colored SR in nametag"), HqTiersClientConfig.coloredElo)
+		overlay.addEntry(entries.startBooleanToggle(Text.literal("Colored TR in nametag"), HqTiersClientConfig.coloredElo)
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.coloredElo = value)
 				.build());

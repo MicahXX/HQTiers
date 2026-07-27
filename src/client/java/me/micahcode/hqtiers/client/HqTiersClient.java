@@ -17,20 +17,5 @@ public class HqTiersClient implements ClientModInitializer {
         HqTiersCache cache = HqTiersClientState.cache();
         HqTiersCommands.register(cache);
         HqTiersKeybinds.register();
-
-        // does not work tbh
-        ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (message.getString().contains("SR Change")) {
-                MinecraftClient client = MinecraftClient.getInstance();
-                if (client.player != null) {
-                    UUID uuid = client.player.getUuid();
-                    CompletableFuture.delayedExecutor(15, TimeUnit.SECONDS)
-                            .execute(() -> {
-                                cache.invalidate(uuid);
-                                cache.fetch(uuid);
-                            });
-                }
-            }
-        });
     }
 }

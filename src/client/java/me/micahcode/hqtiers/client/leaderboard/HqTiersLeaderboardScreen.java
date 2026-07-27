@@ -163,7 +163,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
             context.drawTextWithShadow(textRenderer, entry.position() > 0 ? Integer.toString(entry.position()) : "-", panelLeft + 10, y + 3, rankColor(entry.position()));
             context.drawTextWithShadow(textRenderer, trim(entry.name(), 18), panelLeft + 46, y + 3, nameColor(entry.position()));
             context.drawTextWithShadow(textRenderer, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, 0xFF000000 | rowStats.tierColorInt());
-            context.drawTextWithShadow(textRenderer, entry.elo() + " SR", panelRight - 54, y + 3, eloColor(entry.elo()));
+            context.drawTextWithShadow(textRenderer, entry.elo() + " TR", panelRight - 54, y + 3, eloColor(entry.elo()));
         }
         context.disableScissor();
 
