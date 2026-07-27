@@ -16,11 +16,45 @@ public final class HqTiersFormatter {
 	}
 
 	public static Text compact(HqTiersStats stats) {
-		HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
 
-		if (ladder == null || !ladder.hasPlayedRanked()) {
-			return Text.literal("Unranked").formatted(Formatting.GRAY);
+		HqTiersStats.LadderStats ladder;
+
+		// use your config system
+		if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL) {
+
+			ladder = stats.ladders().get("GLOBAL");
+
+		} else if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.HIGHEST_TIER) {
+
+			ladder = stats.ladders()
+					.values()
+					.stream()
+					.max(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating))
+					.orElse(null);
+
+		} else {
+
+			ladder = stats.ladders()
+					.get(HqTiersClientConfig.normalizeLadder(
+							HqTiersClientConfig.preferredLadder
+					));
+
+			if (ladder == null) {
+				ladder = stats.ladders()
+						.values()
+						.stream()
+						.filter(l -> !l.ladder().equals("GLOBAL"))
+						.findFirst()
+						.orElse(null);
+			}
 		}
+
+
+		if (ladder == null) {
+			return Text.literal("No Data")
+					.formatted(Formatting.RED);
+		}
+
 
 		return decorated(ladder);
 	}
@@ -37,6 +71,32 @@ public final class HqTiersFormatter {
 				HqTiersClientConfig.preferredLadder, 800, 10, 5, 10, "MT4", 123
 		);
 		return decorated(fake);
+	}
+
+	public static Text nametag(HqTiersStats stats, Text currentName) {
+		Text tier = compact(stats);
+
+		if (tier.getString().isEmpty()) {
+			return currentName;
+		}
+
+		if (currentName == null) {
+			currentName = Text.empty();
+		}
+
+		if (HqTiersClientConfig.nametagAlignment ==
+				HqTiersClientConfig.NametagAlignment.LEFT) {
+
+			return tier.copy()
+					.append(Text.literal(""))
+					.append(currentName);
+
+		} else {
+
+			return currentName.copy()
+					.append(Text.literal(""))
+					.append(tier);
+		}
 	}
 
 	public static Text hud(HqTiersStats stats) {

@@ -55,7 +55,7 @@ public class PlayerListHudMixin {
 
                         cir.setReturnValue(
                                 suffix.copy()
-                                        .append(Text.literal(" "))
+                                        .append(Text.literal(""))
                                         .append(cleanName)
                         );
 
@@ -63,7 +63,7 @@ public class PlayerListHudMixin {
 
                         cir.setReturnValue(
                                 cleanName.copy()
-                                        .append(Text.literal(" "))
+                                        .append(Text.literal(""))
                                         .append(suffix)
                         );
                     }

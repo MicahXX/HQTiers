@@ -68,8 +68,11 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
         }
 
         public boolean hasPlayedRanked() {
-            return ladder.equals("GLOBAL") || wins > 0 || losses > 0 || placementGames > 0
-                    || (tierName != null && !tierName.isBlank());
+            if (ladder.equals("GLOBAL")) return true;
+            return wins > 0
+                    || losses > 0
+                    || placementGames > 0
+                    || !unranked;
         }
 
         public boolean hasPosition() {
@@ -91,9 +94,21 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
         }
 
         public String tierLabel() {
-            if (tierName != null && !tierName.isBlank()) return tierName;
+            if (placementGames < placementTarget) {
+                return "Unranked";
+            }
+
+            if (tierName != null
+                    && !tierName.isBlank()
+                    && !tierName.equalsIgnoreCase("Unranked")) {
+                return tierName;
+            }
+
             HqTiersRanks tier = tier();
-            return tier != null ? tier.getDisplayName() : "Unranked";
+
+            return tier != null
+                    ? tier.getDisplayName()
+                    : "Unranked";
         }
 
         public int tierColorInt() {
