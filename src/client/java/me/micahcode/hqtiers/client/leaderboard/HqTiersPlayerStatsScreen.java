@@ -487,9 +487,16 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
+    /**
+     * Every fetched ladder gets shown here, regardless of whether the player
+     * has actually played games on it - this screen is meant to be a full
+     * stat sheet, matching what the /hqtiers command's text output shows.
+     * (Previously this filtered out anything with 0 wins/losses, which made
+     * the K menu look empty for players who haven't played much yet even
+     * though the data was already fetched and available.)
+     */
     private static List<HqTiersStats.LadderStats> sortedLadders(HqTiersStats stats) {
         return stats.ladders().values().stream()
-                .filter(l -> (l.wins() > 0 || l.losses() > 0))
                 .sorted(Comparator
                         .comparingInt((HqTiersStats.LadderStats l) -> l.ladder().equals("GLOBAL") ? 0 : 1)
                         .thenComparing(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating).reversed()))

@@ -6,6 +6,7 @@ import java.util.UUID;
 import com.mojang.brigadier.arguments.StringArgumentType;
 
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
+import me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
@@ -24,6 +25,10 @@ public final class HqTiersCommands {
 						.executes(context -> showSelf(context.getSource(), cache))
 						.then(ClientCommandManager.argument("player", StringArgumentType.word())
 								.executes(context -> showPlayer(context.getSource(), cache, StringArgumentType.getString(context, "player"))))
+						.then(ClientCommandManager.literal("stats")
+								.executes(context -> showSelfGui(context.getSource()))
+								.then(ClientCommandManager.argument("player", StringArgumentType.word())
+										.executes(context -> showPlayerGui(context.getSource(), StringArgumentType.getString(context, "player")))))
 						.then(ClientCommandManager.literal("nametag")
 								.executes(context -> toggle(context.getSource(), "nametags", !HqTiersClientConfig.nametagEnabled, value -> HqTiersClientConfig.nametagEnabled = value)))
 						.then(ClientCommandManager.literal("tab")
@@ -104,6 +109,61 @@ public final class HqTiersCommands {
 				source.sendFeedback(line);
 			}
 		}));
+		return 1;
+	}
+
+	/** /hqtiers stats - opens the same stats screen the K keybind opens, for yourself. */
+	private static int showSelfGui(FabricClientCommandSource source) {
+		MinecraftClient client = MinecraftClient.getInstance();
+		if (client.player == null) {
+			source.sendError(Text.literal("You need to be in-game to use HQTiers."));
+			return 0;
+		}
+
+		return openStatsScreen(source, client.player.getUuid(), client.player.getName().getString());
+	}
+
+	/**
+	 * /hqtiers stats <player> - opens the stats GUI for another player, so you
+	 * can test the screen against arbitrary players without needing to be
+	 * near them or use the leaderboard search.
+	 */
+	private static int showPlayerGui(FabricClientCommandSource source, String player) {
+		UUID uuid = resolveOnlineUuid(player);
+		if (uuid != null) {
+			return openStatsScreen(source, uuid, player);
+		}
+
+		if (looksLikeUuid(player)) {
+			try {
+				UUID parsed = parseUuid(player);
+				return openStatsScreen(source, parsed, player);
+			} catch (IllegalArgumentException ignored) {
+				source.sendError(Text.literal("That UUID is invalid."));
+				return 0;
+			}
+		}
+
+		source.sendFeedback(Text.literal("Resolving Minecraft username...").formatted(Formatting.GRAY));
+		HqTiersClientState.profileResolver().resolve(player).thenAccept(result -> MinecraftClient.getInstance().execute(() -> {
+			if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
+				source.sendError(Text.literal("Minecraft player '" + player + "' does not exist."));
+				return;
+			}
+
+			if (result.status() == MojangProfileResolver.Status.ERROR) {
+				source.sendError(Text.literal("Could not contact Mojang to resolve '" + player + "'. Try again later."));
+				return;
+			}
+
+			openStatsScreen(source, result.profile().uuid(), result.profile().name());
+		}));
+		return 1;
+	}
+
+	private static int openStatsScreen(FabricClientCommandSource source, UUID uuid, String name) {
+		MinecraftClient client = MinecraftClient.getInstance();
+		client.execute(() -> client.setScreen(new HqTiersPlayerStatsScreen(client.currentScreen, uuid.toString(), name)));
 		return 1;
 	}
 

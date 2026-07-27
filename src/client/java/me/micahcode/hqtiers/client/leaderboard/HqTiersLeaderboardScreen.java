@@ -105,7 +105,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         context.drawTextWithShadow(textRenderer, "#", panelLeft + 10, top - 14, 0xFFFFE7A3);
         context.drawTextWithShadow(textRenderer, "Player", panelLeft + 46, top - 14, 0xFFFFE7A3);
         context.drawTextWithShadow(textRenderer, "Tier", panelRight - 132, top - 14, 0xFFFFE7A3);
-        context.drawTextWithShadow(textRenderer, "SR", panelRight - 54, top - 14, 0xFFFFE7A3);
+        context.drawTextWithShadow(textRenderer, "TR", panelRight - 54, top - 14, 0xFFFFE7A3);
 
         context.drawTextWithShadow(textRenderer, "* not yet tracked on PvPHQ", panelLeft + 8, legendY() + 1, 0xFF6B5D3A);
 

@@ -1,7 +1,7 @@
 package me.micahcode.hqtiers.client.model;
 
 public final class HqTiersRankSystem {
-    public static final String RATING_LABEL = "SR";
+    public static final String RATING_LABEL = "TR";
 
     private HqTiersRankSystem() {
     }
