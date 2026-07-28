@@ -136,9 +136,9 @@ public final class HqTiersFormatter {
 				.append(Text.literal(displayName(ladder.ladder())).formatted(Formatting.AQUA))
 				.append(Text.literal(": ").formatted(Formatting.GRAY))
 				.append(Text.literal(ladder.tierLabel()).formatted(Formatting.GOLD))
-				.append(Text.literal(" | ").formatted(Formatting.DARK_GRAY))
+				.append(Text.literal(" | ").formatted(Formatting.GRAY))
 				.append(Text.literal(ratingText(ladder.totalRating())).setStyle(Style.EMPTY.withColor(ratingColor(ladder.totalRating()))))
-				.append(Text.literal(" | ").formatted(Formatting.DARK_GRAY))
+				.append(Text.literal(" | ").formatted(Formatting.GRAY))
 				.append(Text.literal(ladder.wins() + "W/" + ladder.losses() + "L").formatted(Formatting.WHITE))
 				.append(positionDetails(ladder));
 	}
@@ -178,7 +178,7 @@ public final class HqTiersFormatter {
 				case SEPARATOR -> {
 					separatorOccurrence++;
 					if (!HqTiersClientConfig.isSeparatorEnabled(separatorOccurrence) || !wrotePart) continue;
-					text.append(Text.literal(" | ").formatted(Formatting.DARK_GRAY));
+					text.append(Text.literal(" | ").formatted(Formatting.GRAY));
 				}
 				case ELO -> {
 					if (!HqTiersClientConfig.eloEnabled) continue;
