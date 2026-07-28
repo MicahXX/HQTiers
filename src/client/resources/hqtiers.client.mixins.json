@@ -3,10 +3,11 @@
   "minVersion": "0.8",
   "package": "me.micahcode.hqtiers.client.mixin",
   "compatibilityLevel": "JAVA_21",
+  "priority": 2000,
   "mixins": [
-    "LunarPlayerEntityMixin",
-    "PlayerEntityRendererMixin",
-    "PlayerListHudMixin"
+    "PlayerEntityMixin",
+    "PlayerListHudMixin",
+    "TextDisplayEntityRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
