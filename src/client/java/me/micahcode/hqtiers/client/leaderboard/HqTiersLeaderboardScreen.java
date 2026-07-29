@@ -8,13 +8,13 @@ import java.util.UUID;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.network.chat.Component;
 import me.micahcode.hqtiers.client.MojangProfileResolver;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.text.Text;
 
 public final class HqTiersLeaderboardScreen extends Screen {
     private static final String[] LADDERS = {
@@ -30,20 +30,20 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private final HqTiersLeaderboardClient leaderboardClient;
     private String ladder = initialLadder();
     private int scrollOffset;
-    private TextFieldWidget searchField;
+    private EditBox searchField;
     private String searchQuery = "";
     private String searchStatus = "";
     private HqTiersLeaderboardClient.Entry resolvedSearchEntry;
     private String pendingResolveName = "";
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
-        super(Text.literal("HQTiers Leaderboard"));
+        super(Component.literal("HQTiers Leaderboard"));
         this.leaderboardClient = leaderboardClient;
     }
 
     @Override
     protected void init() {
-        clearChildren();
+        clearWidgets();
         int panelLeft = panelLeft();
         int panelRight = panelRight();
         int startX = panelLeft + 8;
@@ -57,36 +57,36 @@ public final class HqTiersLeaderboardScreen extends Screen {
             int x = startX + col * (tabWidth + TAB_GAP);
             int y = 22 + row * (TAB_HEIGHT + 4);
             String prefix = tabLadder.equals(ladder) ? "> " : "";
-            ButtonWidget tab = ButtonWidget.builder(Text.literal(prefix + tabButtonLabel(tabLadder)), button -> {
+            Button tab = Button.builder(Component.literal(prefix + tabButtonLabel(tabLadder)), button -> {
                 ladder = tabLadder;
                 scrollOffset = 0;
                 leaderboardClient.load(ladder);
                 init();
-            }).dimensions(x, y, tabWidth, TAB_HEIGHT).build();
+            }).bounds(x, y, tabWidth, TAB_HEIGHT).build();
             tab.active = !tabLadder.equals(ladder);
-            addDrawableChild(tab);
+            addRenderableWidget(tab);
         }
 
         int searchY = searchRowY();
-        searchField = new TextFieldWidget(textRenderer, panelLeft + 8, searchY, 220, 18, Text.literal("Search player"));
+        searchField = new EditBox(font, panelLeft + 8, searchY, 220, 18, Component.literal("Search player"));
         searchField.setMaxLength(32);
-        searchField.setPlaceholder(Text.literal("Search player..."));
-        searchField.setText(searchQuery);
-        searchField.setChangedListener(value -> {
+        searchField.setHint(Component.literal("Search player..."));
+        searchField.setValue(searchQuery);
+        searchField.setResponder(value -> {
             searchQuery = value.trim();
             searchStatus = "";
             resolvedSearchEntry = null;
             resolveSearchIfNeeded(searchQuery);
         });
-        addDrawableChild(searchField);
-        addDrawableChild(ButtonWidget.builder(Text.literal("Search"), button -> searchPlayer())
-                .dimensions(panelLeft + 234, searchY, 68, 18)
+        addRenderableWidget(searchField);
+        addRenderableWidget(Button.builder(Component.literal("Search"), button -> searchPlayer())
+                .bounds(panelLeft + 234, searchY, 68, 18)
                 .build());
         leaderboardClient.load(ladder);
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
         context.fill(0, 0, width, height, 0xF0100C05);
         super.render(context, mouseX, mouseY, delta);
 
@@ -102,17 +102,17 @@ public final class HqTiersLeaderboardScreen extends Screen {
 
         context.fill(panelLeft, top - 18, panelRight, bottom, 0xCC1A1408);
         context.fill(panelLeft, top - 18, panelRight, top - 2, 0xDD2A1E0C);
-        context.drawTextWithShadow(textRenderer, "#", panelLeft + 10, top - 14, 0xFFFFE7A3);
-        context.drawTextWithShadow(textRenderer, "Player", panelLeft + 46, top - 14, 0xFFFFE7A3);
-        context.drawTextWithShadow(textRenderer, "Tier", panelRight - 132, top - 14, 0xFFFFE7A3);
-        context.drawTextWithShadow(textRenderer, "SR", panelRight - 54, top - 14, 0xFFFFE7A3);
+        context.drawString(font, "#", panelLeft + 10, top - 14, 0xFFFFE7A3);
+        context.drawString(font, "Player", panelLeft + 46, top - 14, 0xFFFFE7A3);
+        context.drawString(font, "Tier", panelRight - 132, top - 14, 0xFFFFE7A3);
+        context.drawString(font, "TR", panelRight - 54, top - 14, 0xFFFFE7A3);
 
-        context.drawTextWithShadow(textRenderer, "* this as of now does not work", panelLeft + 8, legendY() + 1, 0xFF6B5D3A);
+        context.drawString(font, "* this as of now does not work", panelLeft + 8, legendY() + 1, 0xFF6B5D3A);
 
         if (resolvedSearchEntry != null) {
-            context.drawTextWithShadow(textRenderer, "Found: " + resolvedSearchEntry.name(), panelLeft + 310, searchY + 5, 0xFF55FF55);
+            context.drawString(font, "Found: " + resolvedSearchEntry.name(), panelLeft + 310, searchY + 5, 0xFF55FF55);
         } else if (searchStatus != null && !searchStatus.isBlank()) {
-            context.drawTextWithShadow(textRenderer, searchStatus, panelLeft + 310, searchY + 5, 0xFF7C8BA1);
+            context.drawString(font, searchStatus, panelLeft + 310, searchY + 5, 0xFF7C8BA1);
         }
 
         if (visibleEntries.isEmpty()) {
@@ -137,7 +137,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 color = 0xFFAAAAAA;
             }
 
-            context.drawCenteredTextWithShadow(textRenderer, message, width / 2, top + 28, color);
+            context.drawCenteredString(font, message, width / 2, top + 28, color);
             return;
         }
 
@@ -160,17 +160,17 @@ public final class HqTiersLeaderboardScreen extends Screen {
             }
 
             HqTiersStats.LadderStats rowStats = ladderStatsFor(entry);
-            context.drawTextWithShadow(textRenderer, entry.position() > 0 ? Integer.toString(entry.position()) : "-", panelLeft + 10, y + 3, rankColor(entry.position()));
-            context.drawTextWithShadow(textRenderer, trim(entry.name(), 18), panelLeft + 46, y + 3, nameColor(entry.position()));
-            context.drawTextWithShadow(textRenderer, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, 0xFF000000 | rowStats.tierColorInt());
-            context.drawTextWithShadow(textRenderer, entry.elo() + " SR", panelRight - 54, y + 3, eloColor(entry.elo()));
+            context.drawString(font, entry.position() > 0 ? Integer.toString(entry.position()) : "-", panelLeft + 10, y + 3, rankColor(entry.position()));
+            context.drawString(font, trim(entry.name(), 18), panelLeft + 46, y + 3, nameColor(entry.position()));
+            context.drawString(font, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, 0xFF000000 | rowStats.tierColorInt());
+            context.drawString(font, entry.elo() + " TR", panelRight - 54, y + 3, eloColor(entry.elo()));
         }
         context.disableScissor();
 
         if (state.loading()) {
-            context.drawCenteredTextWithShadow(textRenderer, "Loading more...", width / 2, height - 18, 0xFFB99842);
+            context.drawCenteredString(font, "Loading more...", width / 2, height - 18, 0xFFB99842);
         } else {
-            context.drawTextWithShadow(textRenderer, entries.size() + " players | page " + Math.max(1, state.page()), panelLeft, height - 18, 0xFF7C8BA1);
+            context.drawString(font, entries.size() + " players | page " + Math.max(1, state.page()), panelLeft, height - 18, 0xFF7C8BA1);
         }
     }
 
@@ -187,11 +187,11 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean focused) {
+    public boolean mouseClicked(MouseButtonEvent click, boolean focused) {
         if (click.button() == 0) {
             HqTiersLeaderboardClient.Entry entry = rowAt(click.x(), click.y());
-            if (entry != null && client != null) {
-                client.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
+            if (entry != null && minecraft != null) {
+                minecraft.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
                 return true;
             }
         }
@@ -199,7 +199,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 
@@ -266,21 +266,21 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     private String searchText() {
-        return searchField == null ? searchQuery : searchField.getText().trim();
+        return searchField == null ? searchQuery : searchField.getValue().trim();
     }
 
     private void searchPlayer() {
         String query = searchText();
-        if (query.isBlank() || client == null) return;
+        if (query.isBlank() || minecraft == null) return;
 
         if (resolvedSearchEntry != null && resolvedSearchEntry.name().equalsIgnoreCase(query)) {
-            client.setScreen(new HqTiersPlayerStatsScreen(this, resolvedSearchEntry.uuid(), resolvedSearchEntry.name(), ladder));
+            minecraft.setScreen(new HqTiersPlayerStatsScreen(this, resolvedSearchEntry.uuid(), resolvedSearchEntry.name(), ladder));
             return;
         }
 
         for (HqTiersLeaderboardClient.Entry entry : leaderboardClient.state(ladder).entries()) {
             if (entry.name().equalsIgnoreCase(query)) {
-                client.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
+                minecraft.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
                 return;
             }
         }
@@ -288,16 +288,16 @@ public final class HqTiersLeaderboardScreen extends Screen {
         searchStatus = "Searching...";
         try {
             UUID uuid = parseUuid(query);
-            client.setScreen(new HqTiersPlayerStatsScreen(this, uuid.toString(), query, ladder));
+            minecraft.setScreen(new HqTiersPlayerStatsScreen(this, uuid.toString(), query, ladder));
             return;
         } catch (IllegalArgumentException ignored) {
         }
 
         HqTiersClientState.profileResolver().resolve(query).thenAccept(result -> {
-            if (client == null) return;
-            client.execute(() -> {
+            if (minecraft == null) return;
+            minecraft.execute(() -> {
                 if (result.status() == MojangProfileResolver.Status.FOUND) {
-                    client.setScreen(new HqTiersPlayerStatsScreen(this, result.profile().uuid().toString(), result.profile().name(), ladder));
+                    minecraft.setScreen(new HqTiersPlayerStatsScreen(this, result.profile().uuid().toString(), result.profile().name(), ladder));
                 } else if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
                     searchStatus = "Player not found.";
                 } else {
@@ -321,14 +321,14 @@ public final class HqTiersLeaderboardScreen extends Screen {
         pendingResolveName = query;
         searchStatus = "Resolving...";
         HqTiersClientState.profileResolver().resolve(query).thenAccept(result -> {
-            if (client == null) return;
-            client.execute(() -> {
+            if (minecraft == null) return;
+            minecraft.execute(() -> {
                 if (!query.equals(searchText())) return;
                 if (result.status() == MojangProfileResolver.Status.FOUND) {
                     searchStatus = "Fetching stats...";
                     HqTiersClientState.cache().fetch(result.profile().uuid()).thenAccept(stats -> {
-                        if (client == null) return;
-                        client.execute(() -> {
+                        if (minecraft == null) return;
+                        minecraft.execute(() -> {
                             if (!query.equals(searchText())) return;
                             int elo = 0;
                             int position = 0;
