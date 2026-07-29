@@ -4,23 +4,21 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
-
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-import net.minecraft.entity.decoration.DisplayEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.text.Text;
-
-@Mixin(PlayerEntity.class)
+@Mixin(Player.class)
 public class PlayerEntityMixin {
 
     @ModifyReturnValue(method = "getDisplayName", at = @At("RETURN"), require = 0)
-    private Text hqtiers$appendNametagStats(Text original) {
+    private Component hqtiers$appendNametagStats(Component original) {
         try {
             if (!HqTiersClientConfig.nametagEnabled) return original;
 
-            PlayerEntity player = (PlayerEntity) (Object) this;
+            Player player = (Player) (Object) this;
 
             // If a TextDisplay is riding this player, that render path
             // (TextDisplayEntityRendererMixin) already handles the tier.
@@ -34,18 +32,18 @@ public class PlayerEntityMixin {
                 }
             }
 
-            HqTiersClientState.cache().fetch(player.getUuid());
+            HqTiersClientState.cache().fetch(player.getUUID());
 
             return HqTiersClientState.cache()
-                    .getIfFresh(player.getUuid())
+                    .getIfFresh(player.getUUID())
                     .map(stats -> {
-                        Text base = original == null ? player.getName() : original;
+                        Component base = original == null ? player.getName() : original;
 
                         if (base.getString().startsWith(" ")) {
-                            base = Text.literal(base.getString().stripLeading()).setStyle(base.getStyle());
+                            base = Component.literal(base.getString().stripLeading()).setStyle(base.getStyle());
                         }
 
-                        Text tier = HqTiersFormatter.compact(stats);
+                        Component tier = HqTiersFormatter.compact(stats);
 
                         if (tier.getString().isEmpty()) return base;
                         if (base.getString().contains(tier.getString())) return base;
@@ -61,16 +59,16 @@ public class PlayerEntityMixin {
         }
     }
 
-    private static boolean hasTextDisplayPassenger(PlayerEntity player) {
-        for (var passenger : player.getPassengerList()) {
-            if (passenger instanceof DisplayEntity.TextDisplayEntity) {
+    private static boolean hasTextDisplayPassenger(Player player) {
+        for (var passenger : player.getPassengers()) {
+            if (passenger instanceof Display.TextDisplay) {
                 return true;
             }
         }
         return false;
     }
 
-    private static Text separator() {
-        return Text.literal(" | ").formatted(net.minecraft.util.Formatting.GRAY);
+    private static Component separator() {
+        return Component.literal(" | ").withStyle(net.minecraft.ChatFormatting.GRAY);
     }
 }
