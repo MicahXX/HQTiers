@@ -6,13 +6,12 @@ import java.lang.reflect.Modifier;
 import java.util.UUID;
 
 import com.mojang.authlib.GameProfile;
-
+import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.MappingResolver;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.text.Style;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.Identifier;
 
 public final class HqTiersMinecraftCompat {
 	private HqTiersMinecraftCompat() {
@@ -79,12 +78,12 @@ public final class HqTiersMinecraftCompat {
 		return Style.EMPTY;
 	}
 
-	public static KeyBinding keyBinding(String translationKey, int code, String categoryTranslationKey) {
+	public static KeyMapping keyBinding(String translationKey, int code, String categoryTranslationKey) {
 		// 1.21.2+
 		try {
-			Constructor<KeyBinding> constructor = KeyBinding.class.getConstructor(
-					String.class, InputUtil.Type.class, int.class, String.class);
-			return constructor.newInstance(translationKey, InputUtil.Type.KEYSYM, code, categoryTranslationKey);
+			Constructor<KeyMapping> constructor = KeyMapping.class.getConstructor(
+					String.class, InputConstants.Type.class, int.class, String.class);
+			return constructor.newInstance(translationKey, InputConstants.Type.KEYSYM, code, categoryTranslationKey);
 		} catch (ReflectiveOperationException ignored) {
 		}
 
@@ -99,7 +98,7 @@ public final class HqTiersMinecraftCompat {
 
 	private static Object cachedCategory = null;
 
-	private static KeyBinding categorizedKeyBinding(String translationKey, int code, MappingResolver mappings) throws ReflectiveOperationException {
+	private static KeyMapping categorizedKeyBinding(String translationKey, int code, MappingResolver mappings) throws ReflectiveOperationException {
 		if (cachedCategory == null) {
 			try {
 				Class<?> categoryClass = Class.forName(mappings.mapClassName("named", "net.minecraft.client.option.KeyBinding$Category"));
@@ -111,16 +110,16 @@ public final class HqTiersMinecraftCompat {
 				);
 				Method create = categoryClass.getMethod(createName, Identifier.class);
 				create.setAccessible(true);
-				cachedCategory = create.invoke(null, Identifier.of("assets", "category"));
+				cachedCategory = create.invoke(null, Identifier.fromNamespaceAndPath("assets", "category"));
 			} catch (ReflectiveOperationException exception) {
-				for (Class<?> categoryClass : KeyBinding.class.getDeclaredClasses()) {
+				for (Class<?> categoryClass : KeyMapping.class.getDeclaredClasses()) {
 					for (Method create : categoryClass.getDeclaredMethods()) {
 						if (Modifier.isStatic(create.getModifiers())
 								&& create.getParameterCount() == 1
 								&& create.getParameterTypes()[0] == Identifier.class
 								&& create.getReturnType() == categoryClass) {
 							create.setAccessible(true);
-							cachedCategory = create.invoke(null, Identifier.of("assets", "category"));
+							cachedCategory = create.invoke(null, Identifier.fromNamespaceAndPath("assets", "category"));
 							break;
 						}
 					}
@@ -132,8 +131,8 @@ public final class HqTiersMinecraftCompat {
 			}
 		}
 
-		Constructor<KeyBinding> constructor = KeyBinding.class.getConstructor(
-				String.class, InputUtil.Type.class, int.class, cachedCategory.getClass());
-		return constructor.newInstance(translationKey, InputUtil.Type.KEYSYM, code, cachedCategory);
+		Constructor<KeyMapping> constructor = KeyMapping.class.getConstructor(
+				String.class, InputConstants.Type.class, int.class, cachedCategory.getClass());
+		return constructor.newInstance(translationKey, InputConstants.Type.KEYSYM, code, cachedCategory);
 	}
 }

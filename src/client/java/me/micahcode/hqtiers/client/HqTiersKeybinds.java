@@ -1,68 +1,68 @@
 package me.micahcode.hqtiers.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersLeaderboardScreen;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.minecraft.client.option.GameOptions;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Options;
 
 public final class HqTiersKeybinds {
 	private HqTiersKeybinds() {
 	}
 
 	public static void register() {
-		KeyBinding leaderboard = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+		KeyMapping leaderboard = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.open_leaderboard",
-				InputUtil.GLFW_KEY_L,
+				InputConstants.KEY_L,
 				"category.hqtiers"
 		));
 
-		KeyBinding cycleForward = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+		KeyMapping cycleForward = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.cycle_mode",
 				-1,
 				"category.hqtiers"
 		));
 
-		KeyBinding cycleBack = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+		KeyMapping cycleBack = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.cycle_mode_back",
 				-1,
 				"category.hqtiers"
 		));
 
-        KeyBinding viewStats = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+        KeyMapping viewStats = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.view_stats",
-                InputUtil.GLFW_KEY_K,
+                InputConstants.KEY_K,
                 "category.hqtiers"
         ));
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			unbindAdvancementsIfConflicting(client.options, leaderboard);
 
-			while (leaderboard.wasPressed()) {
-				if (client.currentScreen instanceof HqTiersPlayerStatsScreen) {
+			while (leaderboard.consumeClick()) {
+				if (client.screen instanceof HqTiersPlayerStatsScreen) {
 					client.setScreen(null);
 				} else {
 					client.setScreen(new HqTiersLeaderboardScreen(HqTiersClientState.leaderboardClient()));
 				}
 			}
 
-			while (cycleForward.wasPressed()) {
+			while (cycleForward.consumeClick()) {
 				cycleLadder(client, 1);
 			}
 
-			while (cycleBack.wasPressed()) {
+			while (cycleBack.consumeClick()) {
 				cycleLadder(client, -1);
 			}
 
-            while (viewStats.wasPressed()) {
+            while (viewStats.consumeClick()) {
                 if (client.player != null) {
                     client.setScreen(new me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen(
                             null,
-                            client.player.getUuid().toString(),
+                            client.player.getUUID().toString(),
                             client.player.getName().getString()
                     ));
                 }
@@ -77,7 +77,7 @@ public final class HqTiersKeybinds {
 			"DIAMOND_POT", "NETHERITE_OP", "SMP", "DIAMOND_SMP"
 	};
 
-	private static void cycleLadder(net.minecraft.client.MinecraftClient client, int direction) {
+	private static void cycleLadder(net.minecraft.client.Minecraft client, int direction) {
 		String current;
 		if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL) {
 			current = "MODE:GLOBAL";
@@ -110,8 +110,8 @@ public final class HqTiersKeybinds {
 					: next.equals("MODE:HIGHEST_TIER") ? "Highest Tier"
 					: HqTiersFormatter.displayName(next);
 
-			net.minecraft.text.MutableText msg = net.minecraft.text.Text.literal("HQTiers: " + label + " ")
-					.formatted(Formatting.GOLD);
+			net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal("HQTiers: " + label + " ")
+					.withStyle(ChatFormatting.GOLD);
 
 			if (next.equals("MODE:GLOBAL") || next.equals("MODE:HIGHEST_TIER")) {
 				msg.append(HqTiersFormatter.icon("GLOBAL"));
@@ -119,17 +119,17 @@ public final class HqTiersKeybinds {
 				msg.append(HqTiersFormatter.icon(next));
 			}
 
-			client.player.sendMessage(msg, true);
+			client.player.displayClientMessage(msg, true);
 		}
 	}
 
-	private static void unbindAdvancementsIfConflicting(GameOptions options, KeyBinding leaderboardKey) {
-		KeyBinding advancementsKey = options.advancementsKey;
-		if (leaderboardKey.getBoundKeyTranslationKey().equals("key.keyboard.l")
-				&& advancementsKey.getBoundKeyTranslationKey().equals("key.keyboard.l")) {
-			advancementsKey.setBoundKey(InputUtil.UNKNOWN_KEY);
-			KeyBinding.updateKeysByCode();
-			options.write();
+	private static void unbindAdvancementsIfConflicting(Options options, KeyMapping leaderboardKey) {
+		KeyMapping advancementsKey = options.keyAdvancements;
+		if (leaderboardKey.saveString().equals("key.keyboard.l")
+				&& advancementsKey.saveString().equals("key.keyboard.l")) {
+			advancementsKey.setKey(InputConstants.UNKNOWN);
+			KeyMapping.resetMapping();
+			options.save();
 		}
 	}
 }
