@@ -3,19 +3,18 @@ package me.micahcode.hqtiers.client;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Identifier;
-
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.resources.Identifier;
 import java.util.*;
 
 public final class HqTiersFormatter {
 	private HqTiersFormatter() {
 	}
 
-	public static Text compact(HqTiersStats stats) {
+	public static Component compact(HqTiersStats stats) {
 
 		HqTiersStats.LadderStats ladder;
 
@@ -51,20 +50,20 @@ public final class HqTiersFormatter {
 
 
 		if (ladder == null) {
-			return Text.literal("No Data")
-					.formatted(Formatting.RED);
+			return Component.literal("No Data")
+					.withStyle(ChatFormatting.RED);
 		}
 
 
 		return decorated(ladder);
 	}
 
-	public static Text previewCompact() {
-		net.minecraft.client.MinecraftClient client = net.minecraft.client.MinecraftClient.getInstance();
+	public static Component previewCompact() {
+		net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
 		if (client != null && client.player != null) {
 			HqTiersStats real =
 					HqTiersClientState.cache()
-							.getIfFresh(client.player.getUuid()).orElse(null);
+							.getIfFresh(client.player.getUUID()).orElse(null);
 			if (real != null) return compact(real);
 		}
 		HqTiersStats.LadderStats fake = HqTiersStats.LadderStats.minimal(
@@ -73,53 +72,53 @@ public final class HqTiersFormatter {
 		return decorated(fake);
 	}
 
-	public static Text nametag(HqTiersStats stats, Text currentName) {
-		Text tier = compact(stats);
+	public static Component nametag(HqTiersStats stats, Component currentName) {
+		Component tier = compact(stats);
 
 		if (tier.getString().isEmpty()) {
 			return currentName;
 		}
 
 		if (currentName == null) {
-			currentName = Text.empty();
+			currentName = Component.empty();
 		}
 
 		if (HqTiersClientConfig.nametagAlignment ==
 				HqTiersClientConfig.NametagAlignment.LEFT) {
 
 			return tier.copy()
-					.append(Text.literal(""))
+					.append(Component.literal(""))
 					.append(currentName);
 
 		} else {
 
 			return currentName.copy()
-					.append(Text.literal(""))
+					.append(Component.literal(""))
 					.append(tier);
 		}
 	}
 
-	public static Text hud(HqTiersStats stats) {
+	public static Component hud(HqTiersStats stats) {
 		HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
 
 		if (ladder == null) {
-			return Text.literal("PvPHQ: Unranked").formatted(Formatting.GRAY);
+			return Component.literal("PvPHQ: Unranked").withStyle(ChatFormatting.GRAY);
 		}
 
-		return Text.literal("PvPHQ: ").formatted(Formatting.GRAY)
-				.append(Text.literal(stats.name()).formatted(Formatting.WHITE))
-				.append(Text.literal(" "))
+		return Component.literal("PvPHQ: ").withStyle(ChatFormatting.GRAY)
+				.append(Component.literal(stats.name()).withStyle(ChatFormatting.WHITE))
+				.append(Component.literal(" "))
 				.append(decorated(ladder));
 	}
 
-	public static Text details(HqTiersStats stats) {
-		return Text.literal("PvPHQ stats for ").formatted(Formatting.GRAY)
-				.append(Text.literal(stats.name()).formatted(Formatting.WHITE))
-				.append(Text.literal(":").formatted(Formatting.GRAY));
+	public static Component details(HqTiersStats stats) {
+		return Component.literal("PvPHQ stats for ").withStyle(ChatFormatting.GRAY)
+				.append(Component.literal(stats.name()).withStyle(ChatFormatting.WHITE))
+				.append(Component.literal(":").withStyle(ChatFormatting.GRAY));
 	}
 
-	public static List<Text> ladderDetails(HqTiersStats stats) {
-		List<Text> lines = new ArrayList<>();
+	public static List<Component> ladderDetails(HqTiersStats stats) {
+		List<Component> lines = new ArrayList<>();
 		stats.ladder("GLOBAL").ifPresent(global -> lines.add(ladderDetailLine(global)));
 		stats.ladders().values().stream()
 				.filter(HqTiersStats.LadderStats::hasPlayedRanked)
@@ -129,31 +128,31 @@ public final class HqTiersFormatter {
 		return lines;
 	}
 
-	private static Text ladderDetailLine(HqTiersStats.LadderStats ladder) {
-		return Text.literal("  ")
+	private static Component ladderDetailLine(HqTiersStats.LadderStats ladder) {
+		return Component.literal("  ")
 				.append(icon(ladder.ladder()))
-				.append(Text.literal(" "))
-				.append(Text.literal(displayName(ladder.ladder())).formatted(Formatting.AQUA))
-				.append(Text.literal(": ").formatted(Formatting.GRAY))
-				.append(Text.literal(ladder.tierLabel()).formatted(Formatting.GOLD))
-				.append(Text.literal(" | ").formatted(Formatting.GRAY))
-				.append(Text.literal(ratingText(ladder.totalRating())).setStyle(Style.EMPTY.withColor(ratingColor(ladder.totalRating()))))
-				.append(Text.literal(" | ").formatted(Formatting.GRAY))
-				.append(Text.literal(ladder.wins() + "W/" + ladder.losses() + "L").formatted(Formatting.WHITE))
+				.append(Component.literal(" "))
+				.append(Component.literal(displayName(ladder.ladder())).withStyle(ChatFormatting.AQUA))
+				.append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
+				.append(Component.literal(ladder.tierLabel()).withStyle(ChatFormatting.GOLD))
+				.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
+				.append(Component.literal(ratingText(ladder.totalRating())).setStyle(Style.EMPTY.withColor(ratingColor(ladder.totalRating()))))
+				.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
+				.append(Component.literal(ladder.wins() + "W/" + ladder.losses() + "L").withStyle(ChatFormatting.WHITE))
 				.append(positionDetails(ladder));
 	}
 
-	private static Text positionDetails(HqTiersStats.LadderStats ladder) {
+	private static Component positionDetails(HqTiersStats.LadderStats ladder) {
 		if (!ladder.hasPosition()) {
-			return Text.empty();
+			return Component.empty();
 		}
 
-		return Text.literal(" | #").formatted(Formatting.GRAY)
-				.append(Text.literal(Integer.toString(ladder.position())).formatted(Formatting.WHITE));
+		return Component.literal(" | #").withStyle(ChatFormatting.GRAY)
+				.append(Component.literal(Integer.toString(ladder.position())).withStyle(ChatFormatting.WHITE));
 	}
 
-	private static Text decorated(HqTiersStats.LadderStats ladder) {
-		MutableText text = Text.empty();
+	private static Component decorated(HqTiersStats.LadderStats ladder) {
+		MutableComponent text = Component.empty();
 		boolean wrotePart = false;
 		int separatorOccurrence = -1;
 
@@ -161,39 +160,39 @@ public final class HqTiersFormatter {
 			switch (component) {
 				case GAMEMODE_ICON -> {
 					if (!HqTiersClientConfig.gamemodeIconEnabled) continue;
-					if (wrotePart) text.append(Text.literal(" "));
+					if (wrotePart) text.append(Component.literal(" "));
 					text.append(icon(ladder.ladder()));
 					wrotePart = true;
 				}
 				case TIER -> {
 					if (!HqTiersClientConfig.tierEnabled) continue;
-					if (wrotePart) text.append(Text.literal(" "));
+					if (wrotePart) text.append(Component.literal(" "));
 					if (HqTiersClientConfig.coloredTier) {
-						text.append(Text.literal(tierLabel(ladder)).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())));
+						text.append(Component.literal(tierLabel(ladder)).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())));
 					} else {
-						text.append(Text.literal(tierLabel(ladder)).formatted(Formatting.WHITE));
+						text.append(Component.literal(tierLabel(ladder)).withStyle(ChatFormatting.WHITE));
 					}
 					wrotePart = true;
 				}
 				case SEPARATOR -> {
 					separatorOccurrence++;
 					if (!HqTiersClientConfig.isSeparatorEnabled(separatorOccurrence) || !wrotePart) continue;
-					text.append(Text.literal(" | ").formatted(Formatting.GRAY));
+					text.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY));
 				}
 				case ELO -> {
 					if (!HqTiersClientConfig.eloEnabled) continue;
 					Style eloStyle = Style.EMPTY.withColor(HqTiersClientConfig.coloredElo ? ratingColor(ladder.totalRating()) : 0xFFFFFF);
-					text.append(Text.literal(Integer.toString(ladder.totalRating())).setStyle(eloStyle));
+					text.append(Component.literal(Integer.toString(ladder.totalRating())).setStyle(eloStyle));
 					if (HqTiersClientConfig.eloLabelEnabled)
-						text.append(Text.literal(" " + HqTiersRankSystem.RATING_LABEL).setStyle(eloStyle));
+						text.append(Component.literal(" " + HqTiersRankSystem.RATING_LABEL).setStyle(eloStyle));
 					wrotePart = true;
 				}
 				case POSITION -> {
 					if (!HqTiersClientConfig.positionEnabled || !ladder.hasPosition()) continue;
 					int posColor = HqTiersClientConfig.coloredPosition ? ladder.tierColorInt() : 0xFFFFFF;
 					if (HqTiersClientConfig.positionLabelEnabled)
-						text.append(Text.literal("#").setStyle(Style.EMPTY.withColor(posColor)));
-					text.append(Text.literal(Integer.toString(ladder.position())).setStyle(Style.EMPTY.withColor(posColor)));
+						text.append(Component.literal("#").setStyle(Style.EMPTY.withColor(posColor)));
+					text.append(Component.literal(Integer.toString(ladder.position())).setStyle(Style.EMPTY.withColor(posColor)));
 					wrotePart = true;
 				}
 			}
@@ -230,9 +229,9 @@ public final class HqTiersFormatter {
 		};
 	}
 
-	public static Text icon(String ladder) {
-		return Text.literal(String.valueOf(iconGlyph(ladder)))
-				.setStyle(HqTiersMinecraftCompat.fontStyle(Identifier.of("hqtiers", "default"))
+	public static Component icon(String ladder) {
+		return Component.literal(String.valueOf(iconGlyph(ladder)))
+				.setStyle(HqTiersMinecraftCompat.fontStyle(Identifier.fromNamespaceAndPath("hqtiers", "default"))
 						.withColor(0xFFFFFF));
 	}
 

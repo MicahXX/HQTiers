@@ -5,8 +5,8 @@ import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 public final class HqTiersConfigScreen {
 	private static final String[] LADDERS = {
@@ -20,54 +20,54 @@ public final class HqTiersConfigScreen {
 	public static Screen create(Screen parent) {
 		ConfigBuilder builder = ConfigBuilder.create()
 				.setParentScreen(parent)
-				.setTitle(Text.literal("HQTiers"));
+				.setTitle(Component.literal("HQTiers"));
 		ConfigEntryBuilder entries = builder.entryBuilder();
 
-		ConfigCategory general = builder.getOrCreateCategory(Text.literal("General"));
+		ConfigCategory general = builder.getOrCreateCategory(Component.literal("General"));
 		general.addEntry(entries.startEnumSelector(
-						Text.literal("Display mode"),
+						Component.literal("Display mode"),
 						HqTiersClientConfig.DisplayMode.class,
 						HqTiersClientConfig.displayMode)
 				.setDefaultValue(HqTiersClientConfig.DisplayMode.PREFERRED_LADDER)
 				.setSaveConsumer(value -> HqTiersClientConfig.displayMode = value)
 				.build());
 		general.addEntry(entries.startSelector(
-						Text.literal("Preferred gamemode"), LADDERS, HqTiersClientConfig.preferredLadder)
+						Component.literal("Preferred gamemode"), LADDERS, HqTiersClientConfig.preferredLadder)
 				.setDefaultValue("SWORD")
-				.setNameProvider(value -> Text.literal(HqTiersFormatter.displayName(value)))
+				.setNameProvider(value -> Component.literal(HqTiersFormatter.displayName(value)))
 				.setSaveConsumer(value -> HqTiersClientConfig.preferredLadder = HqTiersClientConfig.normalizeLadder(value))
 				.build());
 
-		ConfigCategory overlay = builder.getOrCreateCategory(Text.literal("Nametag & Tab"));
+		ConfigCategory overlay = builder.getOrCreateCategory(Component.literal("Nametag & Tab"));
 		overlay.addEntry(new NametagLayoutButtonEntry(parent));
-		overlay.addEntry(entries.startBooleanToggle(Text.literal("Show nametag stats"), HqTiersClientConfig.nametagEnabled)
+		overlay.addEntry(entries.startBooleanToggle(Component.literal("Show nametag stats"), HqTiersClientConfig.nametagEnabled)
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.nametagEnabled = value)
 				.build());
-		overlay.addEntry(entries.startBooleanToggle(Text.literal("Hide nametag if Ranked System"), HqTiersClientConfig.suppressRankedDuplicates)
+		overlay.addEntry(entries.startBooleanToggle(Component.literal("Hide nametag if Ranked System"), HqTiersClientConfig.suppressRankedDuplicates)
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.suppressRankedDuplicates = value)
 				.build());
-		overlay.addEntry(entries.startBooleanToggle(Text.literal("Show tab list stats"), HqTiersClientConfig.tabListEnabled)
+		overlay.addEntry(entries.startBooleanToggle(Component.literal("Show tab list stats"), HqTiersClientConfig.tabListEnabled)
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.tabListEnabled = value)
 				.build());
 		overlay.addEntry(entries.startEnumSelector(
-						Text.literal("Stats position"),
+						Component.literal("Stats position"),
 						HqTiersClientConfig.NametagAlignment.class,
 						HqTiersClientConfig.nametagAlignment)
 				.setDefaultValue(HqTiersClientConfig.NametagAlignment.LEFT)
 				.setSaveConsumer(value -> HqTiersClientConfig.nametagAlignment = value)
 				.build());
-		overlay.addEntry(entries.startBooleanToggle(Text.literal("Colored tier in nametag"), HqTiersClientConfig.coloredTier)
+		overlay.addEntry(entries.startBooleanToggle(Component.literal("Colored tier in nametag"), HqTiersClientConfig.coloredTier)
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.coloredTier = value)
 				.build());
-		overlay.addEntry(entries.startBooleanToggle(Text.literal("Colored TR in nametag"), HqTiersClientConfig.coloredElo)
+		overlay.addEntry(entries.startBooleanToggle(Component.literal("Colored TR in nametag"), HqTiersClientConfig.coloredElo)
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.coloredElo = value)
 				.build());
-		overlay.addEntry(entries.startBooleanToggle(Text.literal("Colored position in nametag"), HqTiersClientConfig.coloredPosition)
+		overlay.addEntry(entries.startBooleanToggle(Component.literal("Colored position in nametag"), HqTiersClientConfig.coloredPosition)
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.coloredPosition = value)
 				.build());

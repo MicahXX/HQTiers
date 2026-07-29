@@ -10,10 +10,10 @@ import java.util.UUID;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 
 public final class HqTiersPlayerStatsScreen extends Screen {
     private static final DateTimeFormatter GRAPH_DATE = DateTimeFormatter.ofPattern("MMM d");
@@ -51,7 +51,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private int[] graphYPositions = null;
 
     public HqTiersPlayerStatsScreen(Screen parent, String uuid, String fallbackName, String autoOpenLadder) {
-        super(Text.literal("HqTiers Player Stats"));
+        super(Component.literal("HqTiers Player Stats"));
         this.parent = parent;
         this.uuid = UUID.fromString(uuid);
         this.fallbackName = fallbackName;
@@ -97,10 +97,10 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
     @Override
     protected void init() {
-        clearChildren();
+        clearWidgets();
 
         String backLabel = selectedLadder != null ? "Back" : "Close";
-        addDrawableChild(ButtonWidget.builder(Text.literal(backLabel), btn -> {
+        addRenderableWidget(Button.builder(Component.literal(backLabel), btn -> {
             if (selectedLadder != null) {
                 selectedLadder = null;
                 historyPoints = null;
@@ -108,9 +108,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                 graphYPositions = null;
                 init();
             } else {
-                if (client != null) client.setScreen(parent);
+                if (minecraft != null) minecraft.setScreen(parent);
             }
-        }).dimensions(panelLeft(), height - 26, 78, 18).build());
+        }).bounds(panelLeft(), height - 26, 78, 18).build());
 
         if (selectedLadder == null) {
             var cached = HqTiersClientState.cache().getIfFresh(uuid);
@@ -121,7 +121,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             if (!loaded) {
                 loaded = true;
                 failed = stats == null;
-                if (client != null && selectedLadder == null) client.execute(this::init);
+                if (minecraft != null && selectedLadder == null) minecraft.execute(this::init);
             }
         });
 
@@ -129,7 +129,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             HqTiersClientState.leaderboardClient()
                     .fetchHistory(uuid.toString(), selectedLadder)
                     .thenAccept(pts -> {
-                        if (client != null) client.execute(() -> {
+                        if (minecraft != null) minecraft.execute(() -> {
                             historyPoints = pts;
                             historyLoading = false;
                         });
@@ -147,10 +147,10 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             if (!l.ladder().equals("GLOBAL")) {
                 final String id = l.ladder();
                 final int fy = y;
-                ButtonWidget btn = ButtonWidget.builder(Text.empty(), b -> openLadder(id))
-                        .dimensions(pl, fy, pr - pl, rowH()).build();
+                Button btn = Button.builder(Component.empty(), b -> openLadder(id))
+                        .bounds(pl, fy, pr - pl, rowH()).build();
                 btn.setAlpha(0f);
-                addDrawableChild(btn);
+                addRenderableWidget(btn);
             }
             y += rowH();
         }
@@ -166,7 +166,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         HqTiersClientState.leaderboardClient()
                 .fetchHistory(uuid.toString(), id)
                 .thenAccept(pts -> {
-                    if (client != null) client.execute(() -> {
+                    if (minecraft != null) minecraft.execute(() -> {
                         historyPoints = pts;
                         historyLoading = false;
                     });
@@ -174,7 +174,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext ctx, int mx, int my, float delta) {
+    public void render(GuiGraphics ctx, int mx, int my, float delta) {
         int pl = panelLeft(), pr = panelRight();
         int ht = headerTop(), hb = headerBottom();
         int tt = tableTop(), tb = tableBottom();
@@ -197,8 +197,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(pl, hb - 1, pr, hb, ACCENT_DIM); // accent bottom border
 
         // Header text
-        ctx.drawCenteredTextWithShadow(textRenderer, "HQTIERS  STATS", width / 2, ht + 6, TEXT_TITLE);
-        ctx.drawCenteredTextWithShadow(textRenderer, fallbackName, width / 2, ht + 20, TEXT_WHITE);
+        ctx.drawCenteredString(font, "HQTIERS  STATS", width / 2, ht + 6, TEXT_TITLE);
+        ctx.drawCenteredString(font, fallbackName, width / 2, ht + 20, TEXT_WHITE);
 
         super.render(ctx, mx, my, delta);
 
@@ -206,7 +206,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (statsOpt.isEmpty()) {
             String msg = loaded || failed ? "No ranked stats found for this player." : "Loading…";
             int col = loaded || failed ? 0xFFFFD166 : TEXT_DIM;
-            ctx.drawCenteredTextWithShadow(textRenderer, msg, width / 2, tt + 40, col);
+            ctx.drawCenteredString(font, msg, width / 2, tt + 40, col);
             return;
         }
 
@@ -219,7 +219,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
-    private void renderTable(DrawContext ctx, HqTiersStats stats,
+    private void renderTable(GuiGraphics ctx, HqTiersStats stats,
                              int pl, int pr, int tt, int tb, int mx, int my) {
         int pw = pr - pl;
 
@@ -228,16 +228,16 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(pl + 2, hy, pr - 2, hy + rowH() - 2, BG_HEADER);
         ctx.fill(pl + 2, hy + rowH() - 2, pr - 2, hy + rowH() - 1, ACCENT_DIM);
 
-        ctx.drawTextWithShadow(textRenderer, "LADDER", pl + col(pw, 0), hy + 4, TEXT_HEADER);
-        ctx.drawTextWithShadow(textRenderer, "TIER", pl + col(pw, 1), hy + 4, TEXT_HEADER);
-        ctx.drawTextWithShadow(textRenderer, "TR", pl + col(pw, 2), hy + 4, TEXT_HEADER);
-        ctx.drawTextWithShadow(textRenderer, "RANK", pl + col(pw, 3), hy + 4, TEXT_HEADER);
-        ctx.drawTextWithShadow(textRenderer, "W / L", pl + col(pw, 4), hy + 4, TEXT_HEADER);
-        ctx.drawTextWithShadow(textRenderer, "STREAK", pl + col(pw, 5), hy + 4, TEXT_HEADER);
+        ctx.drawString(font, "LADDER", pl + col(pw, 0), hy + 4, TEXT_HEADER);
+        ctx.drawString(font, "TIER", pl + col(pw, 1), hy + 4, TEXT_HEADER);
+        ctx.drawString(font, "TR", pl + col(pw, 2), hy + 4, TEXT_HEADER);
+        ctx.drawString(font, "RANK", pl + col(pw, 3), hy + 4, TEXT_HEADER);
+        ctx.drawString(font, "W / L", pl + col(pw, 4), hy + 4, TEXT_HEADER);
+        ctx.drawString(font, "STREAK", pl + col(pw, 5), hy + 4, TEXT_HEADER);
 
         List<HqTiersStats.LadderStats> ladders = sortedLadders(stats);
         if (ladders.isEmpty()) {
-            ctx.drawCenteredTextWithShadow(textRenderer, "No ranked data.", width / 2, tt + 50, TEXT_DIM);
+            ctx.drawCenteredString(font, "No ranked data.", width / 2, tt + 50, TEXT_DIM);
             return;
         }
 
@@ -256,32 +256,32 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             if (isGlobal) ctx.fill(pl + 2, y, pl + 4, y + rowH(), ACCENT_GOLD);
 
             // Icon + name
-            ctx.drawTextWithShadow(textRenderer, HqTiersFormatter.icon(l.ladder()), pl + col(pw, 0), y + 4, TEXT_WHITE);
-            ctx.drawTextWithShadow(textRenderer, HqTiersFormatter.displayName(l.ladder()), pl + col(pw, 0) + 12, y + 4, TEXT_WHITE);
+            ctx.drawString(font, HqTiersFormatter.icon(l.ladder()), pl + col(pw, 0), y + 4, TEXT_WHITE);
+            ctx.drawString(font, HqTiersFormatter.displayName(l.ladder()), pl + col(pw, 0) + 12, y + 4, TEXT_WHITE);
 
             // Tier - color now comes straight from the API's tierColor field
-            ctx.drawTextWithShadow(textRenderer, l.tierLabel(),
+            ctx.drawString(font, l.tierLabel(),
                     pl + col(pw, 1), y + 4, 0xFF000000 | l.tierColorInt());
 
             // TR with mini-bar
             int tr = l.totalRating();
-            ctx.drawTextWithShadow(textRenderer, tr + " TR", pl + col(pw, 2), y + 4, eloColor(tr));
+            ctx.drawString(font, tr + " TR", pl + col(pw, 2), y + 4, eloColor(tr));
 
             // Rank
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
             int rankCol = l.hasPosition() ? 0xFFFFD700 : TEXT_DIM;
-            ctx.drawTextWithShadow(textRenderer, rankStr, pl + col(pw, 3), y + 4, rankCol);
+            ctx.drawString(font, rankStr, pl + col(pw, 3), y + 4, rankCol);
 
             // W/L
-            ctx.drawTextWithShadow(textRenderer, l.wins() + " / " + l.losses(),
+            ctx.drawString(font, l.wins() + " / " + l.losses(),
                     pl + col(pw, 4), y + 4, wlColor(l.wins(), l.losses()));
 
             // Streak
-            ctx.drawTextWithShadow(textRenderer, streakStr(l.currentStreak()),
+            ctx.drawString(font, streakStr(l.currentStreak()),
                     pl + col(pw, 5), y + 4, streakColor(l.currentStreak()));
 
             // Hover arrow hint
-            if (hovered) ctx.drawTextWithShadow(textRenderer, "→", pr - 14, y + 4, ACCENT_GOLD);
+            if (hovered) ctx.drawString(font, "→", pr - 14, y + 4, ACCENT_GOLD);
 
             y += rowH();
         }
@@ -290,7 +290,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int finalY = y;
         stats.bestLadder().ifPresent(best -> {
             int fy = Math.max(tb - 16, finalY + 6);
-            ctx.drawTextWithShadow(textRenderer,
+            ctx.drawString(font,
                     "Best: " + HqTiersFormatter.displayName(best.ladder()) + "  " + best.tierLabel(),
                     pl + 10, fy, 0xFFFFD700);
         });
@@ -309,7 +309,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         };
     }
 
-    private void renderGraph(DrawContext ctx, HqTiersStats stats,
+    private void renderGraph(GuiGraphics ctx, HqTiersStats stats,
                              int pl, int pr, int tt, int tb, int mx, int my) {
         // selectedLadder is the raw map key (e.g. "SWORD"), always use it directly
         HqTiersStats.LadderStats ladder = stats.ladders().get(
@@ -317,7 +317,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         );
 
         // Ladder title row
-        ctx.drawCenteredTextWithShadow(textRenderer,
+        ctx.drawCenteredString(font,
                 HqTiersFormatter.displayName(selectedLadder) + "  ·  TR History",
                 width / 2, tt + 5, TEXT_HEADER);
 
@@ -325,7 +325,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             String summary = ladder.tierLabel()
                     + "   " + ladder.totalRating() + " TR"
                     + "   " + ladder.wins() + "W / " + ladder.losses() + "L";
-            ctx.drawCenteredTextWithShadow(textRenderer, summary, width / 2, tt + 17,
+            ctx.drawCenteredString(font, summary, width / 2, tt + 17,
                     0xFF000000 | ladder.tierColorInt());
         }
 
@@ -344,11 +344,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(gl, gbt, gr, gbt + 1, 0x884C7BA7);
 
         if (historyLoading) {
-            ctx.drawCenteredTextWithShadow(textRenderer, "Loading history…", width / 2, gt + gh / 2 - 4, TEXT_DIM);
+            ctx.drawCenteredString(font, "Loading history…", width / 2, gt + gh / 2 - 4, TEXT_DIM);
             return;
         }
         if (historyPoints == null || historyPoints.isEmpty()) {
-            ctx.drawCenteredTextWithShadow(textRenderer, "No history data.", width / 2, gt + gh / 2 - 4, TEXT_DIM);
+            ctx.drawCenteredString(font, "No history data.", width / 2, gt + gh / 2 - 4, TEXT_DIM);
             return;
         }
 
@@ -368,8 +368,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             int gy = gbt - (gridElo - minElo) * gh / eloRange;
             ctx.fill(gl, gy, gr, gy + 1, i == 0 ? 0x448EA7D2 : AXIS_LINE);
             String label = Integer.toString(gridElo);
-            ctx.drawTextWithShadow(textRenderer, label,
-                    gl - textRenderer.getWidth(label) - 3, gy - 4, TEXT_DIM);
+            ctx.drawString(font, label,
+                    gl - font.width(label) - 3, gy - 4, TEXT_DIM);
         }
 
         // Build point arrays
@@ -412,11 +412,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
 
         // Date labels
-        ctx.drawTextWithShadow(textRenderer, dateLabel(historyPoints.get(0).timestamp()),
+        ctx.drawString(font, dateLabel(historyPoints.get(0).timestamp()),
                 gl, gbt + 4, TEXT_DIM);
         String lastDate = dateLabel(historyPoints.get(n - 1).timestamp());
-        ctx.drawTextWithShadow(textRenderer, lastDate,
-                gr - textRenderer.getWidth(lastDate), gbt + 4, TEXT_DIM);
+        ctx.drawString(font, lastDate,
+                gr - font.width(lastDate), gbt + 4, TEXT_DIM);
 
         // Tooltip on hover
         if (graphXPositions != null && my >= gt && my <= gbt) {
@@ -432,7 +432,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
-    private void renderTooltip(DrawContext ctx, int idx, int gl, int gr, int gt, int gbt) {
+    private void renderTooltip(GuiGraphics ctx, int idx, int gl, int gr, int gt, int gbt) {
         int elo = historyPoints.get(idx).elo();
         int prev = idx > 0 ? historyPoints.get(idx - 1).elo() : elo;
         int delta = elo - prev;
@@ -445,7 +445,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         // Tooltip box
         int lines = date.isEmpty() ? 2 : 3;
-        int tw = Math.max(68, textRenderer.getWidth(date) + 12);
+        int tw = Math.max(68, font.width(date) + 12);
         int th = 8 + lines * 10;
         int tx = Math.min(graphXPositions[idx] + 6, gr - tw - 2);
         int ty = Math.max(gt + 2, graphYPositions[idx] - th - 6);
@@ -454,10 +454,10 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(tx - 2, ty - 2, tx + tw + 2, ty - 1, ACCENT_GOLD);
         ctx.fill(tx - 2, ty - 2, tx - 1, ty + th + 2, ACCENT_DIM);
 
-        ctx.drawTextWithShadow(textRenderer, elo + " TR", tx + 2, ty + 2, eloColor(elo));
-        ctx.drawTextWithShadow(textRenderer, deltaStr, tx + 2, ty + 12, deltaColor);
+        ctx.drawString(font, elo + " TR", tx + 2, ty + 2, eloColor(elo));
+        ctx.drawString(font, deltaStr, tx + 2, ty + 12, deltaColor);
         if (!date.isEmpty())
-            ctx.drawTextWithShadow(textRenderer, date, tx + 2, ty + 22, TEXT_HEADER);
+            ctx.drawString(font, date, tx + 2, ty + 22, TEXT_HEADER);
 
         // Highlight dot
         ctx.fill(graphXPositions[idx] - 3, graphYPositions[idx] - 3,
@@ -467,7 +467,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     // ── drawing primitives ─────────────────────────────────────────────────
-    private static void drawThickLine(DrawContext ctx, int x1, int y1, int x2, int y2, int color) {
+    private static void drawThickLine(GuiGraphics ctx, int x1, int y1, int x2, int y2, int color) {
         int steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
         if (steps == 0) {
             ctx.fill(x1 - 1, y1 - 1, x1 + 2, y1 + 2, color);
@@ -480,7 +480,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
-    private static void fillTrapezoid(DrawContext ctx, int x1, int y1, int x2, int y2, int baseline, int color) {
+    private static void fillTrapezoid(GuiGraphics ctx, int x1, int y1, int x2, int y2, int baseline, int color) {
         if (x2 <= x1) return;
         for (int x = x1; x < x2; x++) {
             int lineY = y1 + (y2 - y1) * (x - x1) / Math.max(1, x2 - x1);
@@ -539,7 +539,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 }

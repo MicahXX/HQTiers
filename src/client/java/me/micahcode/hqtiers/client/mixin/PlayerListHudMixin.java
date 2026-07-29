@@ -5,19 +5,17 @@ import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.HqTiersMinecraftCompat;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
-
+import net.minecraft.client.gui.components.PlayerTabOverlay;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-import net.minecraft.client.gui.hud.PlayerListHud;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.text.Text;
-
-@Mixin(PlayerListHud.class)
+@Mixin(PlayerTabOverlay.class)
 public class PlayerListHudMixin {
 
-    @ModifyReturnValue(method = "getPlayerName", at = @At("RETURN"), require = 0)
-    private Text hqtiers$appendTabStats(Text current, PlayerListEntry entry) {
+    @ModifyReturnValue(method = "getNameForDisplay", at = @At("RETURN"), require = 0)
+    private Component hqtiers$appendTabStats(Component current, PlayerInfo entry) {
         if (!HqTiersClientConfig.tabListEnabled) return current;
 
         var uuid = HqTiersMinecraftCompat.profileId(entry.getProfile());
@@ -30,21 +28,21 @@ public class PlayerListHudMixin {
 
         return HqTiersClientState.cache().getIfFresh(uuid)
                 .map(stats -> {
-                    Text suffix = HqTiersFormatter.compact(stats);
+                    Component suffix = HqTiersFormatter.compact(stats);
                     if (suffix.getString().isEmpty()) return current;
                     if (current.getString().contains(suffix.getString())) return current;
 
-                    Text cleanName = stripLeadingSeparator(current);
+                    Component cleanName = stripLeadingSeparator(current);
                     return HqTiersClientConfig.nametagAlignment == HqTiersClientConfig.NametagAlignment.LEFT
-                            ? suffix.copy().append(Text.literal(" ")).append(cleanName)
-                            : cleanName.copy().append(Text.literal(" ")).append(suffix);
+                            ? suffix.copy().append(Component.literal(" ")).append(cleanName)
+                            : cleanName.copy().append(Component.literal(" ")).append(suffix);
                 })
                 .orElse(current);
     }
 
-    private static Text stripLeadingSeparator(Text text) {
+    private static Component stripLeadingSeparator(Component text) {
         String raw = text.getString();
         String stripped = raw.replaceFirst("^\\s*\\|\\s*", "");
-        return stripped.equals(raw) ? text : Text.literal(stripped);
+        return stripped.equals(raw) ? text : Component.literal(stripped);
     }
 }

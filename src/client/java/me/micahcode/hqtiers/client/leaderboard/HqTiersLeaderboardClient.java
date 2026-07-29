@@ -20,7 +20,7 @@ import com.google.gson.JsonObject;
 
 import me.micahcode.hqtiers.Hqtiers;
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 
 public final class HqTiersLeaderboardClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/");
@@ -93,7 +93,7 @@ public final class HqTiersLeaderboardClient {
                 lastPage = page;
             }
             return new InitialLoad(combined, lastPage, hasMorePages);
-        }).whenComplete((result, throwable) -> MinecraftClient.getInstance().execute(() -> {
+        }).whenComplete((result, throwable) -> Minecraft.getInstance().execute(() -> {
             if (throwable != null) {
                 state.error = "Failed to load leaderboard.";
                 state.loading = false;
@@ -114,7 +114,7 @@ public final class HqTiersLeaderboardClient {
         state.loading = true;
         state.error = null;
 
-        CompletableFuture.supplyAsync(() -> fetchPage(ladder, page)).whenComplete((entries, throwable) -> MinecraftClient.getInstance().execute(() -> {
+        CompletableFuture.supplyAsync(() -> fetchPage(ladder, page)).whenComplete((entries, throwable) -> Minecraft.getInstance().execute(() -> {
             if (throwable != null) {
                 state.error = "Failed to load leaderboard.";
                 state.loading = false;

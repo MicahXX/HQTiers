@@ -10,10 +10,10 @@ import me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.PlayerInfo;
+import net.minecraft.network.chat.Component;
 
 public final class HqTiersCommands {
 	private HqTiersCommands() {
@@ -39,28 +39,28 @@ public final class HqTiersCommands {
 						.then(ClientCommandManager.literal("refresh")
 								.executes(context -> {
 									FabricClientCommandSource source = context.getSource();
-									MinecraftClient client = MinecraftClient.getInstance();
+									Minecraft client = Minecraft.getInstance();
 									if (client.player == null) {
-										source.sendError(Text.literal("You need to be in-game."));
+										source.sendError(Component.literal("You need to be in-game."));
 										return 0;
 									}
-									UUID uuid = client.player.getUuid();
+									UUID uuid = client.player.getUUID();
 									cache.invalidate(uuid);
 									cache.fetch(uuid);
-									source.sendFeedback(Text.literal("HQTiers cache refreshed.").formatted(Formatting.GREEN));
+									source.sendFeedback(Component.literal("HQTiers cache refreshed.").withStyle(ChatFormatting.GREEN));
 									return 1;
 								}))
 		));
 	}
 
 	private static int showSelf(FabricClientCommandSource source, HqTiersCache cache) {
-		MinecraftClient client = MinecraftClient.getInstance();
+		Minecraft client = Minecraft.getInstance();
 		if (client.player == null) {
-			source.sendError(Text.literal("You need to be in-game to use HQTiers."));
+			source.sendError(Component.literal("You need to be in-game to use HQTiers."));
 			return 0;
 		}
 
-		return showUuid(source, cache, client.player.getUuid());
+		return showUuid(source, cache, client.player.getUUID());
 	}
 
 	private static int showPlayer(FabricClientCommandSource source, HqTiersCache cache, String player) {
@@ -73,39 +73,39 @@ public final class HqTiersCommands {
 			try {
 				return showUuid(source, cache, parseUuid(player));
 			} catch (IllegalArgumentException ignored) {
-				source.sendError(Text.literal("That UUID is invalid."));
+				source.sendError(Component.literal("That UUID is invalid."));
 				return 0;
 			}
 		}
 
-		source.sendFeedback(Text.literal("Resolving Minecraft username...").formatted(Formatting.GRAY));
-		HqTiersClientState.profileResolver().resolve(player).thenAccept(result -> MinecraftClient.getInstance().execute(() -> {
+		source.sendFeedback(Component.literal("Resolving Minecraft username...").withStyle(ChatFormatting.GRAY));
+		HqTiersClientState.profileResolver().resolve(player).thenAccept(result -> Minecraft.getInstance().execute(() -> {
 			if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
-				source.sendError(Text.literal("Minecraft player '" + player + "' does not exist."));
+				source.sendError(Component.literal("Minecraft player '" + player + "' does not exist."));
 				return;
 			}
 
 			if (result.status() == MojangProfileResolver.Status.ERROR) {
-				source.sendError(Text.literal("Could not contact Mojang to resolve '" + player + "'. Try again later."));
+				source.sendError(Component.literal("Could not contact Mojang to resolve '" + player + "'. Try again later."));
 				return;
 			}
 
-			source.sendFeedback(Text.literal("Resolved " + result.profile().name() + ".").formatted(Formatting.GRAY));
+			source.sendFeedback(Component.literal("Resolved " + result.profile().name() + ".").withStyle(ChatFormatting.GRAY));
 			showUuid(source, cache, result.profile().uuid());
 		}));
 		return 1;
 	}
 
 	private static int showUuid(FabricClientCommandSource source, HqTiersCache cache, UUID uuid) {
-		source.sendFeedback(Text.literal("Fetching HQPvP stats...").formatted(Formatting.GRAY));
-		cache.fetch(uuid).thenAccept(stats -> MinecraftClient.getInstance().execute(() -> {
+		source.sendFeedback(Component.literal("Fetching HQPvP stats...").withStyle(ChatFormatting.GRAY));
+		cache.fetch(uuid).thenAccept(stats -> Minecraft.getInstance().execute(() -> {
 			if (stats == null) {
-				source.sendFeedback(Text.literal("No HQPvP ranked stats found.").formatted(Formatting.YELLOW));
+				source.sendFeedback(Component.literal("No HQPvP ranked stats found.").withStyle(ChatFormatting.YELLOW));
 				return;
 			}
 
 			source.sendFeedback(HqTiersFormatter.details(stats));
-			for (Text line : HqTiersFormatter.ladderDetails(stats)) {
+			for (Component line : HqTiersFormatter.ladderDetails(stats)) {
 				source.sendFeedback(line);
 			}
 		}));
@@ -114,20 +114,15 @@ public final class HqTiersCommands {
 
 	/** /hqtiers stats - opens the same stats screen the K keybind opens, for yourself. */
 	private static int showSelfGui(FabricClientCommandSource source) {
-		MinecraftClient client = MinecraftClient.getInstance();
+		Minecraft client = Minecraft.getInstance();
 		if (client.player == null) {
-			source.sendError(Text.literal("You need to be in-game to use HQTiers."));
+			source.sendError(Component.literal("You need to be in-game to use HQTiers."));
 			return 0;
 		}
 
-		return openStatsScreen(source, client.player.getUuid(), client.player.getName().getString());
+		return openStatsScreen(source, client.player.getUUID(), client.player.getName().getString());
 	}
 
-	/**
-	 * /hqtiers stats <player> - opens the stats GUI for another player, so you
-	 * can test the screen against arbitrary players without needing to be
-	 * near them or use the leaderboard search.
-	 */
 	private static int showPlayerGui(FabricClientCommandSource source, String player) {
 		UUID uuid = resolveOnlineUuid(player);
 		if (uuid != null) {
@@ -139,20 +134,20 @@ public final class HqTiersCommands {
 				UUID parsed = parseUuid(player);
 				return openStatsScreen(source, parsed, player);
 			} catch (IllegalArgumentException ignored) {
-				source.sendError(Text.literal("That UUID is invalid."));
+				source.sendError(Component.literal("That UUID is invalid."));
 				return 0;
 			}
 		}
 
-		source.sendFeedback(Text.literal("Resolving Minecraft username...").formatted(Formatting.GRAY));
-		HqTiersClientState.profileResolver().resolve(player).thenAccept(result -> MinecraftClient.getInstance().execute(() -> {
+		source.sendFeedback(Component.literal("Resolving Minecraft username...").withStyle(ChatFormatting.GRAY));
+		HqTiersClientState.profileResolver().resolve(player).thenAccept(result -> Minecraft.getInstance().execute(() -> {
 			if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
-				source.sendError(Text.literal("Minecraft player '" + player + "' does not exist."));
+				source.sendError(Component.literal("Minecraft player '" + player + "' does not exist."));
 				return;
 			}
 
 			if (result.status() == MojangProfileResolver.Status.ERROR) {
-				source.sendError(Text.literal("Could not contact Mojang to resolve '" + player + "'. Try again later."));
+				source.sendError(Component.literal("Could not contact Mojang to resolve '" + player + "'. Try again later."));
 				return;
 			}
 
@@ -162,35 +157,35 @@ public final class HqTiersCommands {
 	}
 
 	private static int openStatsScreen(FabricClientCommandSource source, UUID uuid, String name) {
-		MinecraftClient client = MinecraftClient.getInstance();
-		client.execute(() -> client.setScreen(new HqTiersPlayerStatsScreen(client.currentScreen, uuid.toString(), name)));
+		Minecraft client = Minecraft.getInstance();
+		client.execute(() -> client.setScreen(new HqTiersPlayerStatsScreen(client.screen, uuid.toString(), name)));
 		return 1;
 	}
 
 	private static int toggle(FabricClientCommandSource source, String label, boolean value, BooleanSetter setter) {
 		setter.set(value);
 		HqTiersClientConfig.save();
-		source.sendFeedback(Text.literal("HQTiers " + label + " " + (value ? "enabled" : "disabled") + ".")
-				.formatted(value ? Formatting.GREEN : Formatting.RED));
+		source.sendFeedback(Component.literal("HQTiers " + label + " " + (value ? "enabled" : "disabled") + ".")
+				.withStyle(value ? ChatFormatting.GREEN : ChatFormatting.RED));
 		return 1;
 	}
 
 	private static int setLadder(FabricClientCommandSource source, String ladder) {
 		HqTiersClientConfig.preferredLadder = HqTiersClientConfig.normalizeLadder(ladder);
 		HqTiersClientConfig.save();
-		source.sendFeedback(Text.literal("HQTiers preferred ladder set to " + HqTiersClientConfig.preferredLadder + ".")
-				.formatted(Formatting.GREEN));
+		source.sendFeedback(Component.literal("HQTiers preferred ladder set to " + HqTiersClientConfig.preferredLadder + ".")
+				.withStyle(ChatFormatting.GREEN));
 		return 1;
 	}
 
 	private static UUID resolveOnlineUuid(String name) {
-		MinecraftClient client = MinecraftClient.getInstance();
-		if (client.getNetworkHandler() == null) {
+		Minecraft client = Minecraft.getInstance();
+		if (client.getConnection() == null) {
 			return null;
 		}
 
 		String lowerName = name.toLowerCase(Locale.ROOT);
-		for (PlayerListEntry entry : client.getNetworkHandler().getPlayerList()) {
+		for (PlayerInfo entry : client.getConnection().getOnlinePlayers()) {
 			if (HqTiersMinecraftCompat.profileName(entry.getProfile()).toLowerCase(Locale.ROOT).equals(lowerName)) {
 				return HqTiersMinecraftCompat.profileId(entry.getProfile());
 			}
