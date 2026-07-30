@@ -84,7 +84,7 @@ public final class HqTiersClientConfig {
 
     private static List<Boolean> defaultSeparatorStates() {
         // Matches the two SEPARATOR entries in defaultNametagOrder().
-        return List.of(true, true);
+        return List.of(false, false);
     }
 
     public static void load() {
@@ -226,12 +226,12 @@ public final class HqTiersClientConfig {
 
     /**
      * Pads or trims nametagSeparatorStates so it has exactly one entry per
-     * SEPARATOR currently in nametagOrder. New separators default to enabled.
+     * SEPARATOR currently in nametagOrder. New separators default to disabled.
      */
     private static void ensureSeparatorStatesSize() {
         int needed = separatorCount();
         while (nametagSeparatorStates.size() < needed) {
-            nametagSeparatorStates.add(true);
+            nametagSeparatorStates.add(false);
         }
         while (nametagSeparatorStates.size() > needed) {
             nametagSeparatorStates.remove(nametagSeparatorStates.size() - 1);

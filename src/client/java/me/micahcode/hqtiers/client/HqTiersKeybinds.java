@@ -5,7 +5,7 @@ import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersLeaderboardScreen;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
@@ -15,25 +15,25 @@ public final class HqTiersKeybinds {
 	}
 
 	public static void register() {
-		KeyMapping leaderboard = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+		KeyMapping leaderboard = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.open_leaderboard",
 				InputConstants.KEY_L,
 				"category.hqtiers"
 		));
 
-		KeyMapping cycleForward = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+		KeyMapping cycleForward = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.cycle_mode",
 				-1,
 				"category.hqtiers"
 		));
 
-		KeyMapping cycleBack = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+		KeyMapping cycleBack = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.cycle_mode_back",
 				-1,
 				"category.hqtiers"
 		));
 
-        KeyMapping viewStats = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+        KeyMapping viewStats = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.view_stats",
                 InputConstants.KEY_K,
                 "category.hqtiers"
@@ -119,7 +119,7 @@ public final class HqTiersKeybinds {
 				msg.append(HqTiersFormatter.icon(next));
 			}
 
-			client.player.displayClientMessage(msg, true);
+			client.gui.setOverlayMessage(msg, false);
 		}
 	}
 
