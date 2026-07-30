@@ -8,13 +8,13 @@ import java.util.UUID;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
-import net.minecraft.client.gui.GuiGraphics;
+import me.micahcode.hqtiers.client.MojangProfileResolver;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import me.micahcode.hqtiers.client.MojangProfileResolver;
 
 public final class HqTiersLeaderboardScreen extends Screen {
     private static final String[] LADDERS = {
@@ -86,9 +86,9 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         context.fill(0, 0, width, height, 0xF0100C05);
-        super.render(context, mouseX, mouseY, delta);
+        super.extractRenderState(context, mouseX, mouseY, delta);
 
         HqTiersLeaderboardClient.PageState state = leaderboardClient.state(ladder);
         List<HqTiersLeaderboardClient.Entry> entries = state.entries();
@@ -102,17 +102,17 @@ public final class HqTiersLeaderboardScreen extends Screen {
 
         context.fill(panelLeft, top - 18, panelRight, bottom, 0xCC1A1408);
         context.fill(panelLeft, top - 18, panelRight, top - 2, 0xDD2A1E0C);
-        context.drawString(font, "#", panelLeft + 10, top - 14, 0xFFFFE7A3);
-        context.drawString(font, "Player", panelLeft + 46, top - 14, 0xFFFFE7A3);
-        context.drawString(font, "Tier", panelRight - 132, top - 14, 0xFFFFE7A3);
-        context.drawString(font, "TR", panelRight - 54, top - 14, 0xFFFFE7A3);
+        context.text(font, "#", panelLeft + 10, top - 14, 0xFFFFE7A3, true);
+        context.text(font, "Player", panelLeft + 46, top - 14, 0xFFFFE7A3, true);
+        context.text(font, "Tier", panelRight - 132, top - 14, 0xFFFFE7A3, true);
+        context.text(font, "TR", panelRight - 54, top - 14, 0xFFFFE7A3, true);
 
-        context.drawString(font, "* this as of now does not work", panelLeft + 8, legendY() + 1, 0xFF6B5D3A);
+        context.text(font, "* this as of now does not work", panelLeft + 8, legendY() + 1, 0xFF6B5D3A, true);
 
         if (resolvedSearchEntry != null) {
-            context.drawString(font, "Found: " + resolvedSearchEntry.name(), panelLeft + 310, searchY + 5, 0xFF55FF55);
+            context.text(font, "Found: " + resolvedSearchEntry.name(), panelLeft + 310, searchY + 5, 0xFF55FF55, true);
         } else if (searchStatus != null && !searchStatus.isBlank()) {
-            context.drawString(font, searchStatus, panelLeft + 310, searchY + 5, 0xFF7C8BA1);
+            context.text(font, searchStatus, panelLeft + 310, searchY + 5, 0xFF7C8BA1, true);
         }
 
         if (visibleEntries.isEmpty()) {
@@ -137,7 +137,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 color = 0xFFAAAAAA;
             }
 
-            context.drawCenteredString(font, message, width / 2, top + 28, color);
+            context.centeredText(font, Component.literal(message), width / 2, top + 28, color);
             return;
         }
 
@@ -160,17 +160,17 @@ public final class HqTiersLeaderboardScreen extends Screen {
             }
 
             HqTiersStats.LadderStats rowStats = ladderStatsFor(entry);
-            context.drawString(font, entry.position() > 0 ? Integer.toString(entry.position()) : "-", panelLeft + 10, y + 3, rankColor(entry.position()));
-            context.drawString(font, trim(entry.name(), 18), panelLeft + 46, y + 3, nameColor(entry.position()));
-            context.drawString(font, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, 0xFF000000 | rowStats.tierColorInt());
-            context.drawString(font, entry.elo() + " TR", panelRight - 54, y + 3, eloColor(entry.elo()));
+            context.text(font, entry.position() > 0 ? Integer.toString(entry.position()) : "-", panelLeft + 10, y + 3, rankColor(entry.position()), true);
+            context.text(font, trim(entry.name(), 18), panelLeft + 46, y + 3, nameColor(entry.position()), true);
+            context.text(font, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, 0xFF000000 | rowStats.tierColorInt(), true);
+            context.text(font, entry.elo() + " TR", panelRight - 54, y + 3, eloColor(entry.elo()), true);
         }
         context.disableScissor();
 
         if (state.loading()) {
-            context.drawCenteredString(font, "Loading more...", width / 2, height - 18, 0xFFB99842);
+            context.centeredText(font, Component.literal("Loading more..."), width / 2, height - 18, 0xFFB99842);
         } else {
-            context.drawString(font, entries.size() + " players | page " + Math.max(1, state.page()), panelLeft, height - 18, 0xFF7C8BA1);
+            context.text(font, entries.size() + " players | page " + Math.max(1, state.page()), panelLeft, height - 18, 0xFF7C8BA1, true);
         }
     }
 
@@ -187,15 +187,15 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent click, boolean focused) {
-        if (click.button() == 0) {
-            HqTiersLeaderboardClient.Entry entry = rowAt(click.x(), click.y());
+    public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
+        if (event.button() == 0) {
+            HqTiersLeaderboardClient.Entry entry = rowAt(event.x(), event.y());
             if (entry != null && minecraft != null) {
                 minecraft.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
                 return true;
             }
         }
-        return super.mouseClicked(click, focused);
+        return super.mouseClicked(event, focused);
     }
 
     @Override

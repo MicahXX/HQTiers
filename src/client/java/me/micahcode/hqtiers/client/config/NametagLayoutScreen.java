@@ -2,7 +2,7 @@ package me.micahcode.hqtiers.client.config;
 
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -82,21 +82,21 @@ public class NametagLayoutScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         context.fill(0, 0, width, height, 0xE0101420);
-        super.render(context, mouseX, mouseY, delta);
+        super.extractRenderState(context, mouseX, mouseY, delta);
 
         int cx = width / 2;
         int rowW = Math.min(420, width - 40);
         int left = cx - rowW / 2;
 
-        context.drawCenteredString(font, "Nametag Layout", cx, 10, 0xFF00BFFF);
-        context.drawCenteredString(font, "↑↓ reorder  •  toggle ON/OFF", cx, 22, 0xFF888888);
+        context.centeredText(font, Component.literal("Nametag Layout"), cx, 10, 0xFF00BFFF);
+        context.centeredText(font, Component.literal("↑↓ reorder  •  toggle ON/OFF"), cx, 22, 0xFF888888);
 
-        context.drawString(font, "Component", left, START_Y - 14, 0xFFAAAAAA);
-        context.drawString(font, "Move", left + 190, START_Y - 14, 0xFFAAAAAA);
-        context.drawString(font, "Show", left + 244, START_Y - 14, 0xFFAAAAAA);
-        context.drawString(font, "Label", left + 298, START_Y - 14, 0xFFAAAAAA);
+        context.text(font, "Component", left, START_Y - 14, 0xFFAAAAAA, true);
+        context.text(font, "Move", left + 190, START_Y - 14, 0xFFAAAAAA, true);
+        context.text(font, "Show", left + 244, START_Y - 14, 0xFFAAAAAA, true);
+        context.text(font, "Label", left + 298, START_Y - 14, 0xFFAAAAAA, true);
         context.fill(left - 4, START_Y - 4, left + rowW + 4, START_Y - 3, 0xFF444444);
 
         for (int i = 0; i < order.size(); i++) {
@@ -104,16 +104,16 @@ public class NametagLayoutScreen extends Screen {
             if (i % 2 == 0) {
                 context.fill(left - 4, y - 2, left + rowW + 4, y + ROW_H - 4, 0x22FFFFFF);
             }
-            context.drawString(font,
+            context.text(font,
                     (i + 1) + ". " + componentName(i),
                     left, y + 4,
-                    isEnabled(i) ? 0xFFFFFFFF : 0xFF777777);
+                    isEnabled(i) ? 0xFFFFFFFF : 0xFF777777, true);
         }
 
         int previewY = START_Y + order.size() * ROW_H + 14;
         context.fill(left - 4, previewY - 4, left + rowW + 4, previewY + 14, 0x33FFFFFF);
-        context.drawString(font, "Preview:", left, previewY + 2, 0xFFAAAAAA);
-        context.drawString(font, HqTiersFormatter.previewCompact(), left + 65, previewY + 2, 0xFFFFFFFF);
+        context.text(font, "Preview:", left, previewY + 2, 0xFFAAAAAA, true);
+        context.text(font, HqTiersFormatter.previewCompact(), left + 65, previewY + 2, 0xFFFFFFFF, true);
     }
 
     private void swap(int a, int b) {
