@@ -22,8 +22,11 @@ public class NametagLayoutButtonEntry extends TooltipListEntry<Void> {
                 Component.literal("Edit Nametag Layout..."),
                 btn -> {
                     HqTiersClientConfig.save();
-                    Minecraft.getInstance().setScreen(
-                            new NametagLayoutScreen(Minecraft.getInstance().screen)
+
+                    Minecraft minecraft = Minecraft.getInstance();
+
+                    minecraft.gui.setScreen(
+                            new NametagLayoutScreen(minecraft.gui.screen())
                     );
                 }
         ).width(150).build();

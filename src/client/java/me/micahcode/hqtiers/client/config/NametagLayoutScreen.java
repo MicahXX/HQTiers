@@ -187,7 +187,7 @@ public class NametagLayoutScreen extends Screen {
     public void onClose() {
         HqTiersClientConfig.nametagOrder = new ArrayList<>(order);
         HqTiersClientConfig.save();
-        if (minecraft != null) minecraft.setScreen(parent);
+        if (minecraft != null) minecraft.gui.setScreen(parent);
     }
 
     @Override

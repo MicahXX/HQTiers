@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
+import net.minecraft.client.gui.screens.Overlay;
 
 public final class HqTiersKeybinds {
 	private HqTiersKeybinds() {
@@ -43,10 +44,10 @@ public final class HqTiersKeybinds {
 			unbindAdvancementsIfConflicting(client.options, leaderboard);
 
 			while (leaderboard.consumeClick()) {
-				if (client.screen instanceof HqTiersPlayerStatsScreen) {
-					client.setScreen(null);
+				if (client.gui.screen() instanceof HqTiersPlayerStatsScreen) {
+					client.gui.setScreen(null);
 				} else {
-					client.setScreen(new HqTiersLeaderboardScreen(HqTiersClientState.leaderboardClient()));
+					client.gui.setScreen(new HqTiersLeaderboardScreen(HqTiersClientState.leaderboardClient()));
 				}
 			}
 
@@ -60,7 +61,7 @@ public final class HqTiersKeybinds {
 
             while (viewStats.consumeClick()) {
                 if (client.player != null) {
-                    client.setScreen(new me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen(
+                    client.gui.setScreen(new me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen(
                             null,
                             client.player.getUUID().toString(),
                             client.player.getName().getString()
@@ -119,7 +120,7 @@ public final class HqTiersKeybinds {
 				msg.append(HqTiersFormatter.icon(next));
 			}
 
-			client.gui.setOverlayMessage(msg, false);
+			client.gui.hud.setOverlayMessage(msg, false);
 		}
 	}
 

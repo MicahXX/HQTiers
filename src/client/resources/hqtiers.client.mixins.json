@@ -4,8 +4,8 @@
   "package": "me.micahcode.hqtiers.client.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "LunarPlayerEntityMixin",
-    "PlayerEntityRendererMixin",
+    "TextDisplayEntityRendererMixin",
+    "PlayerEntityMixin",
     "PlayerListHudMixin"
   ],
   "injectors": {

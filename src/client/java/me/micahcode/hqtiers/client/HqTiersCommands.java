@@ -158,7 +158,7 @@ public final class HqTiersCommands {
 
 	private static int openStatsScreen(FabricClientCommandSource source, UUID uuid, String name) {
 		Minecraft client = Minecraft.getInstance();
-		client.execute(() -> client.setScreen(new HqTiersPlayerStatsScreen(client.screen, uuid.toString(), name)));
+		client.execute(() -> client.gui.setScreen(new HqTiersPlayerStatsScreen(client.gui.screen(), uuid.toString(), name)));
 		return 1;
 	}
 

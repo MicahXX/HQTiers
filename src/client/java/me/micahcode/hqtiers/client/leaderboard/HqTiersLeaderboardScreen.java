@@ -191,7 +191,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         if (event.button() == 0) {
             HqTiersLeaderboardClient.Entry entry = rowAt(event.x(), event.y());
             if (entry != null && minecraft != null) {
-                minecraft.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
+                minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
                 return true;
             }
         }
@@ -274,13 +274,13 @@ public final class HqTiersLeaderboardScreen extends Screen {
         if (query.isBlank() || minecraft == null) return;
 
         if (resolvedSearchEntry != null && resolvedSearchEntry.name().equalsIgnoreCase(query)) {
-            minecraft.setScreen(new HqTiersPlayerStatsScreen(this, resolvedSearchEntry.uuid(), resolvedSearchEntry.name(), ladder));
+            minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, resolvedSearchEntry.uuid(), resolvedSearchEntry.name(), ladder));
             return;
         }
 
         for (HqTiersLeaderboardClient.Entry entry : leaderboardClient.state(ladder).entries()) {
             if (entry.name().equalsIgnoreCase(query)) {
-                minecraft.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
+                minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
                 return;
             }
         }
@@ -288,7 +288,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         searchStatus = "Searching...";
         try {
             UUID uuid = parseUuid(query);
-            minecraft.setScreen(new HqTiersPlayerStatsScreen(this, uuid.toString(), query, ladder));
+            minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, uuid.toString(), query, ladder));
             return;
         } catch (IllegalArgumentException ignored) {
         }
@@ -297,7 +297,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
             if (minecraft == null) return;
             minecraft.execute(() -> {
                 if (result.status() == MojangProfileResolver.Status.FOUND) {
-                    minecraft.setScreen(new HqTiersPlayerStatsScreen(this, result.profile().uuid().toString(), result.profile().name(), ladder));
+                    minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, result.profile().uuid().toString(), result.profile().name(), ladder));
                 } else if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
                     searchStatus = "Player not found.";
                 } else {

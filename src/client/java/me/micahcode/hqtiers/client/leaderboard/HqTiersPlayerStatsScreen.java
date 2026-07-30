@@ -110,7 +110,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                 graphYPositions = null;
                 init();
             } else {
-                if (minecraft != null) minecraft.setScreen(parent);
+                if (minecraft != null) minecraft.gui.setScreen(parent);
             }
         }).bounds(panelLeft(), height - 26, 78, 18).build());
 
