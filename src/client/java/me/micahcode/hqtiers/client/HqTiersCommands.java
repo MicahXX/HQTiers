@@ -7,7 +7,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen;
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
@@ -21,22 +21,22 @@ public final class HqTiersCommands {
 
 	public static void register(HqTiersCache cache) {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
-				ClientCommandManager.literal("hqtiers")
+				ClientCommands.literal("hqtiers")
 						.executes(context -> showSelf(context.getSource(), cache))
-						.then(ClientCommandManager.argument("player", StringArgumentType.word())
+						.then(ClientCommands.argument("player", StringArgumentType.word())
 								.executes(context -> showPlayer(context.getSource(), cache, StringArgumentType.getString(context, "player"))))
-						.then(ClientCommandManager.literal("stats")
+						.then(ClientCommands.literal("stats")
 								.executes(context -> showSelfGui(context.getSource()))
-								.then(ClientCommandManager.argument("player", StringArgumentType.word())
+								.then(ClientCommands.argument("player", StringArgumentType.word())
 										.executes(context -> showPlayerGui(context.getSource(), StringArgumentType.getString(context, "player")))))
-						.then(ClientCommandManager.literal("nametag")
+						.then(ClientCommands.literal("nametag")
 								.executes(context -> toggle(context.getSource(), "nametags", !HqTiersClientConfig.nametagEnabled, value -> HqTiersClientConfig.nametagEnabled = value)))
-						.then(ClientCommandManager.literal("tab")
+						.then(ClientCommands.literal("tab")
 								.executes(context -> toggle(context.getSource(), "tab list", !HqTiersClientConfig.tabListEnabled, value -> HqTiersClientConfig.tabListEnabled = value)))
-						.then(ClientCommandManager.literal("ladder")
-								.then(ClientCommandManager.argument("ladder", StringArgumentType.word())
+						.then(ClientCommands.literal("ladder")
+								.then(ClientCommands.argument("ladder", StringArgumentType.word())
 										.executes(context -> setLadder(context.getSource(), StringArgumentType.getString(context, "ladder")))))
-						.then(ClientCommandManager.literal("refresh")
+						.then(ClientCommands.literal("refresh")
 								.executes(context -> {
 									FabricClientCommandSource source = context.getSource();
 									Minecraft client = Minecraft.getInstance();

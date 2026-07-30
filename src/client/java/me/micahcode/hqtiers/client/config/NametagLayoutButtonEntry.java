@@ -3,7 +3,7 @@ package me.micahcode.hqtiers.client.config;
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.shedaniel.clothconfig2.gui.entries.TooltipListEntry;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
@@ -26,7 +26,7 @@ public class NametagLayoutButtonEntry extends TooltipListEntry<Void> {
                             new NametagLayoutScreen(Minecraft.getInstance().screen)
                     );
                 }
-        ).bounds(0, 0, 150, 20).build();
+        ).width(150).build();
     }
 
     @Override
@@ -59,15 +59,23 @@ public class NametagLayoutButtonEntry extends TooltipListEntry<Void> {
     }
 
     @Override
-    public void render(GuiGraphics context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float delta) {
-        button.setX(x + entryWidth - 150);
+    public void extractRenderState(GuiGraphicsExtractor context, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean hovered, float delta) {
+        button.setX(x + entryWidth - 154);
         button.setY(y + 1);
         button.setWidth(150);
-        context.drawString(
-                Minecraft.getInstance().font,
-                Component.literal("Nametag Layout"),
-                x, y + 6, 0xFFFFFFFF
-        );
-        button.render(context, mouseX, mouseY, delta);
+        context.text(Minecraft.getInstance().font, Component.literal("Nametag Layout"), x, y + 6, 0xFFFFFFFF, true);
+
+        int bx = button.getX();
+        int by = button.getY();
+        int bw = button.getWidth();
+        int bh = button.getHeight();
+        boolean buttonHovered = mouseX >= bx && mouseX <= bx + bw && mouseY >= by && mouseY <= by + bh;
+        context.fill(bx, by, bx + bw, by + bh, buttonHovered ? 0xFF3B82F6 : 0xFF1F2937);
+        context.fill(bx, by, bx + bw, by + 1, buttonHovered ? 0xFF93C5FD : 0xFF4B5563);
+        context.fill(bx, by + bh - 1, bx + bw, by + bh, buttonHovered ? 0xFF93C5FD : 0xFF4B5563);
+        context.fill(bx, by, bx + 1, by + bh, buttonHovered ? 0xFF93C5FD : 0xFF4B5563);
+        context.fill(bx + bw - 1, by, bx + bw, by + bh, buttonHovered ? 0xFF93C5FD : 0xFF4B5563);
+        context.centeredText(Minecraft.getInstance().font, button.getMessage(),
+                bx + bw / 2, by + (bh - Minecraft.getInstance().font.lineHeight) / 2, 0xFFFFFFFF);
     }
 }
