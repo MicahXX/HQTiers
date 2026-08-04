@@ -49,28 +49,44 @@ public final class HqTiersFormatter {
 		}
 
 
-		if (ladder == null) {
-			return Component.literal("No Data")
-					.withStyle(ChatFormatting.RED);
-		}
+        if (ladder == null) {
+            return HqTiersClientConfig.showUnranked
+                    ? Component.literal("Unranked").withStyle(ChatFormatting.GRAY)
+                    : Component.empty();
+        }
 
+        if (!HqTiersClientConfig.showUnranked && !ladder.hasPlayedRanked()) {
+            return Component.empty();
+        }
 
-		return decorated(ladder);
+        return decorated(ladder);
 	}
 
-	public static Component previewCompact() {
-		net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
-		if (client != null && client.player != null) {
-			HqTiersStats real =
-					HqTiersClientState.cache()
-							.getIfFresh(client.player.getUUID()).orElse(null);
-			if (real != null) return compact(real);
-		}
-		HqTiersStats.LadderStats fake = HqTiersStats.LadderStats.minimal(
-				HqTiersClientConfig.preferredLadder, 800, 10, 5, 10, "MT4", 123
-		);
-		return decorated(fake);
-	}
+    public static Component previewCompact() {
+        Component preview = decorated(HqTiersStats.LadderStats.minimal(
+                HqTiersClientConfig.preferredLadder,
+                800,
+                10,
+                5,
+                10,
+                "MT4",
+                123
+        ));
+
+        var client = net.minecraft.client.Minecraft.getInstance();
+        if (client != null && client.player != null) {
+            var real = HqTiersClientState.cache()
+                    .getIfFresh(client.player.getUUID())
+                    .map(HqTiersFormatter::compact)
+                    .orElse(Component.empty());
+
+            if (!real.getString().isEmpty()) {
+                preview = real;
+            }
+        }
+
+        return preview;
+    }
 
 	public static Component nametag(HqTiersStats stats, Component currentName) {
 		Component tier = compact(stats);
@@ -157,6 +173,10 @@ public final class HqTiersFormatter {
 		int separatorOccurrence = -1;
 
 		for (HqTiersClientConfig.NametagComponent component : HqTiersClientConfig.nametagOrder) {
+            if (!HqTiersClientConfig.showUnranked && ladder.tierLabel().isEmpty()) {
+                return Component.empty();
+            }
+
 			switch (component) {
 				case GAMEMODE_ICON -> {
 					if (!HqTiersClientConfig.gamemodeIconEnabled) continue;

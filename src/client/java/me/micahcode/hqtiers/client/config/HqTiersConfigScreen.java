@@ -71,6 +71,12 @@ public final class HqTiersConfigScreen {
 				.setDefaultValue(true)
 				.setSaveConsumer(value -> HqTiersClientConfig.coloredPosition = value)
 				.build());
+        overlay.addEntry(entries.startBooleanToggle(
+                        Component.literal("Show Unranked"),
+                        HqTiersClientConfig.showUnranked)
+                .setDefaultValue(false)
+                .setSaveConsumer(value -> HqTiersClientConfig.showUnranked = value)
+                .build());
 
 		builder.setSavingRunnable(HqTiersClientConfig::save);
 		return builder.build();

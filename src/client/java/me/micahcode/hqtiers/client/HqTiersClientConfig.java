@@ -41,6 +41,7 @@ public final class HqTiersClientConfig {
     public static boolean coloredTier = true;
     public static boolean coloredPosition = true;
     public static List<NametagComponent> nametagOrder = defaultNametagOrder();
+    public static boolean showUnranked = false;
 
     public static List<Boolean> nametagSeparatorStates = new ArrayList<>(defaultSeparatorStates());
 
@@ -109,6 +110,7 @@ public final class HqTiersClientConfig {
                 gamemodeIconEnabled = false;
                 tierEnabled = false;
             }
+            showUnranked = data.showUnranked;
             coloredTier = data.coloredTier;
             coloredPosition = data.coloredPosition;
             shortTierNames = data.shortTierNames;
@@ -275,6 +277,7 @@ public final class HqTiersClientConfig {
         boolean suppressRankedDuplicates = true;
         boolean coloredTier = true;
         boolean coloredPosition = false;
+        boolean showUnranked = false;
 
         static Data fromCurrent() {
             Data data = new Data();
@@ -299,6 +302,7 @@ public final class HqTiersClientConfig {
             data.suppressRankedDuplicates = HqTiersClientConfig.suppressRankedDuplicates;
             data.coloredTier = HqTiersClientConfig.coloredTier;
             data.coloredPosition = HqTiersClientConfig.coloredPosition;
+            data.showUnranked = HqTiersClientConfig.showUnranked;
             return data;
         }
     }
