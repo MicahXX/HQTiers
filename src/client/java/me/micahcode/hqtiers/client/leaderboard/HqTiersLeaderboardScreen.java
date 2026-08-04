@@ -1,7 +1,9 @@
 package me.micahcode.hqtiers.client.leaderboard;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -21,11 +23,20 @@ public final class HqTiersLeaderboardScreen extends Screen {
             "SWORD", "AXE", "MACE", "SPEAR_MACE", "UHC", "VANILLA",
             "CART", "DIAMOND_POT", "NETHERITE_OP", "SMP", "DIAMOND_SMP"
     };
-    private static final Set<String> LADDERS_COMING_SOON = Set.of("CART", "SPEAR_MACE");
 
-    private static final int TAB_HEIGHT = 18;
-    private static final int TAB_GAP = 6;
-    private static final int TAB_COLUMNS = 4;
+    private static final int TAB_HEIGHT = 15;
+    private static final int TAB_GAP = 3;
+    private static final int TAB_ROW_GAP = 3;
+    private static final int MIN_TAB_WIDTH = 58;
+    private static final int MAX_TAB_COLUMNS = 6;
+    private static final int MIN_PANEL_WIDTH = 320;
+    private static final int MAX_PANEL_WIDTH = 480;
+    private static final int ROW_HEIGHT = 16;
+
+    // Podium accent colors (ARGB)
+    private static final int GOLD = 0xFFFFD700;
+    private static final int SILVER = 0xFFE3E6EA;
+    private static final int BRONZE = 0xFFCD7F32;
 
     private final HqTiersLeaderboardClient leaderboardClient;
     private String ladder = initialLadder();
@@ -35,6 +46,9 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private String searchStatus = "";
     private HqTiersLeaderboardClient.Entry resolvedSearchEntry;
     private String pendingResolveName = "";
+    // UUIDs we've already asked the player-stats API for real tier data on,
+    // so we don't refire a fetch every single frame a row is on screen.
+    private final Set<String> tierRequested = new HashSet<>();
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
         super(Component.literal("HQTiers Leaderboard"));
@@ -48,14 +62,15 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int panelRight = panelRight();
         int startX = panelLeft + 8;
         int availableWidth = (panelRight - 8) - startX;
-        int tabWidth = (availableWidth - (TAB_COLUMNS - 1) * TAB_GAP) / TAB_COLUMNS;
+        int columns = tabColumns(availableWidth);
+        int tabWidth = (availableWidth - (columns - 1) * TAB_GAP) / columns;
 
         for (int i = 0; i < LADDERS.length; i++) {
             String tabLadder = LADDERS[i];
-            int row = i / TAB_COLUMNS;
-            int col = i % TAB_COLUMNS;
+            int row = i / columns;
+            int col = i % columns;
             int x = startX + col * (tabWidth + TAB_GAP);
-            int y = 22 + row * (TAB_HEIGHT + 4);
+            int y = 20 + row * (TAB_HEIGHT + TAB_ROW_GAP);
             String prefix = tabLadder.equals(ladder) ? "> " : "";
             Button tab = Button.builder(Component.literal(prefix + tabButtonLabel(tabLadder)), button -> {
                 ladder = tabLadder;
@@ -68,7 +83,12 @@ public final class HqTiersLeaderboardScreen extends Screen {
         }
 
         int searchY = searchRowY();
-        searchField = new EditBox(font, panelLeft + 8, searchY, 220, 18, Component.literal("Search player"));
+        int searchAreaWidth = (panelRight - 8) - (panelLeft + 8);
+        int buttonWidth = 64;
+        int gap = 8;
+        int searchWidth = Math.max(90, searchAreaWidth - buttonWidth - gap);
+
+        searchField = new EditBox(font, panelLeft + 8, searchY, searchWidth, 18, Component.literal("Search player"));
         searchField.setMaxLength(32);
         searchField.setHint(Component.literal("Search player..."));
         searchField.setValue(searchQuery);
@@ -80,7 +100,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         });
         addRenderableWidget(searchField);
         addRenderableWidget(Button.builder(Component.literal("Search"), button -> searchPlayer())
-                .bounds(panelLeft + 234, searchY, 68, 18)
+                .bounds(panelLeft + 8 + searchWidth + gap, searchY, buttonWidth, 18)
                 .build());
         leaderboardClient.load(ladder);
     }
@@ -97,17 +117,27 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int panelRight = panelRight();
         int top = tableTop();
         int bottom = height - 28;
-        int rowHeight = 16;
+        int rowHeight = ROW_HEIGHT;
         int searchY = searchRowY();
 
-        context.fill(panelLeft, top - 18, panelRight, bottom, 0xCC1A1408);
-        context.fill(panelLeft, top - 18, panelRight, top - 2, 0xDD2A1E0C);
-        context.drawString(font, "#", panelLeft + 10, top - 14, 0xFFFFE7A3);
-        context.drawString(font, "Player", panelLeft + 46, top - 14, 0xFFFFE7A3);
-        context.drawString(font, "Tier", panelRight - 132, top - 14, 0xFFFFE7A3);
-        context.drawString(font, "TR", panelRight - 54, top - 14, 0xFFFFE7A3);
+        // Tier column is fetched live from the per-player stats API (tierFor()
+        // below) - it lags a frame or two behind TR/name for rows just scrolled
+        // into view, showing "···" until the fetch resolves.
+        int tierColX = tierColX(panelLeft, panelRight);
+        int eloColX = eloColX(panelRight);
+        int nameColX = panelLeft + 46;
 
-        context.drawString(font, "* this as of now does not work", panelLeft + 8, legendY() + 1, 0xFF6B5D3A);
+        context.fillGradient(panelLeft - 2, top - 20, panelRight + 2, bottom + 2, 0x662A1E0C, 0x00000000);
+        context.fill(panelLeft, top - 18, panelRight, bottom, 0xCC1A1408);
+        context.fillGradient(panelLeft, top - 18, panelRight, top - 2, 0xEE33260F, 0xCC2A1E0C);
+        context.fill(panelLeft, top - 3, panelRight, top - 2, 0xFFD4AF37);
+
+        context.drawString(font, "#", panelLeft + 10, top - 14, 0xFFFFE7A3);
+        context.drawString(font, "Player", nameColX, top - 14, 0xFFFFE7A3);
+        context.drawString(font, "Tier", tierColX, top - 14, 0xFFFFE7A3);
+        context.drawString(font, "TR", eloColX, top - 14, 0xFFFFE7A3);
+
+        context.drawString(font, "Click a player to view full stats", panelLeft + 8, legendY() + 1, 0xFF6B5D3A);
 
         if (resolvedSearchEntry != null) {
             context.drawString(font, "Found: " + resolvedSearchEntry.name(), panelLeft + 310, searchY + 5, 0xFF55FF55);
@@ -120,7 +150,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
             int color;
             if (state.unsupported()) {
                 message = HqTiersFormatter.displayName(ladder) + " leaderboard is coming soon to PvPHQ.";
-                color = 0xFFD4AF37; // gold accent - reads as "planned", not "broken"
+                color = 0xFFD4AF37;
             } else if (state.error() != null) {
                 message = state.error();
                 color = 0xFFAAAAAA;
@@ -144,6 +174,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int maxScroll = Math.max(0, visibleEntries.size() * rowHeight - (bottom - top));
         scrollOffset = Math.min(scrollOffset, maxScroll);
 
+        int nameMaxChars = Math.max(6, (tierColX - nameColX - 6) / 6);
+
         context.enableScissor(panelLeft, top, panelRight, bottom);
         for (int i = 0; i < visibleEntries.size(); i++) {
             HqTiersLeaderboardClient.Entry entry = visibleEntries.get(i);
@@ -153,17 +185,34 @@ public final class HqTiersLeaderboardScreen extends Screen {
             }
 
             boolean hovered = mouseX >= panelLeft && mouseX <= panelRight && mouseY >= y && mouseY < y + rowHeight;
-            if (hovered) {
+            int rank = entry.position();
+            boolean isPodium = rank >= 1 && rank <= 3;
+
+            if (isPodium) {
+                int accent = podiumColor(rank);
+                context.fillGradient(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1,
+                        withAlpha(accent, hovered ? 0x50 : 0x30), 0x00000000);
+                context.fill(panelLeft + 2, y - 1, panelLeft + 4, y + rowHeight - 1, withAlpha(accent, 0xFF));
+                context.drawString(font, String.valueOf(rank), panelLeft + 10, y + 3, accent);
+            } else if (hovered) {
                 context.fill(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1, 0x55D4AF37);
-            } else if (i % 2 == 0) {
-                context.fill(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1, 0x22000000);
+                context.drawString(font, rank > 0 ? Integer.toString(rank) : "-", panelLeft + 10, y + 3, rankColor(rank));
+            } else {
+                if (i % 2 == 0) {
+                    context.fill(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1, 0x22000000);
+                }
+                context.drawString(font, rank > 0 ? Integer.toString(rank) : "-", panelLeft + 10, y + 3, rankColor(rank));
             }
 
-            HqTiersStats.LadderStats rowStats = ladderStatsFor(entry);
-            context.drawString(font, entry.position() > 0 ? Integer.toString(entry.position()) : "-", panelLeft + 10, y + 3, rankColor(entry.position()));
-            context.drawString(font, trim(entry.name(), 18), panelLeft + 46, y + 3, nameColor(entry.position()));
-            context.drawString(font, trim(rowStats.tierLabel(), 12), panelRight - 132, y + 3, 0xFF000000 | rowStats.tierColorInt());
-            context.drawString(font, entry.elo() + " TR", panelRight - 54, y + 3, eloColor(entry.elo()));
+            int nameColor = isPodium ? podiumColor(rank) : nameColor(rank);
+            context.drawString(font, trim(entry.name(), nameMaxChars), nameColX, y + 3, nameColor);
+
+            TierLookup tier = tierFor(entry);
+            String tierText = tier.loaded() ? trim(tier.label(), 12) : "···";
+            int tierColor = tier.loaded() ? (0xFF000000 | tier.colorInt()) : 0xFF5C5138;
+            context.drawString(font, tierText, tierColX, y + 3, tierColor);
+
+            context.drawString(font, entry.elo() + " TR", eloColX, y + 3, eloColor(entry.elo()));
         }
         context.disableScissor();
 
@@ -179,8 +228,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         scrollOffset -= (int) (verticalAmount * 18);
         scrollOffset = Math.max(0, scrollOffset);
         HqTiersLeaderboardClient.PageState state = leaderboardClient.state(ladder);
-        int visibleRows = Math.max(1, (height - tableTop() - 40) / 16);
-        if (searchText().isBlank() && scrollOffset > Math.max(0, state.entries().size() - visibleRows - 4) * 16) {
+        int visibleRows = Math.max(1, (height - tableTop() - 40) / ROW_HEIGHT);
+        if (searchText().isBlank() && scrollOffset > Math.max(0, state.entries().size() - visibleRows - 4) * ROW_HEIGHT) {
             leaderboardClient.loadMore(ladder);
         }
         return true;
@@ -214,7 +263,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int panelRight = panelRight();
         int top = tableTop();
         int bottom = height - 28;
-        int rowHeight = 16;
+        int rowHeight = ROW_HEIGHT;
         if (mouseX < panelLeft || mouseX > panelRight || mouseY < top || mouseY > bottom) {
             return null;
         }
@@ -224,20 +273,46 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return index >= 0 && index < entries.size() ? entries.get(index) : null;
     }
 
+    // --- Responsive layout helpers ---
+
     private int panelLeft() {
-        return Math.max(20, width / 2 - 190);
+        return width / 2 - panelWidth() / 2;
     }
 
     private int panelRight() {
-        return Math.min(width - 20, width / 2 + 190);
+        return width / 2 + panelWidth() / 2;
+    }
+
+    private int panelWidth() {
+        int target = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, (int) (width * 0.6)));
+        return Math.min(target, Math.max(MIN_PANEL_WIDTH, width - 40));
+    }
+
+    private int tabColumns(int availableWidth) {
+        int fit = availableWidth / (MIN_TAB_WIDTH + TAB_GAP);
+        return Math.max(3, Math.min(MAX_TAB_COLUMNS, fit));
+    }
+
+    private int tierColX(int panelLeft, int panelRight) {
+        int panelWidth = panelRight - panelLeft;
+        int fromRight = Math.max(110, Math.min(150, panelWidth / 3));
+        return panelRight - fromRight;
+    }
+
+    private int eloColX(int panelRight) {
+        return panelRight - 54;
     }
 
     private int tabRows() {
-        return (LADDERS.length + TAB_COLUMNS - 1) / TAB_COLUMNS;
+        int panelLeft = panelLeft();
+        int panelRight = panelRight();
+        int availableWidth = (panelRight - 8) - (panelLeft + 8);
+        int columns = tabColumns(availableWidth);
+        return (LADDERS.length + columns - 1) / columns;
     }
 
     private int legendY() {
-        return 22 + tabRows() * (TAB_HEIGHT + 4);
+        return 20 + tabRows() * (TAB_HEIGHT + TAB_ROW_GAP);
     }
 
     private int searchRowY() {
@@ -246,6 +321,21 @@ public final class HqTiersLeaderboardScreen extends Screen {
 
     private int tableTop() {
         return searchRowY() + TAB_HEIGHT + 34;
+    }
+
+    // --- Podium rendering ---
+
+    private static int podiumColor(int rank) {
+        return switch (rank) {
+            case 1 -> GOLD;
+            case 2 -> SILVER;
+            case 3 -> BRONZE;
+            default -> 0xFFFFFFFF;
+        };
+    }
+
+    private static int withAlpha(int argb, int alpha) {
+        return (alpha << 24) | (argb & 0x00FFFFFF);
     }
 
     private List<HqTiersLeaderboardClient.Entry> visibleEntries(List<HqTiersLeaderboardClient.Entry> entries) {
@@ -371,18 +461,54 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     private static String tabButtonLabel(String ladder) {
-        String label = switch (ladder) {
+        return switch (ladder) {
             case "DIAMOND_POT" -> "Pot";
             case "NETHERITE_OP" -> "NethOP";
             case "DIAMOND_SMP" -> "D.SMP";
             case "SPEAR_MACE" -> "S.Mace";
             default -> HqTiersFormatter.displayName(ladder);
         };
-        return LADDERS_COMING_SOON.contains(ladder) ? label + "*" : label;
     }
 
-    private static HqTiersStats.LadderStats ladderStatsFor(HqTiersLeaderboardClient.Entry entry) {
-        return HqTiersStats.LadderStats.minimal("LEADERBOARD", entry.elo(), 1, 0, 0, null, entry.position());
+    /** Real tier for a row, or an unloaded marker while the fetch is in flight. */
+    private record TierLookup(boolean loaded, String label, int colorInt) {
+        static TierLookup unloaded() {
+            return new TierLookup(false, "", 0);
+        }
+    }
+
+    /**
+     * Tier for a leaderboard row comes from the real per-player stats API
+     * (the same HqTiersClientState.cache() the player-stats screen uses) -
+     * not a client-side rating-threshold guess. If the player's stats
+     * aren't cached yet, this kicks off a fetch (once per uuid) and reports
+     * unloaded() so the caller can show a loading placeholder instead of
+     * something that looks like real (but wrong) data.
+     */
+    private TierLookup tierFor(HqTiersLeaderboardClient.Entry entry) {
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(entry.uuid());
+        } catch (IllegalArgumentException invalid) {
+            return TierLookup.unloaded();
+        }
+
+        Optional<HqTiersStats> cached = HqTiersClientState.cache().getIfFresh(uuid);
+        if (cached.isPresent()) {
+            Optional<HqTiersStats.LadderStats> real = cached.get().ladder(ladder);
+            if (real.isPresent()) {
+                HqTiersStats.LadderStats l = real.get();
+                return new TierLookup(true, l.tierLabel(), l.tierColorInt());
+            }
+            // Player's stats are cached but they have no ranked data on this
+            // ladder specifically - that's a legitimate "no tier", not loading.
+            return new TierLookup(true, "", 0);
+        }
+
+        if (tierRequested.add(entry.uuid())) {
+            HqTiersClientState.cache().fetch(uuid);
+        }
+        return TierLookup.unloaded();
     }
 
     private static String trim(String value, int max) {
@@ -390,15 +516,11 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     private static int rankColor(int rank) {
-        if (rank == 1) return 0xFFFFD700;
-        if (rank == 2) return 0xFFC0C0C0;
-        if (rank == 3) return 0xFFCD7F32;
-        if (rank <= 10) return 0xFFFFFF88;
+        if (rank <= 10 && rank > 0) return 0xFFFFFF88;
         return 0xFF9CA3AF;
     }
 
     private static int nameColor(int rank) {
-        if (rank <= 3) return rankColor(rank);
         return 0xFFFFFFFF;
     }
 
