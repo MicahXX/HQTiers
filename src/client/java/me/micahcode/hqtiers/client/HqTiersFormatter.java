@@ -245,17 +245,18 @@ public final class HqTiersFormatter {
 
 	private static char iconGlyph(String ladder) {
 		return switch (HqTiersClientConfig.normalizeLadder(ladder)) {
-			case "GLOBAL" -> '\uE00A';
 			case "SWORD" -> '\uE001';
 			case "AXE" -> '\uE002';
 			case "VANILLA", "CRYSTAL" -> '\uE003';
 			case "UHC" -> '\uE004';
-			case "MACE", "SPEAR_MACE", "SPEAR" -> '\uE005';
-			case "NETHERITE_OP", "NETHERITE_POT" -> '\uE006';
+			case "MACE" -> '\uE005';
+			case "NETHERITE_POT", "NETHERITE_OP" -> '\uE006';
 			case "DIAMOND_POT", "POT" -> '\uE007';
 			case "SMP", "NETHERITE_SMP" -> '\uE008';
 			case "DIAMOND_SMP" -> '\uE009';
-			case "CART" -> '\uE00A';
+            case "GLOBAL" -> '\uE00A';
+            case "SPEAR_MACE" -> '\uE00B';
+			case "CART" -> '\uE00C';
 			default -> '\uE00A';
 		};
 	}
@@ -271,7 +272,7 @@ public final class HqTiersFormatter {
 			case "SPEAR_MACE", "SPEAR" -> "Spear Mace";
 			case "CART" -> "Cart";
 			case "DIAMOND_POT" -> "Pot";
-			case "NETHERITE_OP" -> "NethOP";
+			case "NETHERITE_POT", "NETHERITE_OP" -> "NethOP";
 			case "SMP", "NETHERITE_SMP" -> "SMP";
 			case "DIAMOND_SMP" -> "DiamondSMP";
 			default -> HqTiersClientConfig.normalizeLadder(ladder);
