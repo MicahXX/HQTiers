@@ -95,7 +95,7 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
 
         public String tierLabel() {
             if (placementGames < placementTarget) {
-                return "Unranked";
+                return HqTiersClientConfig.showUnranked ? "Unranked" : "";
             }
 
             if (tierName != null
@@ -108,7 +108,7 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
 
             return tier != null
                     ? tier.getDisplayName()
-                    : "Unranked";
+                    : (HqTiersClientConfig.showUnranked ? "Unranked" : "");
         }
 
         public int tierColorInt() {
