@@ -5,6 +5,7 @@ import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.HqTiersMinecraftCompat;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
@@ -20,22 +21,27 @@ public class PlayerListHudMixin {
 
         var uuid = HqTiersMinecraftCompat.profileId(entry.getProfile());
 
-        // Trigger background fetch, but only apply from cache synchronously —
-        // the return value is dead by the time an async callback would fire.
         if (HqTiersClientState.cache().getIfFresh(uuid).isEmpty()) {
             HqTiersClientState.cache().fetch(uuid);
         }
 
         return HqTiersClientState.cache().getIfFresh(uuid)
                 .map(stats -> {
-                    Component suffix = HqTiersFormatter.compact(stats);
-                    if (suffix.getString().isEmpty()) return current;
-                    if (current.getString().contains(suffix.getString())) return current;
+                    Component formatted = HqTiersFormatter.compact(stats);
+
+                    if (formatted.getString().isEmpty()) {
+                        return current;
+                    }
+
+                    if (current.getString().contains(formatted.getString())) {
+                        return current;
+                    }
 
                     Component cleanName = stripLeadingSeparator(current);
+
                     return HqTiersClientConfig.nametagAlignment == HqTiersClientConfig.NametagAlignment.LEFT
-                            ? suffix.copy().append(Component.literal(" ")).append(cleanName)
-                            : cleanName.copy().append(Component.literal(" ")).append(suffix);
+                            ? formatted.copy().append(separator()).append(cleanName)
+                            : cleanName.copy().append(separator()).append(formatted);
                 })
                 .orElse(current);
     }
@@ -44,5 +50,9 @@ public class PlayerListHudMixin {
         String raw = text.getString();
         String stripped = raw.replaceFirst("^\\s*\\|\\s*", "");
         return stripped.equals(raw) ? text : Component.literal(stripped);
+    }
+
+    private static Component separator() {
+        return Component.literal(" | ").withStyle(ChatFormatting.GRAY);
     }
 }
