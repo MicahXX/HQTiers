@@ -23,7 +23,7 @@ public final class HqTiersKeybinds {
 
 		KeyMapping cycleForward = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.cycle_mode",
-				-1,
+				InputConstants.KEY_RIGHT,
 				"category.hqtiers"
 		));
 
