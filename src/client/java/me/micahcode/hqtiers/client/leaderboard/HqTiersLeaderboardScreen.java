@@ -54,6 +54,12 @@ public final class HqTiersLeaderboardScreen extends Screen {
     // UUIDs we've already asked the player-stats API for real tier data on,
     // so we don't refire a fetch every single frame a row is on screen.
     private final Set<String> tierRequested = new HashSet<>();
+    // True until this screen instance's very first init() call completes.
+    // Since a brand new HqTiersLeaderboardScreen is constructed every time
+    // the leaderboard is opened, this lets us force a real refresh() the
+    // moment the screen appears, without also force-refreshing on every
+    // subsequent init() call caused by a window resize.
+    private boolean firstInit = true;
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
         super(Component.literal("HQTiers Leaderboard"));
@@ -107,7 +113,18 @@ public final class HqTiersLeaderboardScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Search"), button -> searchPlayer())
                 .bounds(panelLeft + 8 + searchWidth + gap, searchY, buttonWidth, 18)
                 .build());
-        leaderboardClient.load(ladder);
+
+        if (firstInit) {
+            // First time this screen instance is opened - force a real
+            // re-fetch instead of trusting whatever the client already has
+            // cached, so the leaderboard isn't stale on open.
+            firstInit = false;
+            leaderboardClient.refresh(ladder);
+        } else {
+            // Subsequent init() calls (e.g. window resize) shouldn't
+            // trigger another network refetch.
+            leaderboardClient.load(ladder);
+        }
     }
 
     @Override

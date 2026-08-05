@@ -331,9 +331,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             // Rank
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
             int rankCol = l.hasPosition() ? 0xFFFFD700 : TEXT_DIM;
-            // NOTE: this previously hardcoded the y-coordinate to `3` instead
-            // of `y + 3`, so the rank text rendered pinned near the top of
-            // the screen instead of inside its row. Fixed.
             ctx.text(font, rankStr, pl + col(pw, 3), y + 3, rankCol, true);
 
             // W/L
