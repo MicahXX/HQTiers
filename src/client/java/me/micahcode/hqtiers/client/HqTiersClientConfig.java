@@ -57,7 +57,7 @@ public final class HqTiersClientConfig {
     );
     // Ladders the mod knows about (or that a person could type into a config/
     // command) that have no backing endpoint on the real API at all.
-    private static final Set<String> UNSUPPORTED_BY_API = Set.of("GLOBAL", "CART", "SPEAR_MACE");
+    private static final Set<String> UNSUPPORTED_BY_API = Set.of("GLOBAL");
 
     /**
      * Translates an internal ladder key to the key the PvPHQ API expects.
