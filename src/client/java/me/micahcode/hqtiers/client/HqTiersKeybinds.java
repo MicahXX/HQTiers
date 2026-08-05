@@ -30,7 +30,7 @@ public final class HqTiersKeybinds {
 
 		KeyMapping cycleBack = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
 				"key.hqtiers.cycle_mode_back",
-				-1,
+                InputConstants.KEY_LEFT,
 				"category.hqtiers"
 		));
 
