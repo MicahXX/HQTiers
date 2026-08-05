@@ -4,7 +4,9 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.HqTiersFormatter;
@@ -43,6 +45,10 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private static final int MAX_PANEL_WIDTH = 540;
     private static final int SIDE_MARGIN = 16;
     private static final int COMPACT_WIDTH = 360;
+
+    // How much of the footer area to keep clear below the last table row.
+    // Kept in sync with the GuiGraphicsExtractor version of this screen.
+    private static final int FOOTER_RESERVE = 16;
 
     private final Screen parent;
     private final UUID uuid;
@@ -117,8 +123,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private int tableRowH(int ladderCount) {
         int base = rowH();
         if (ladderCount <= 0) return base;
-        int footerReserve = 14;
-        int available = (tableBottom() - footerReserve) - (tableTop() + 4);
+        int available = (tableBottom() - FOOTER_RESERVE) - (tableTop() + 4);
         int neededRows = ladderCount + 1; // +1 for the header row
         int needed = neededRows * base;
         if (needed <= available) return base;
@@ -275,6 +280,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.drawString(font, "RANK", pl + col(pw, 3, compact), hy + 4, TEXT_HEADER);
         if (!compact) {
             ctx.drawString(font, "W / L", pl + col(pw, 4, compact), hy + 4, TEXT_HEADER);
+            ctx.drawString(font, "STREAK", pl + col(pw, 5, compact), hy + 4, TEXT_HEADER);
         }
 
         if (ladders.isEmpty()) {
@@ -321,6 +327,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             if (!compact) {
                 ctx.drawString(font, l.wins() + " / " + l.losses(),
                         pl + col(pw, 4, compact), y + 4, wlColor(l.wins(), l.losses()));
+                ctx.drawString(font, streakStr(l.currentStreak()),
+                        pl + col(pw, 5, compact), y + 4, streakColor(l.currentStreak()));
             }
 
             if (hovered) ctx.drawString(font, "→", pr - 14, y + 4, ACCENT_GOLD);
@@ -333,6 +341,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         // which pushed the footer further DOWN (below the panel) whenever
         // the ladder list was long enough to push finalY past tb - 16,
         // causing it to overlap/clip past the last ladder row.
+        //
+        // bestLadder() only returns a ladder that has actually finished
+        // placements and received a real tier (see HqTiersFormatter), so
+        // this footer no longer shows up for a gamemode that's still
+        // "Unranked" just because it happens to have the highest raw TR.
         int finalY = y;
         stats.bestLadder().ifPresent(best -> {
             int fy = Math.min(tb - 16, finalY + 6);
@@ -343,7 +356,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     // column x-offsets as fraction of panel width; compact mode drops W/L
-    // entirely and widens the remaining four columns to use the space
+    // and STREAK entirely and widens the remaining four columns to use the
+    // space. Kept in sync with the GuiGraphicsExtractor version.
     private static int col(int pw, int col, boolean compact) {
         if (compact) {
             return switch (col) {
@@ -356,10 +370,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
         return switch (col) {
             case 0 -> 10;
-            case 1 -> pw * 32 / 100;
-            case 2 -> pw * 48 / 100;
-            case 3 -> pw * 62 / 100;
-            case 4 -> pw * 78 / 100;
+            case 1 -> pw * 26 / 100;
+            case 2 -> pw * 40 / 100;
+            case 3 -> pw * 52 / 100;
+            case 4 -> pw * 66 / 100;
+            case 5 -> pw * 84 / 100;
             default -> 10;
         };
     }
@@ -542,19 +557,32 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     /**
-     * Every fetched ladder gets shown here, regardless of whether the player
-     * has actually played games on it - this screen is meant to be a full
-     * stat sheet, matching what the /hqtiers command's text output shows.
-     * (Previously this filtered out anything with 0 wins/losses, which made
-     * the K menu look empty for players who haven't played much yet even
-     * though the data was already fetched and available.)
+     * Every known gamemode gets shown here - not just the ones present in
+     * stats.ladders(). The API only includes a gametype in its `ranked`
+     * array once the player has at least one game/placement on it, so a
+     * mode with zero games never makes it into the map at all. To make
+     * this screen a full stat sheet (matching what the /hqtiers command's
+     * text output shows) we fill in any gamemode from
+     * HqTiersFormatter.KNOWN_LADDERS that's missing from the map with a
+     * zeroed-out "Unranked" stub, so every mode always has a row.
      */
     private static List<HqTiersStats.LadderStats> sortedLadders(HqTiersStats stats) {
-        return stats.ladders().values().stream()
+        Map<String, HqTiersStats.LadderStats> ladders = new HashMap<>(stats.ladders());
+        for (String known : HqTiersFormatter.KNOWN_LADDERS) {
+            ladders.putIfAbsent(known, HqTiersStats.LadderStats.minimal(known, 0, 0, 0, 0, null, 0));
+        }
+
+        return ladders.values().stream()
                 .sorted(Comparator
                         .comparingInt((HqTiersStats.LadderStats l) -> l.ladder().equals("GLOBAL") ? 0 : 1)
                         .thenComparing(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating).reversed()))
                 .toList();
+    }
+
+    private static String streakStr(int s) {
+        if (s > 0) return "+" + s;
+        if (s < 0) return Integer.toString(s);
+        return "—";
     }
 
     private static int wlColor(int w, int l) {
@@ -564,6 +592,14 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (r >= 0.55) return 0xFF4ADE80;
         if (r >= 0.45) return 0xFFB0B8CC;
         return 0xFFF87171;
+    }
+
+    private static int streakColor(int s) {
+        if (s > 2) return 0xFF4ADE80;
+        if (s > 0) return 0xFF86EFAC;
+        if (s < -2) return 0xFFF87171;
+        if (s < 0) return 0xFFFCA5A5;
+        return TEXT_DIM;
     }
 
     private static int eloColor(int elo) {
