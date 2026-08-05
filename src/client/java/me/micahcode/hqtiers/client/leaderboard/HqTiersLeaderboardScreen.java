@@ -1,10 +1,10 @@
 package me.micahcode.hqtiers.client.leaderboard;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
@@ -33,6 +33,10 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private static final int MAX_PANEL_WIDTH = 480;
     private static final int ROW_HEIGHT = 16;
 
+
+    private static final long LEADERBOARD_REFRESH_INTERVAL_MS = 10_000;
+    private static final long TIER_REFETCH_COOLDOWN_MS = 5_000;
+
     // Podium accent colors (ARGB)
     private static final int GOLD = 0xFFFFD700;
     private static final int SILVER = 0xFFE3E6EA;
@@ -46,9 +50,19 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private String searchStatus = "";
     private HqTiersLeaderboardClient.Entry resolvedSearchEntry;
     private String pendingResolveName = "";
-    // UUIDs we've already asked the player-stats API for real tier data on,
-    // so we don't refire a fetch every single frame a row is on screen.
-    private final Set<String> tierRequested = new HashSet<>();
+    // Last time each ladder was (re)requested from the API, so
+    // maybeRefreshLeaderboard() knows when it's due for another pull
+    // without spamming a fetch every single frame.
+    private final Map<String, Long> lastLeaderboardRefreshAt = new HashMap<>();
+    // Last time we asked the player-stats API for a given uuid's tier data,
+    // so we retry periodically instead of only ever fetching once.
+    private final Map<String, Long> tierRequestedAt = new HashMap<>();
+    // True until this screen instance's very first init() call completes.
+    // Since a brand new HqTiersLeaderboardScreen is constructed every time
+    // the leaderboard is opened, this lets us force a real refresh() the
+    // moment the screen appears, without also force-refreshing on every
+    // subsequent init() call caused by a window resize.
+    private boolean firstInit = true;
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
         super(Component.literal("HQTiers Leaderboard"));
@@ -76,6 +90,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 ladder = tabLadder;
                 scrollOffset = 0;
                 leaderboardClient.load(ladder);
+                lastLeaderboardRefreshAt.put(ladder, System.currentTimeMillis());
                 init();
             }).bounds(x, y, tabWidth, TAB_HEIGHT).build();
             tab.active = !tabLadder.equals(ladder);
@@ -102,11 +117,26 @@ public final class HqTiersLeaderboardScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal("Search"), button -> searchPlayer())
                 .bounds(panelLeft + 8 + searchWidth + gap, searchY, buttonWidth, 18)
                 .build());
-        leaderboardClient.load(ladder);
+
+        if (firstInit) {
+            // First time this screen instance is opened - force a real
+            // re-fetch instead of trusting whatever the client already has
+            // cached, so the leaderboard isn't stale on open.
+            firstInit = false;
+            leaderboardClient.refresh(ladder);
+            lastLeaderboardRefreshAt.put(ladder, System.currentTimeMillis());
+        } else {
+            // Subsequent init() calls (e.g. window resize) shouldn't
+            // trigger another network refetch.
+            leaderboardClient.load(ladder);
+            lastLeaderboardRefreshAt.putIfAbsent(ladder, System.currentTimeMillis());
+        }
     }
 
     @Override
     public void render(GuiGraphics context, int mouseX, int mouseY, float delta) {
+        maybeRefreshLeaderboard();
+
         context.fill(0, 0, width, height, 0xF0100C05);
         super.render(context, mouseX, mouseY, delta);
 
@@ -221,6 +251,32 @@ public final class HqTiersLeaderboardScreen extends Screen {
         } else {
             context.drawString(font, entries.size() + " players | page " + Math.max(1, state.page()), panelLeft, height - 18, 0xFF7C8BA1);
         }
+    }
+
+    /**
+     * leaderboardClient.load() only fetches the first time - it bails out
+     * immediately once state.entries() is non-empty. That's fine for the
+     * first paint, but it means nothing else ever asked for fresh data, so
+     * rank/TR would just sit stale for as long as this screen stayed open.
+     * This calls refresh() (which unconditionally re-fetches) on a timer
+     * instead, skipping while a load/loadMore is already in flight or while
+     * the player is actively searching (so their scroll position and
+     * resolved search result don't get yanked out from under them).
+     */
+    private void maybeRefreshLeaderboard() {
+        HqTiersLeaderboardClient.PageState state = leaderboardClient.state(ladder);
+        if (state.loading() || !searchText().isBlank()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long last = lastLeaderboardRefreshAt.getOrDefault(ladder, 0L);
+        if (now - last < LEADERBOARD_REFRESH_INTERVAL_MS) {
+            return;
+        }
+
+        lastLeaderboardRefreshAt.put(ladder, now);
+        leaderboardClient.refresh(ladder);
     }
 
     @Override
@@ -477,14 +533,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         }
     }
 
-    /**
-     * Tier for a leaderboard row comes from the real per-player stats API
-     * (the same HqTiersClientState.cache() the player-stats screen uses) -
-     * not a client-side rating-threshold guess. If the player's stats
-     * aren't cached yet, this kicks off a fetch (once per uuid) and reports
-     * unloaded() so the caller can show a loading placeholder instead of
-     * something that looks like real (but wrong) data.
-     */
     private TierLookup tierFor(HqTiersLeaderboardClient.Entry entry) {
         UUID uuid;
         try {
@@ -505,7 +553,10 @@ public final class HqTiersLeaderboardScreen extends Screen {
             return new TierLookup(true, "", 0);
         }
 
-        if (tierRequested.add(entry.uuid())) {
+        long now = System.currentTimeMillis();
+        long last = tierRequestedAt.getOrDefault(entry.uuid(), 0L);
+        if (now - last >= TIER_REFETCH_COOLDOWN_MS) {
+            tierRequestedAt.put(entry.uuid(), now);
             HqTiersClientState.cache().fetch(uuid);
         }
         return TierLookup.unloaded();

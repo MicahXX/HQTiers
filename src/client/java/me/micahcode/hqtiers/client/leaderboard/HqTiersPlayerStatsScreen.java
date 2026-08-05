@@ -275,7 +275,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.drawString(font, "RANK", pl + col(pw, 3, compact), hy + 4, TEXT_HEADER);
         if (!compact) {
             ctx.drawString(font, "W / L", pl + col(pw, 4, compact), hy + 4, TEXT_HEADER);
-            ctx.drawString(font, "STREAK", pl + col(pw, 5, compact), hy + 4, TEXT_HEADER);
         }
 
         if (ladders.isEmpty()) {
@@ -302,9 +301,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             String rawTierLabel = l.tierLabel();
             boolean unranked = rawTierLabel.isEmpty() || rawTierLabel.equalsIgnoreCase("Unranked");
 
-            int nameMaxChars = compact ? 5 : 9;
             ctx.drawString(font, HqTiersFormatter.icon(l.ladder()), pl + col(pw, 0, compact), y + 4, TEXT_WHITE);
-            ctx.drawString(font, trim(HqTiersFormatter.displayName(l.ladder()), nameMaxChars),
+            ctx.drawString(font, HqTiersFormatter.displayName(l.ladder()),
                     pl + col(pw, 0, compact) + 12, y + 4, TEXT_WHITE);
 
             String tierText = unranked ? "Unranked" : rawTierLabel;
@@ -323,8 +321,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             if (!compact) {
                 ctx.drawString(font, l.wins() + " / " + l.losses(),
                         pl + col(pw, 4, compact), y + 4, wlColor(l.wins(), l.losses()));
-                ctx.drawString(font, streakStr(l.currentStreak()),
-                        pl + col(pw, 5, compact), y + 4, streakColor(l.currentStreak()));
             }
 
             if (hovered) ctx.drawString(font, "→", pr - 14, y + 4, ACCENT_GOLD);
@@ -340,13 +336,14 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int finalY = y;
         stats.bestLadder().ifPresent(best -> {
             int fy = Math.min(tb - 16, finalY + 6);
+            ctx.fill(pl + 2, fy - 4, pr - 2, fy - 3, ACCENT_DIM);
             String footer = "Best: " + HqTiersFormatter.displayName(best.ladder()) + "  " + best.tierLabel();
             ctx.drawString(font, trim(footer, compact ? 30 : 60), pl + 10, fy, 0xFFFFD700);
         });
     }
 
-    // column x-offsets as fraction of panel width; compact mode drops W/L and
-    // STREAK entirely and widens the remaining four columns to use the space
+    // column x-offsets as fraction of panel width; compact mode drops W/L
+    // entirely and widens the remaining four columns to use the space
     private static int col(int pw, int col, boolean compact) {
         if (compact) {
             return switch (col) {
@@ -362,8 +359,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             case 1 -> pw * 32 / 100;
             case 2 -> pw * 48 / 100;
             case 3 -> pw * 62 / 100;
-            case 4 -> pw * 74 / 100;
-            case 5 -> pw * 89 / 100;
+            case 4 -> pw * 78 / 100;
             default -> 10;
         };
     }
@@ -561,12 +557,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                 .toList();
     }
 
-    private static String streakStr(int s) {
-        if (s > 0) return "+" + s;
-        if (s < 0) return Integer.toString(s);
-        return "—";
-    }
-
     private static int wlColor(int w, int l) {
         int t = w + l;
         if (t == 0) return TEXT_DIM;
@@ -574,14 +564,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (r >= 0.55) return 0xFF4ADE80;
         if (r >= 0.45) return 0xFFB0B8CC;
         return 0xFFF87171;
-    }
-
-    private static int streakColor(int s) {
-        if (s > 2) return 0xFF4ADE80;
-        if (s > 0) return 0xFF86EFAC;
-        if (s < -2) return 0xFFF87171;
-        if (s < 0) return 0xFFFCA5A5;
-        return TEXT_DIM;
     }
 
     private static int eloColor(int elo) {
