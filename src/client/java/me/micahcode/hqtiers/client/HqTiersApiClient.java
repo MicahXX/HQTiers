@@ -1,7 +1,6 @@
 package me.micahcode.hqtiers.client;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
@@ -17,10 +16,21 @@ import java.util.Map;
 import java.util.UUID;
 
 public class HqTiersApiClient {
-    private static final URI BASE_URI = URI.create("https://pvphq.com/api/v1/");
+    private static final URI BASE_URI = URI.create("https://pvphq.com/api/ranked/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final String USER_AGENT = "HQTiers/1.0 (micahcode)";
     private static final Gson GSON = new Gson();
+
+    // HqTiersClientConfig.fromApiLadder() already owns the canonical
+    // API-key -> internal-ladder-id mapping (POT -> DIAMOND_POT,
+    // NETHERITE_POT -> NETHERITE_OP, etc.) and is used everywhere else in
+    // the client (leaderboard tabs, toApiLadder/fromApiLadder round-trips),
+    // so we defer to it instead of maintaining a second, divergent alias
+    // table here. HT_CART is the one key the ranked endpoint returns that
+    // config doesn't know about yet - unconfirmed guess, flagged below.
+    private static final Map<String, String> EXTRA_LADDER_KEY_ALIASES = Map.of(
+            "HT_CART", "CART"
+    );
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(TIMEOUT)
@@ -28,7 +38,7 @@ public class HqTiersApiClient {
             .build();
 
     public HqTiersStats fetchRanked(UUID uuid) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(BASE_URI.resolve("players/" + uuid))
+        HttpRequest request = HttpRequest.newBuilder(BASE_URI.resolve(uuid.toString()))
                 .timeout(TIMEOUT)
                 .header("Accept", "application/json")
                 .header("User-Agent", USER_AGENT)
@@ -49,61 +59,72 @@ public class HqTiersApiClient {
             return null;
         }
 
-        UUID playerUuid = UUID.fromString(string(root, "uuid", uuid.toString()));
-        String name = string(root, "name", playerUuid.toString());
+        // The ranked endpoint doesn't return a display name or a distinct
+        // player uuid field - "_id" is just the same uuid we requested with.
+        UUID playerUuid = uuid;
+        String name = playerUuid.toString();
 
-        Map<String, HqTiersStats.LadderStats> ladders = readLadders(root.getAsJsonArray("ranked"));
+        Map<String, HqTiersStats.LadderStats> ladders = readLadders(root.getAsJsonObject("data"));
         ladders.put("GLOBAL", buildGlobal(root));
 
         return new HqTiersStats(playerUuid, name, ladders, System.currentTimeMillis());
     }
 
-    private static Map<String, HqTiersStats.LadderStats> readLadders(JsonArray ranked) {
+    private static Map<String, HqTiersStats.LadderStats> readLadders(JsonObject data) {
         Map<String, HqTiersStats.LadderStats> ladders = new HashMap<>();
-        if (ranked == null) {
+        if (data == null) {
             return ladders;
         }
 
-        for (JsonElement element : ranked) {
-            if (!element.isJsonObject()) {
+        for (Map.Entry<String, JsonElement> element : data.entrySet()) {
+            if (!element.getValue().isJsonObject()) {
                 continue;
             }
 
-            JsonObject entry = element.getAsJsonObject();
-            String apiGametype = string(entry, "gametype", null);
-            if (apiGametype == null) {
+            JsonObject entry = element.getValue().getAsJsonObject();
+            String key = canonicalLadder(element.getKey().toUpperCase());
+
+            int wins = intValue(entry, "wins", 0);
+            int losses = intValue(entry, "losses", 0);
+            int placementGames = intValue(entry, "placementGames", 0);
+            int placementTarget = intValue(entry, "placementTarget", 10);
+            int leaderboardPosition = intValue(entry, "leaderboardPosition", -1);
+            int gamesPlayed = intValue(entry, "gamesPlayed", 0);
+            String tier = string(entry, "grantedTier", null);
+            double winRate = (wins + losses) > 0 ? (double) wins / (wins + losses) : 0.0;
+
+            HqTiersStats.LadderStats existing = ladders.get(key);
+            if (existing != null && existing.gamesPlayed() >= gamesPlayed) {
                 continue;
             }
-
-            String key = HqTiersClientConfig.fromApiLadder(apiGametype.toUpperCase());
 
             ladders.put(key, new HqTiersStats.LadderStats(
                     key,
                     intValue(entry, "rating", 1000),
                     intValue(entry, "peakRating", 1000),
-                    intValue(entry, "rd", 350),
-                    intValue(entry, "wins", 0),
-                    intValue(entry, "losses", 0),
-                    intValue(entry, "gamesPlayed", 0),
-                    doubleValue(entry, "winRate", 0.0),
-                    string(entry, "tier", null),
+                    350,
+                    wins,
+                    losses,
+                    gamesPlayed,
+                    winRate,
+                    tier,
                     string(entry, "tierColor", null),
-                    intValue(entry, "tierProgress", 0),
-                    boolValue(entry, "unranked", true),
-                    boolValue(entry, "inactive", false),
-                    intValue(entry, "placementGames", 0),
-                    intValue(entry, "placementTarget", 10),
-                    longValue(entry, "lastPlayedAt", 0L),
-                    intValue(entry, "tierFloor", 0),
-                    intValue(entry, "tierCeiling", 0),
-                    string(entry, "nextTier", null),
-                    string(entry, "nextTierColor", null),
-                    boolValue(entry, "nextIsTournamentGated", false),
-                    boolValue(entry, "atRatingCap", false),
-                    intValue(entry, "ratingAboveCap", 0),
-                    boolValue(entry, "fromTournament", false),
-                    intValue(entry, "promoProgress", 0),
-                    0
+                    0,
+                    tier == null,
+                    false,
+                    placementGames,
+                    placementTarget,
+                    0L,
+                    0,
+                    0,
+                    null,
+                    null,
+                    false,
+                    false,
+                    0,
+                    false,
+                    0,
+                    leaderboardPosition > 0 ? leaderboardPosition : 0
             ));
         }
 
@@ -111,17 +132,20 @@ public class HqTiersApiClient {
     }
 
     private static HqTiersStats.LadderStats buildGlobal(JsonObject root) {
-        JsonObject stats = root.getAsJsonObject("stats");
-        int wins = stats != null ? intValue(stats, "wins", 0) : 0;
-        int losses = stats != null ? intValue(stats, "losses", 0) : 0;
-        int gamesPlayed = stats != null ? intValue(stats, "gamesPlayed", 0) : 0;
-        double winRate = stats != null ? doubleValue(stats, "winRate", 0.0) : 0.0;
+        String globalRank = string(root, "rank", null);
+        int globalPosition = intValue(root, "globalPosition", -1);
 
         return new HqTiersStats.LadderStats(
-                "GLOBAL", 0, 0, 0, wins, losses, gamesPlayed, winRate,
-                null, null, 0, true, false, 0, 10, 0L, 0, 0,
-                null, null, false, false, 0, false, 0, 0
+                "GLOBAL", 0, 0, 0, 0, 0, 0, 0.0,
+                globalRank, null, 0, globalRank == null, false, 0, 0, 0L, 0, 0,
+                null, null, false, false, 0, false, 0,
+                globalPosition > 0 ? globalPosition : 0
         );
+    }
+
+    private static String canonicalLadder(String apiKey) {
+        String extra = EXTRA_LADDER_KEY_ALIASES.get(apiKey);
+        return extra != null ? extra : HqTiersClientConfig.fromApiLadder(apiKey);
     }
 
     private static String string(JsonObject object, String key, String fallback) {
@@ -132,20 +156,5 @@ public class HqTiersApiClient {
     private static int intValue(JsonObject object, String key, int fallback) {
         JsonElement value = object.get(key);
         return value == null || value.isJsonNull() ? fallback : value.getAsInt();
-    }
-
-    private static long longValue(JsonObject object, String key, long fallback) {
-        JsonElement value = object.get(key);
-        return value == null || value.isJsonNull() ? fallback : value.getAsLong();
-    }
-
-    private static double doubleValue(JsonObject object, String key, double fallback) {
-        JsonElement value = object.get(key);
-        return value == null || value.isJsonNull() ? fallback : value.getAsDouble();
-    }
-
-    private static boolean boolValue(JsonObject object, String key, boolean fallback) {
-        JsonElement value = object.get(key);
-        return value == null || value.isJsonNull() ? fallback : value.getAsBoolean();
     }
 }

@@ -222,7 +222,6 @@ public final class HqTiersLeaderboardClient {
             return error;
         }
 
-        /** True if this ladder has no leaderboard endpoint on PvPHQ yet (e.g. CART, SPEAR_MACE). */
         public boolean unsupported() {
             return unsupported;
         }
@@ -241,10 +240,8 @@ public final class HqTiersLeaderboardClient {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 URI uri = BASE_URI.resolve(
-                        "v1/players/" + playerUuid
-                                + "/rating-history/"
-                                + apiLadder.get().toLowerCase()
-                                + "?limit=100"
+                        "ranked-history?playerId=" + playerUuid
+                                + "&ladder=" + apiLadder.get().toUpperCase()
                 );
 
                 HttpRequest request = HttpRequest.newBuilder(uri)
@@ -254,10 +251,8 @@ public final class HqTiersLeaderboardClient {
                         .GET()
                         .build();
 
-
                 HttpResponse<String> response =
                         httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
 
                 if (response.statusCode() < 200 || response.statusCode() >= 300) {
                     Hqtiers.logger.warn(
@@ -268,10 +263,7 @@ public final class HqTiersLeaderboardClient {
                     return List.of();
                 }
 
-
-                JsonObject root = GSON.fromJson(response.body(), JsonObject.class);
-
-                JsonArray array = root.getAsJsonArray("points");
+                JsonArray array = GSON.fromJson(response.body(), JsonArray.class);
 
                 List<HistoryPoint> points = new ArrayList<>();
 
@@ -279,15 +271,11 @@ public final class HqTiersLeaderboardClient {
                     return points;
                 }
 
-
                 for (JsonElement el : array) {
-
                     if (!el.isJsonObject())
                         continue;
 
-
                     JsonObject obj = el.getAsJsonObject();
-
 
                     points.add(new HistoryPoint(
                             obj.get("rating").getAsInt(),
@@ -295,9 +283,7 @@ public final class HqTiersLeaderboardClient {
                     ));
                 }
 
-
                 return points;
-
 
             } catch (Exception e) {
                 Hqtiers.logger.warn(

@@ -55,15 +55,8 @@ public final class HqTiersClientConfig {
             "POT", "DIAMOND_POT",
             "NETHERITE_POT", "NETHERITE_OP"
     );
-    // Ladders the mod knows about (or that a person could type into a config/
-    // command) that have no backing endpoint on the real API at all.
     private static final Set<String> UNSUPPORTED_BY_API = Set.of("GLOBAL");
 
-    /**
-     * Translates an internal ladder key to the key the PvPHQ API expects.
-     * Returns empty if this ladder has no leaderboard/history/ranked-stats
-     * support on the real API (e.g. GLOBAL).
-     */
     public static Optional<String> toApiLadder(String internalLadder) {
         String normalized = normalizeLadder(internalLadder);
         if (UNSUPPORTED_BY_API.contains(normalized)) {
@@ -85,7 +78,7 @@ public final class HqTiersClientConfig {
 
     private static List<Boolean> defaultSeparatorStates() {
         // Matches the two SEPARATOR entries in defaultNametagOrder().
-        return List.of(true, true);
+        return List.of(false, false);
     }
 
     public static void load() {
@@ -226,21 +219,16 @@ public final class HqTiersClientConfig {
         return count;
     }
 
-    /**
-     * Pads or trims nametagSeparatorStates so it has exactly one entry per
-     * SEPARATOR currently in nametagOrder. New separators default to enabled.
-     */
     private static void ensureSeparatorStatesSize() {
         int needed = separatorCount();
         while (nametagSeparatorStates.size() < needed) {
-            nametagSeparatorStates.add(true);
+            nametagSeparatorStates.add(false);
         }
         while (nametagSeparatorStates.size() > needed) {
             nametagSeparatorStates.remove(nametagSeparatorStates.size() - 1);
         }
     }
 
-    /** Whether the Nth separator (0-based, in list order) is enabled. */
     public static boolean isSeparatorEnabled(int occurrenceIndex) {
         if (occurrenceIndex < 0 || occurrenceIndex >= nametagSeparatorStates.size()) {
             return true;
@@ -248,7 +236,6 @@ public final class HqTiersClientConfig {
         return nametagSeparatorStates.get(occurrenceIndex);
     }
 
-    /** Sets whether the Nth separator (0-based, in list order) is enabled. */
     public static void setSeparatorEnabled(int occurrenceIndex, boolean enabled) {
         ensureSeparatorStatesSize();
         if (occurrenceIndex >= 0 && occurrenceIndex < nametagSeparatorStates.size()) {
@@ -265,7 +252,7 @@ public final class HqTiersClientConfig {
         boolean rankSectionEnabled = true;
         boolean shortTierNames = false;
         boolean gamemodeIconEnabled = true;
-        boolean tierEnabled = false;
+        boolean tierEnabled = true;
         boolean eloEnabled = false;
         boolean eloLabelEnabled = false;
         boolean coloredElo = true;
@@ -276,7 +263,7 @@ public final class HqTiersClientConfig {
         List<Boolean> nametagSeparatorStates = null;
         boolean suppressRankedDuplicates = true;
         boolean coloredTier = true;
-        boolean coloredPosition = false;
+        boolean coloredPosition = true;
         boolean showUnranked = false;
 
         static Data fromCurrent() {
