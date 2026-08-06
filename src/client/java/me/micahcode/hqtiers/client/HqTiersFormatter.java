@@ -14,19 +14,6 @@ public final class HqTiersFormatter {
     private HqTiersFormatter() {
     }
 
-    /**
-     * Canonical list of every gamemode/ladder the client knows how to render
-     * (icon + display name), one entry per distinct mode. Aliased ids that
-     * share an icon/display name in {@link #iconGlyph(String)} /
-     * {@link #displayName(String)} (e.g. DIAMOND_POT/POT, NETHERITE_POT/
-     * NETHERITE_OP, SMP/NETHERITE_SMP, VANILLA/CRYSTAL, SPEAR_MACE/SPEAR)
-     * are intentionally represented by a single canonical id here so a
-     * player doesn't get duplicate "the same mode twice" rows.
-     *
-     * GLOBAL is deliberately excluded - callers that want an "every real
-     * gamemode, played or not" list (e.g. the K-menu ladder table) should
-     * use this directly; GLOBAL is handled separately wherever it's needed.
-     */
     public static final List<String> KNOWN_LADDERS = List.of(
             "SWORD",
             "AXE",
@@ -45,18 +32,17 @@ public final class HqTiersFormatter {
 
         HqTiersStats.LadderStats ladder;
 
-        // use your config system
         if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL) {
 
             ladder = stats.ladders().get("GLOBAL");
 
+            if (stats.bestLadder().isEmpty()) {
+                ladder = null;
+            }
+
         } else if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.HIGHEST_TIER) {
 
-            ladder = stats.ladders()
-                    .values()
-                    .stream()
-                    .max(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating))
-                    .orElse(null);
+            ladder = stats.bestLadder().orElse(null);
 
         } else {
 
@@ -331,6 +317,7 @@ public final class HqTiersFormatter {
                 .filter(HqTiersStats.LadderStats::hasPlayedRanked)
                 .filter(ladder -> !ladder.ladder().equals("GLOBAL"))
                 .filter(ladder -> !ladder.unranked())
+                .filter(ladder -> ladder.placementGames() >= ladder.placementTarget())
                 .max(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating));
     }
 }
