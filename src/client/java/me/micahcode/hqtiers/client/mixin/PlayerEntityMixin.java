@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.player.Player;
@@ -13,12 +14,16 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(Player.class)
 public class PlayerEntityMixin {
 
+    private static final String LUNAR_MOD_ID = "ichor";
+
     @ModifyReturnValue(method = "getDisplayName", at = @At("RETURN"), require = 0)
     private Component hqtiers$appendNametagStats(Component original) {
         try {
             if (!HqTiersClientConfig.nametagEnabled) return original;
 
             Player player = (Player) (Object) this;
+
+            if (FabricLoader.getInstance().isModLoaded(LUNAR_MOD_ID)) return original;
 
             if (hasTextDisplayPassenger(player)) return original;
 
