@@ -21,10 +21,6 @@ public class HqTiersApiClient {
     private static final String USER_AGENT = "HQTiers/1.0 (micahcode)";
     private static final Gson GSON = new Gson();
 
-    private static final Map<String, String> EXTRA_LADDER_KEY_ALIASES = Map.of(
-            "HT_CART", "CART"
-    );
-
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(TIMEOUT)
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -52,8 +48,6 @@ public class HqTiersApiClient {
             return null;
         }
 
-        // The ranked endpoint doesn't return a display name or a distinct
-        // player uuid field - "_id" is just the same uuid we requested with.
         UUID playerUuid = uuid;
         String name = playerUuid.toString();
 
@@ -137,8 +131,7 @@ public class HqTiersApiClient {
     }
 
     private static String canonicalLadder(String apiKey) {
-        String extra = EXTRA_LADDER_KEY_ALIASES.get(apiKey);
-        return extra != null ? extra : HqTiersClientConfig.fromApiLadder(apiKey);
+        return HqTiersClientConfig.fromApiLadder(apiKey);
     }
 
     private static String string(JsonObject object, String key, String fallback) {

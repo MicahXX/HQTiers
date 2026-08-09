@@ -289,7 +289,7 @@ public final class HqTiersFormatter {
             case "DIAMOND_SMP" -> '\uE009';
             case "GLOBAL" -> '\uE00A';
             case "SPEAR_MACE" -> '\uE00B';
-            case "CART" -> '\uE00C';
+            case "CART", "HT_CART" -> '\uE00C';
             default -> '\uE00A';
         };
     }
@@ -303,7 +303,7 @@ public final class HqTiersFormatter {
             case "VANILLA", "CRYSTAL" -> "Vanilla";
             case "MACE" -> "Mace";
             case "SPEAR_MACE", "SPEAR" -> "Spear Mace";
-            case "CART" -> "Cart";
+            case "CART", "HT_CART" -> "Cart"; // why is it HT_CART lmao
             case "DIAMOND_POT" -> "Pot";
             case "NETHERITE_POT", "NETHERITE_OP" -> "NethOP";
             case "SMP", "NETHERITE_SMP" -> "SMP";
