@@ -280,9 +280,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return false;
     }
 
+    // todo: make this global
     private static String initialLadder() {
-        // SWORD is used as the default because GLOBAL has no leaderboard
-        // endpoint on the API at all - that tab used to load nothing forever.
         return "SWORD";
     }
 
@@ -515,8 +514,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 HqTiersStats.LadderStats l = real.get();
                 return new TierLookup(true, l.tierLabel(), l.tierColorInt());
             }
-            // Player's stats are cached but they have no ranked data on this
-            // ladder specifically - that's a legitimate "no tier", not loading.
             return new TierLookup(true, "", 0);
         }
 
