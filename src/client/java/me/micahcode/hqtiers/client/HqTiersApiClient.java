@@ -21,13 +21,6 @@ public class HqTiersApiClient {
     private static final String USER_AGENT = "HQTiers/1.0 (micahcode)";
     private static final Gson GSON = new Gson();
 
-    // HqTiersClientConfig.fromApiLadder() already owns the canonical
-    // API-key -> internal-ladder-id mapping (POT -> DIAMOND_POT,
-    // NETHERITE_POT -> NETHERITE_OP, etc.) and is used everywhere else in
-    // the client (leaderboard tabs, toApiLadder/fromApiLadder round-trips),
-    // so we defer to it instead of maintaining a second, divergent alias
-    // table here. HT_CART is the one key the ranked endpoint returns that
-    // config doesn't know about yet - unconfirmed guess, flagged below.
     private static final Map<String, String> EXTRA_LADDER_KEY_ALIASES = Map.of(
             "HT_CART", "CART"
     );

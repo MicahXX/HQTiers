@@ -50,18 +50,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private String searchStatus = "";
     private HqTiersLeaderboardClient.Entry resolvedSearchEntry;
     private String pendingResolveName = "";
-    // Last time each ladder was (re)requested from the API, so
-    // maybeRefreshLeaderboard() knows when it's due for another pull
-    // without spamming a fetch every single frame.
     private final Map<String, Long> lastLeaderboardRefreshAt = new HashMap<>();
-    // Last time we asked the player-stats API for a given uuid's tier data,
-    // so we retry periodically instead of only ever fetching once.
     private final Map<String, Long> tierRequestedAt = new HashMap<>();
-    // True until this screen instance's very first init() call completes.
-    // Since a brand new HqTiersLeaderboardScreen is constructed every time
-    // the leaderboard is opened, this lets us force a real refresh() the
-    // moment the screen appears, without also force-refreshing on every
-    // subsequent init() call caused by a window resize.
     private boolean firstInit = true;
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
@@ -119,15 +109,10 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 .build());
 
         if (firstInit) {
-            // First time this screen instance is opened - force a real
-            // re-fetch instead of trusting whatever the client already has
-            // cached, so the leaderboard isn't stale on open.
             firstInit = false;
             leaderboardClient.refresh(ladder);
             lastLeaderboardRefreshAt.put(ladder, System.currentTimeMillis());
         } else {
-            // Subsequent init() calls (e.g. window resize) shouldn't
-            // trigger another network refetch.
             leaderboardClient.load(ladder);
             lastLeaderboardRefreshAt.putIfAbsent(ladder, System.currentTimeMillis());
         }
@@ -150,9 +135,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int rowHeight = ROW_HEIGHT;
         int searchY = searchRowY();
 
-        // Tier column is fetched live from the per-player stats API (tierFor()
-        // below) - it lags a frame or two behind TR/name for rows just scrolled
-        // into view, showing "···" until the fetch resolves.
         int tierColX = tierColX(panelLeft, panelRight);
         int eloColX = eloColX(panelRight);
         int nameColX = panelLeft + 46;
@@ -253,16 +235,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         }
     }
 
-    /**
-     * leaderboardClient.load() only fetches the first time - it bails out
-     * immediately once state.entries() is non-empty. That's fine for the
-     * first paint, but it means nothing else ever asked for fresh data, so
-     * rank/TR would just sit stale for as long as this screen stayed open.
-     * This calls refresh() (which unconditionally re-fetches) on a timer
-     * instead, skipping while a load/loadMore is already in flight or while
-     * the player is actively searching (so their scroll position and
-     * resolved search result don't get yanked out from under them).
-     */
     private void maybeRefreshLeaderboard() {
         HqTiersLeaderboardClient.PageState state = leaderboardClient.state(ladder);
         if (state.loading() || !searchText().isBlank()) {
@@ -329,8 +301,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return index >= 0 && index < entries.size() ? entries.get(index) : null;
     }
 
-    // --- Responsive layout helpers ---
-
     private int panelLeft() {
         return width / 2 - panelWidth() / 2;
     }
@@ -378,8 +348,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private int tableTop() {
         return searchRowY() + TAB_HEIGHT + 34;
     }
-
-    // --- Podium rendering ---
 
     private static int podiumColor(int rank) {
         return switch (rank) {
@@ -526,7 +494,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         };
     }
 
-    /** Real tier for a row, or an unloaded marker while the fetch is in flight. */
     private record TierLookup(boolean loaded, String label, int colorInt) {
         static TierLookup unloaded() {
             return new TierLookup(false, "", 0);
