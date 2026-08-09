@@ -120,9 +120,6 @@ public class NametagLayoutScreen extends Screen {
         HqTiersClientConfig.NametagComponent compA = order.get(a);
         HqTiersClientConfig.NametagComponent compB = order.get(b);
 
-        // If we're swapping two separators past each other, carry each one's
-        // own enabled state along with it so a reorder doesn't silently flip
-        // which separator is on/off.
         if (compA == HqTiersClientConfig.NametagComponent.SEPARATOR
                 && compB == HqTiersClientConfig.NametagComponent.SEPARATOR) {
             int occA = separatorOccurrence(a);
@@ -138,7 +135,6 @@ public class NametagLayoutScreen extends Screen {
         HqTiersClientConfig.nametagOrder = new ArrayList<>(order);
     }
 
-    /** Which separator (0-based) the entry at `index` is, counting separators only. */
     private int separatorOccurrence(int index) {
         int occurrence = -1;
         for (int i = 0; i <= index; i++) {

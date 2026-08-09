@@ -2,7 +2,7 @@ package me.micahcode.hqtiers.client.model;
 
 public enum HqTiersRanks {
 
-    // tiers on pvphq (Some random colors for now will prob be changed) this will be used
+    // idk remove this ig
     LT5("LT5", "#8A8A8A"),
     MT5("MT5", "#A0A0A0"),
     HT5("HT5", "#C2C2C2"),

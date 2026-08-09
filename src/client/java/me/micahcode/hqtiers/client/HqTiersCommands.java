@@ -112,7 +112,6 @@ public final class HqTiersCommands {
 		return 1;
 	}
 
-	/** /hqtiers stats - opens the same stats screen the K keybind opens, for yourself. */
 	private static int showSelfGui(FabricClientCommandSource source) {
 		Minecraft client = Minecraft.getInstance();
 		if (client.player == null) {
