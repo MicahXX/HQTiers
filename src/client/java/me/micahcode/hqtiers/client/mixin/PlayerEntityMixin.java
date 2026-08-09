@@ -20,9 +20,6 @@ public class PlayerEntityMixin {
 
             Player player = (Player) (Object) this;
 
-            // If a TextDisplay is riding this player, that render path
-            // (TextDisplayEntityRendererMixin) already handles the tier.
-            // Skip here to avoid appending it twice.
             if (hasTextDisplayPassenger(player)) return original;
 
             if (HqTiersClientConfig.suppressRankedDuplicates) {

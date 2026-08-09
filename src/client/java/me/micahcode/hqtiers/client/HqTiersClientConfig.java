@@ -77,7 +77,6 @@ public final class HqTiersClientConfig {
     }
 
     private static List<Boolean> defaultSeparatorStates() {
-        // Matches the two SEPARATOR entries in defaultNametagOrder().
         return List.of(false, false);
     }
 

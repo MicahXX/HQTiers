@@ -51,14 +51,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private String searchStatus = "";
     private HqTiersLeaderboardClient.Entry resolvedSearchEntry;
     private String pendingResolveName = "";
-    // UUIDs we've already asked the player-stats API for real tier data on,
-    // so we don't refire a fetch every single frame a row is on screen.
     private final Set<String> tierRequested = new HashSet<>();
-    // True until this screen instance's very first init() call completes.
-    // Since a brand new HqTiersLeaderboardScreen is constructed every time
-    // the leaderboard is opened, this lets us force a real refresh() the
-    // moment the screen appears, without also force-refreshing on every
-    // subsequent init() call caused by a window resize.
     private boolean firstInit = true;
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
@@ -115,14 +108,9 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 .build());
 
         if (firstInit) {
-            // First time this screen instance is opened - force a real
-            // re-fetch instead of trusting whatever the client already has
-            // cached, so the leaderboard isn't stale on open.
             firstInit = false;
             leaderboardClient.refresh(ladder);
         } else {
-            // Subsequent init() calls (e.g. window resize) shouldn't
-            // trigger another network refetch.
             leaderboardClient.load(ladder);
         }
     }
@@ -142,9 +130,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int rowHeight = ROW_HEIGHT;
         int searchY = searchRowY();
 
-        // Tier column is fetched live from the per-player stats API (tierFor()
-        // below) - it lags a frame or two behind TR/name for rows just scrolled
-        // into view, showing "···" until the fetch resolves.
         int tierColX = tierColX(panelLeft, panelRight);
         int eloColX = eloColX(panelRight);
         int nameColX = panelLeft + 46;
@@ -172,9 +157,9 @@ public final class HqTiersLeaderboardScreen extends Screen {
         if (visibleEntries.isEmpty()) {
             String message;
             int color;
-            if (state.unsupported()) {
+            if (state.unsupported()) { // not used anymore
                 message = HqTiersFormatter.displayName(ladder) + " leaderboard is coming soon to PvPHQ.";
-                color = 0xFFD4AF37; // gold accent - reads as "planned", not "broken"
+                color = 0xFFD4AF37;
             } else if (state.error() != null) {
                 message = state.error();
                 color = 0xFFAAAAAA;
@@ -237,10 +222,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 tierText = "···";
                 tierColor = TIER_DIM;
             } else if (tier.label().isEmpty() || tier.label().equalsIgnoreCase("Unranked")) {
-                // Stats are cached but the player has no ranked data on this
-                // ladder - render "Unranked" in the dim placeholder color
-                // instead of (0xFF000000 | 0), which is invisible black
-                // text on the dark panel background.
                 tierText = "Unranked";
                 tierColor = TIER_DIM;
             } else {
@@ -289,9 +270,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return false;
     }
 
+    // todo: make this the global ladder later
     private static String initialLadder() {
-        // SWORD is used as the default because GLOBAL has no leaderboard
-        // endpoint on the API at all - that tab used to load nothing forever.
         return "SWORD";
     }
 
@@ -309,8 +289,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         List<HqTiersLeaderboardClient.Entry> entries = visibleEntries(leaderboardClient.state(ladder).entries());
         return index >= 0 && index < entries.size() ? entries.get(index) : null;
     }
-
-    // --- Responsive layout helpers ---
 
     private int panelLeft() {
         return width / 2 - panelWidth() / 2;
@@ -359,8 +337,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private int tableTop() {
         return searchRowY() + TAB_HEIGHT + 34;
     }
-
-    // --- Podium rendering ---
 
     private static int podiumColor(int rank) {
         return switch (rank) {
@@ -508,21 +484,12 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return LADDERS_COMING_SOON.contains(ladder) ? label + "*" : label;
     }
 
-    /** Real tier for a row, or an unloaded marker while the fetch is in flight. */
     private record TierLookup(boolean loaded, String label, int colorInt) {
         static TierLookup unloaded() {
             return new TierLookup(false, "", 0);
         }
     }
 
-    /**
-     * Tier for a leaderboard row comes from the real per-player stats API
-     * (the same HqTiersClientState.cache() the player-stats screen uses) -
-     * not a client-side rating-threshold guess. If the player's stats
-     * aren't cached yet, this kicks off a fetch (once per uuid) and reports
-     * unloaded() so the caller can show a loading placeholder instead of
-     * something that looks like real (but wrong) data.
-     */
     private TierLookup tierFor(HqTiersLeaderboardClient.Entry entry) {
         UUID uuid;
         try {
@@ -538,8 +505,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 HqTiersStats.LadderStats l = real.get();
                 return new TierLookup(true, l.tierLabel(), l.tierColorInt());
             }
-            // Player's stats are cached but they have no ranked data on this
-            // ladder specifically - that's a legitimate "no tier", not loading.
             return new TierLookup(true, "", 0);
         }
 

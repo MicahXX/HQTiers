@@ -39,9 +39,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
     private static final int AXIS_LINE = 0x33FFE7A3;
 
-    // Responsive breakpoints for the panel width, mirrored by COMPACT_WIDTH
-    // below the point where column labels start truncating/overlapping.
-    // Kept in sync with the GuiGraphics version of this screen.
     private static final int MIN_PANEL_WIDTH = 260;
     private static final int MAX_PANEL_WIDTH = 540;
     private static final int SIDE_MARGIN = 16;
@@ -73,8 +70,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     public HqTiersPlayerStatsScreen(Screen parent, String uuid, String fallbackName) {
         this(parent, uuid, fallbackName, null);
     }
-
-    // --- Responsive layout ---
 
     private int panelWidth() {
         int target = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, (int) (width * 0.72)));
@@ -113,14 +108,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         return compact() ? 15 : 17;
     }
 
-    /**
-     * Row height for the ladder table specifically. Shrinks below rowH()'s
-     * base value when the full row count (header + every ladder) wouldn't
-     * fit in the space above the footer, so the last row never renders past
-     * the panel edge and the "Best: ..." footer never has to overlap it.
-     * Must be used consistently by both addLadderButtons() (click hitboxes)
-     * and renderTable() (visible rows) or the two drift out of alignment.
-     */
     private int tableRowH(int ladderCount) {
         int base = rowH();
         if (ladderCount <= 0) return base;
@@ -229,18 +216,15 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int ht = headerTop(), hb = headerBottom();
         int tt = tableTop(), tb = tableBottom();
 
-        // Background vignette
         ctx.fill(0, 0, width, height, BG_BASE);
         ctx.fill(0, 0, width / 4, height, 0x08FFFFFF);
 
-        // Panel body
         ctx.fill(pl, tt, pr, tb, BG_PANEL);
         ctx.fill(pl, tt, pr, tt + 1, BORDER);
         ctx.fill(pl, tb - 1, pr, tb, BORDER);
         ctx.fill(pl, tt, pl + 1, tb, BORDER);
         ctx.fill(pr - 1, tt, pr, tb, BORDER);
 
-        // Header block
         ctx.fill(pl, ht, pr, hb, BG_HEADER);
         ctx.fill(pl, hb - 1, pr, hb, ACCENT_DIM);
         ctx.fill(pl, ht, pr, ht + 1, ACCENT_GOLD);
@@ -274,10 +258,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         boolean compact = compact();
 
         List<HqTiersStats.LadderStats> ladders = sortedLadders(stats);
-        // Must match addLadderButtons()'s row height exactly - otherwise the
-        // invisible click hitboxes drift out of alignment with the rendered
-        // rows, and the table can render taller than the space reserved for
-        // it, pushing the footer text on top of the last row.
         int rh = tableRowH(ladders.size());
 
         int hy = tt + 4;
@@ -305,22 +285,14 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             boolean hovered = !isGlobal && mx >= pl + 2 && mx <= pr - 2
                     && my >= y && my < y + rh;
 
-            // Row background
             if (hovered) ctx.fill(pl + 2, y, pr - 2, y + rh, BG_ROW_HOVER);
             else if (i % 2 == 0) ctx.fill(pl + 2, y, pr - 2, y + rh, BG_ROW_ALT);
 
-            // Accent left strip for GLOBAL
             if (isGlobal) ctx.fill(pl + 2, y, pl + 4, y + rh, ACCENT_GOLD);
 
-            // Tier - a ladder is "unranked" if the player hasn't finished
-            // placements / has no tier data yet. tierLabel() can return
-            // "Unranked" or "" depending on config, so normalize both to one
-            // dimmed state instead of falling back to a random rating-based
-            // tier color that doesn't mean anything for an unranked ladder.
             String rawTierLabel = l.tierLabel();
             boolean unranked = rawTierLabel.isEmpty() || rawTierLabel.equalsIgnoreCase("Unranked");
 
-            // Icon + name
             ctx.text(font, HqTiersFormatter.icon(l.ladder()), pl + col(pw, 0, compact), y + 4, TEXT_WHITE, true);
             ctx.text(font, HqTiersFormatter.displayName(l.ladder()),
                     pl + col(pw, 0, compact) + 12, y + 4, TEXT_WHITE, true);
@@ -330,39 +302,27 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             ctx.text(font, trim(tierText, compact ? 8 : 14),
                     pl + col(pw, 1, compact), y + 4, tierCol, true);
 
-            // TR
             int tr = l.totalRating();
             String trStr = unranked ? "—" : (tr + (compact ? "" : " TR"));
             ctx.text(font, trStr, pl + col(pw, 2, compact), y + 4, unranked ? TEXT_DIM : eloColor(tr), true);
 
-            // Rank
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
             int rankCol = l.hasPosition() ? 0xFFFFD700 : TEXT_DIM;
             ctx.text(font, rankStr, pl + col(pw, 3, compact), y + 4, rankCol, true);
 
             if (!compact) {
-                // W/L
                 ctx.text(font, l.wins() + " / " + l.losses(),
                         pl + col(pw, 4, compact), y + 4, wlColor(l.wins(), l.losses()), true);
 
-                // Streak
                 ctx.text(font, streakStr(l.currentStreak()),
                         pl + col(pw, 5, compact), y + 4, streakColor(l.currentStreak()), true);
             }
 
-            // Hover arrow hint
             if (hovered) ctx.text(font, "→", pr - 14, y + 4, ACCENT_GOLD, true);
 
             y += rh;
         }
 
-        // Footer is clamped so it can never render past the panel's
-        // reserved bottom margin, matching tableRowH()'s FOOTER_RESERVE.
-        //
-        // bestLadder() only returns a ladder that has actually finished
-        // placements and received a real tier (see HqTiersFormatter), so
-        // this footer no longer shows up for a gamemode that's still
-        // "Unranked" just because it happens to have the highest raw TR.
         int finalY = y;
         stats.bestLadder().ifPresent(best -> {
             int footerY = Math.min(tb - 16, finalY + 6);
@@ -389,9 +349,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         });
     }
 
-    // column x-offsets as fraction of panel width; compact mode drops W/L
-    // and STREAK entirely and widens the remaining four columns to use the
-    // space. Kept in sync with the GuiGraphics version.
     private static int col(int pw, int col, boolean compact) {
         if (compact) {
             return switch (col) {
@@ -416,12 +373,10 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private void renderGraph(GuiGraphicsExtractor ctx, HqTiersStats stats,
                              int pl, int pr, int tt, int tb, int mx, int my) {
         boolean compact = compact();
-        // selectedLadder is the raw map key (e.g. "SWORD"), always use it directly
         HqTiersStats.LadderStats ladder = stats.ladders().get(
                 selectedLadder.toUpperCase()
         );
 
-        // Ladder title row
         ctx.centeredText(font, Component.literal(
                         trim(HqTiersFormatter.displayName(selectedLadder), compact ? 12 : 30) + "  ·  TR History"),
                 width / 2, tt + 5, TEXT_HEADER);
@@ -438,7 +393,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             ctx.centeredText(font, Component.literal(summary), width / 2, tt + 17, tierCol);
         }
 
-        // Graph bounds - Y-axis gutter shrinks in compact mode since labels are shorter
         int gl = pl + (compact ? 34 : 44);
         int gr = pr - (compact ? 10 : 14);
         int gt = tt + 32;
@@ -446,9 +400,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int gw = gr - gl;
         int gh = gbt - gt;
 
-        // Graph background
         ctx.fill(gl, gt, gr, gbt, BG_GRAPH);
-        // Axis lines
         ctx.fill(gl - 1, gt, gl, gbt + 1, 0x884C7BA7);
         ctx.fill(gl, gbt, gr, gbt + 1, 0x884C7BA7);
 
@@ -463,7 +415,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         int n = historyPoints.size();
 
-        // ELO range with padding
         int minElo = historyPoints.stream().mapToInt(HqTiersLeaderboardClient.HistoryPoint::elo).min().orElse(0);
         int maxElo = historyPoints.stream().mapToInt(HqTiersLeaderboardClient.HistoryPoint::elo).max().orElse(1);
         int pad = Math.max(15, (maxElo - minElo) / 8);
@@ -471,24 +422,17 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         maxElo += pad;
         int eloRange = Math.max(1, maxElo - minElo);
 
-        // Fewer gridlines when the panel is narrow so labels don't collide
         int gridLines = compact ? 3 : 4;
         for (int i = 0; i <= gridLines; i++) {
             int gridElo = minElo + eloRange * i / gridLines;
             int gy = gbt - (gridElo - minElo) * gh / eloRange;
             ctx.fill(gl, gy, gr, gy + 1, i == 0 ? 0x448EA7D2 : AXIS_LINE);
             String label = Integer.toString(gridElo);
-            // Clamp so the label always sits fully above its gridline - the
-            // bottom-most line (i == 0, gy == gbt) would otherwise draw the
-            // label text overlapping/spilling past the grid box's bottom
-            // border since gy - 4 isn't enough clearance for a ~9px-tall
-            // string sitting right on the line.
             int labelY = Math.min(gy - 9, gbt - 9);
             ctx.text(font, label,
                     gl - font.width(label) - 3, labelY, TEXT_DIM, true);
         }
 
-        // Build point arrays
         if (graphXPositions == null || graphXPositions.length != n) {
             graphXPositions = new int[n];
             graphYPositions = new int[n];
@@ -498,18 +442,15 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             graphYPositions[i] = gbt - (historyPoints.get(i).elo() - minElo) * gh / eloRange;
         }
 
-        // Derive fill color from tier
         int tierRaw = ladder != null ? ladder.tierColorInt() : 0x3B82F6;
         int fillColor = (0x22 << 24) | (tierRaw & 0xFFFFFF);
 
-        // Filled area — single solid tier color underneath the whole line
         for (int i = 1; i < n; i++) {
             int x1 = graphXPositions[i - 1], y1 = graphYPositions[i - 1];
             int x2 = graphXPositions[i], y2 = graphYPositions[i];
             fillTrapezoid(ctx, x1, y1, x2, y2, gbt, fillColor);
         }
 
-        // Line segments — green when rising, red when falling
         for (int i = 1; i < n; i++) {
             int x1 = graphXPositions[i - 1], y1 = graphYPositions[i - 1];
             int x2 = graphXPositions[i], y2 = graphYPositions[i];
@@ -517,7 +458,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             drawThickLine(ctx, x1, y1, x2, y2, up ? 0xCC4ADE80 : 0xCCF87171);
         }
 
-        // Dots — rising/falling color
         for (int i = 0; i < n; i++) {
             int x = graphXPositions[i], y = graphYPositions[i];
             boolean up = i == 0 || historyPoints.get(i).elo() >= historyPoints.get(i - 1).elo();
@@ -526,14 +466,12 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             ctx.fill(x - 1, y - 1, x + 2, y + 2, dotCol);
         }
 
-        // Date labels
         ctx.text(font, dateLabel(historyPoints.get(0).timestamp()),
                 gl, gbt + 4, TEXT_DIM, true);
         String lastDate = dateLabel(historyPoints.get(n - 1).timestamp());
         ctx.text(font, lastDate,
                 gr - font.width(lastDate), gbt + 4, TEXT_DIM, true);
 
-        // Tooltip on hover
         if (graphXPositions != null && my >= gt && my <= gbt) {
             int closest = -1, bestDist = 10;
             for (int i = 0; i < n; i++) {
@@ -555,10 +493,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         String date = dateLabel(historyPoints.get(idx).timestamp());
         int deltaColor = idx == 0 ? TEXT_DIM : (delta >= 0 ? 0xFF4ADE80 : 0xFFF87171);
 
-        // Vertical crosshair
         ctx.fill(graphXPositions[idx], gt, graphXPositions[idx] + 1, gbt, 0x553B82F6);
 
-        // Tooltip box
         int lines = date.isEmpty() ? 2 : 3;
         int tw = Math.max(68, font.width(date) + 12);
         int th = 8 + lines * 10;
@@ -575,14 +511,12 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (!date.isEmpty())
             ctx.text(font, date, tx + 2, ty + 22, TEXT_HEADER, true);
 
-        // Highlight dot
         ctx.fill(graphXPositions[idx] - 3, graphYPositions[idx] - 3,
                 graphXPositions[idx] + 4, graphYPositions[idx] + 4, 0xFFFFFFFF);
         ctx.fill(graphXPositions[idx] - 2, graphYPositions[idx] - 2,
                 graphXPositions[idx] + 3, graphYPositions[idx] + 3, ACCENT_GOLD);
     }
 
-    // ── drawing primitives ─────────────────────────────────────────────────
     private static void drawThickLine(GuiGraphicsExtractor ctx, int x1, int y1, int x2, int y2, int color) {
         int steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
         if (steps == 0) {
@@ -605,16 +539,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
-    /**
-     * Every known gamemode gets shown here - not just the ones present in
-     * stats.ladders(). The API only includes a gametype in its `ranked`
-     * array once the player has at least one game/placement on it, so a
-     * mode with zero games never makes it into the map at all. To make
-     * this screen a full stat sheet (matching what the /hqtiers command's
-     * text output shows) we fill in any gamemode from
-     * HqTiersFormatter.KNOWN_LADDERS that's missing from the map with a
-     * zeroed-out "Unranked" stub, so every mode always has a row.
-     */
     private static List<HqTiersStats.LadderStats> sortedLadders(HqTiersStats stats) {
         Map<String, HqTiersStats.LadderStats> ladders = new HashMap<>(stats.ladders());
         for (String known : HqTiersFormatter.KNOWN_LADDERS) {

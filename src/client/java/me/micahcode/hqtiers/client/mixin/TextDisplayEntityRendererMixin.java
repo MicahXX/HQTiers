@@ -80,8 +80,7 @@ public class TextDisplayEntityRendererMixin {
                 return;
             }
         } catch (Throwable ignored) {
-            // Server-controlled text display formatting varies too much to
-            // guarantee compatibility — fail safe, leave text untouched.
+            // show nothing if there is an error
         }
     }
 

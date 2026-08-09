@@ -6,6 +6,7 @@ public final class HqTiersRankSystem {
     private HqTiersRankSystem() {
     }
 
+    // Ravenclaw hated on this and ye its bad
     public static HqTiersRanks fallbackTier(int rating) {
         if (rating >= 2175) return HqTiersRanks.HT1;
         if (rating >= 1900) return HqTiersRanks.MT1;
