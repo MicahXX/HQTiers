@@ -21,17 +21,6 @@ public class HqTiersApiClient {
     private static final String USER_AGENT = "HQTiers/1.0 (micahcode)";
     private static final Gson GSON = new Gson();
 
-    // HqTiersClientConfig.fromApiLadder() already owns the canonical
-    // API-key -> internal-ladder-id mapping (POT -> DIAMOND_POT,
-    // NETHERITE_POT -> NETHERITE_OP, etc.) and is used everywhere else in
-    // the client (leaderboard tabs, toApiLadder/fromApiLadder round-trips),
-    // so we defer to it instead of maintaining a second, divergent alias
-    // table here. HT_CART is the one key the ranked endpoint returns that
-    // config doesn't know about yet - unconfirmed guess, flagged below.
-    private static final Map<String, String> EXTRA_LADDER_KEY_ALIASES = Map.of(
-            "HT_CART", "CART"
-    );
-
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(TIMEOUT)
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -59,8 +48,6 @@ public class HqTiersApiClient {
             return null;
         }
 
-        // The ranked endpoint doesn't return a display name or a distinct
-        // player uuid field - "_id" is just the same uuid we requested with.
         UUID playerUuid = uuid;
         String name = playerUuid.toString();
 
@@ -144,8 +131,7 @@ public class HqTiersApiClient {
     }
 
     private static String canonicalLadder(String apiKey) {
-        String extra = EXTRA_LADDER_KEY_ALIASES.get(apiKey);
-        return extra != null ? extra : HqTiersClientConfig.fromApiLadder(apiKey);
+        return HqTiersClientConfig.fromApiLadder(apiKey);
     }
 
     private static String string(JsonObject object, String key, String fallback) {

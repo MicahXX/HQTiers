@@ -49,12 +49,16 @@ public final class HqTiersClientConfig {
 
     private static final Map<String, String> INTERNAL_TO_API = Map.of(
             "DIAMOND_POT", "POT",
-            "NETHERITE_OP", "NETHERITE_POT"
+            "NETHERITE_OP", "NETHERITE_POT",
+            "CART", "HT_CART"
     );
+
     private static final Map<String, String> API_TO_INTERNAL = Map.of(
             "POT", "DIAMOND_POT",
-            "NETHERITE_POT", "NETHERITE_OP"
+            "NETHERITE_POT", "NETHERITE_OP",
+            "HT_CART", "CART"
     );
+
     private static final Set<String> UNSUPPORTED_BY_API = Set.of("GLOBAL");
 
     public static Optional<String> toApiLadder(String internalLadder) {
