@@ -9,7 +9,7 @@
     "PlayerListHudMixin",
     "TextDisplayEntityRendererMixin",
     "LunarPlayerEntityMixin",
-    "TextDisplayTextMixin"
+    "LunarDisplayTextMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -4,6 +4,7 @@ import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.player.Player;
@@ -15,7 +16,9 @@ import java.util.Optional;
 
 // just to make it work on lunar and pvphq
 @Mixin(Display.TextDisplay.class)
-public class TextDisplayTextMixin {
+public class LunarDisplayTextMixin {
+
+    private static final String LUNAR_MOD_ID = "ichor";
 
     @Inject(
             method = "getText",
@@ -25,6 +28,7 @@ public class TextDisplayTextMixin {
     )
     private void hqtiers$appendTierToText(CallbackInfoReturnable<Component> cir) {
         try {
+            if (!FabricLoader.getInstance().isModLoaded(LUNAR_MOD_ID)) return;
             if (!HqTiersClientConfig.nametagEnabled) return;
 
             Display.TextDisplay self = (Display.TextDisplay) (Object) this;
