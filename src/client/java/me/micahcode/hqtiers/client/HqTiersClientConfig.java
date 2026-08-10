@@ -26,7 +26,7 @@ public final class HqTiersClientConfig {
     public static boolean tabListEnabled = true;
     public static boolean versionCheckEnabled = true;
     public static String preferredLadder = "SWORD";
-    public static DisplayMode displayMode = DisplayMode.PREFERRED_LADDER;
+    public static DisplayMode displayMode = DisplayMode.HIGHEST_TIER;
     public static boolean rankSectionEnabled = true;
     public static boolean shortTierNames = false;
     public static boolean coloredElo = true;
@@ -81,7 +81,6 @@ public final class HqTiersClientConfig {
     }
 
     private static List<Boolean> defaultSeparatorStates() {
-        // Matches the two SEPARATOR entries in defaultNametagOrder().
         return List.of(false, false);
     }
 
@@ -161,11 +160,11 @@ public final class HqTiersClientConfig {
         PREFERRED_LADDER, HIGHEST_TIER, GLOBAL;
 
         public static DisplayMode fromName(String name) {
-            if (name == null) return PREFERRED_LADDER;
+            if (name == null) return HIGHEST_TIER;
             try {
                 return DisplayMode.valueOf(name.trim().toUpperCase());
             } catch (IllegalArgumentException ignored) {
-                return PREFERRED_LADDER;
+                return HIGHEST_TIER;
             }
         }
     }
@@ -252,7 +251,7 @@ public final class HqTiersClientConfig {
         boolean tabListEnabled = true;
         Boolean versionCheckEnabled = true;
         String preferredLadder = "SWORD";
-        String displayMode = DisplayMode.PREFERRED_LADDER.name();
+        String displayMode = DisplayMode.HIGHEST_TIER.name();
         boolean rankSectionEnabled = true;
         boolean shortTierNames = false;
         boolean gamemodeIconEnabled = true;
