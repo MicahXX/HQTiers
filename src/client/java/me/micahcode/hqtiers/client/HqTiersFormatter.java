@@ -30,37 +30,7 @@ public final class HqTiersFormatter {
 
     public static Component compact(HqTiersStats stats) {
 
-        HqTiersStats.LadderStats ladder;
-
-        if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL) {
-
-            ladder = stats.ladders().get("GLOBAL");
-
-            if (stats.bestLadder().isEmpty()) {
-                ladder = null;
-            }
-
-        } else if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.HIGHEST_TIER) {
-
-            ladder = stats.bestLadder().orElse(null);
-
-        } else {
-
-            ladder = stats.ladders()
-                    .get(HqTiersClientConfig.normalizeLadder(
-                            HqTiersClientConfig.preferredLadder
-                    ));
-
-            if (ladder == null) {
-                ladder = stats.ladders()
-                        .values()
-                        .stream()
-                        .filter(l -> !l.ladder().equals("GLOBAL"))
-                        .findFirst()
-                        .orElse(null);
-            }
-        }
-
+        HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
 
         if (ladder == null) {
             return HqTiersClientConfig.showUnranked
