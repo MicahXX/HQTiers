@@ -26,7 +26,12 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
             return bestLadder();
         }
 
-        return ladder(HqTiersClientConfig.preferredLadder).or(this::bestLadder);
+        Optional<LadderStats> preferred = ladder(HqTiersClientConfig.preferredLadder)
+                .filter(l -> l.placementGames() >= l.placementTarget());
+
+        return preferred
+                .or(this::bestLadder)
+                .or(() -> ladder(HqTiersClientConfig.preferredLadder));
     }
 
     public record LadderStats(
@@ -71,7 +76,7 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
             if (ladder.equals("GLOBAL")) return true;
             return wins > 0
                     || losses > 0
-                    || placementGames > 0
+                    || placementGames >= 10
                     || !unranked;
         }
 
