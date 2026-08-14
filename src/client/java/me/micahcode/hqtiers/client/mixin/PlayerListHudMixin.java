@@ -10,6 +10,7 @@ import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(PlayerTabOverlay.class)
@@ -46,12 +47,14 @@ public class PlayerListHudMixin {
                 .orElse(current);
     }
 
+    @Unique
     private static Component stripLeadingSeparator(Component text) {
         String raw = text.getString();
         String stripped = raw.replaceFirst("^\\s*\\|\\s*", "");
         return stripped.equals(raw) ? text : Component.literal(stripped);
     }
 
+    @Unique
     private static Component separator() {
         return Component.literal(" | ").withStyle(ChatFormatting.GRAY);
     }

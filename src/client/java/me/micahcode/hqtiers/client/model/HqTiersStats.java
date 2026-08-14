@@ -73,8 +73,8 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
         }
 
         public boolean hasPlayedRanked() {
-            if (ladder.equals("GLOBAL")) return true;
-            return wins > 0
+            return ladder.equals("GLOBAL")
+                    || wins > 0
                     || losses > 0
                     || placementGames >= 10
                     || !unranked;
@@ -88,14 +88,8 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
             return 0;
         }
 
-        public int placementMatchesPlayed() {
-            return placementGames;
-        }
-
         public HqTiersRanks tier() {
-            HqTiersRanks fromApi = HqTiersRankSystem.normalizeRank(tierName);
-            if (fromApi != null) return fromApi;
-            return hasPlayedRanked() ? HqTiersRankSystem.fallbackTier(totalRating) : null;
+            return HqTiersRankSystem.normalizeRank(tierName);
         }
 
         public String tierLabel() {
@@ -120,8 +114,8 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
             if (tierColorHex != null && !tierColorHex.isBlank()) {
                 return HqTiersRankSystem.hexToColor(tierColorHex);
             }
-            HqTiersRanks tier = tier();
-            return tier != null ? HqTiersRankSystem.tierColor(tier) : HqTiersRankSystem.ratingColor(totalRating);
+
+            return HqTiersRankSystem.tierColor(tier());
         }
     }
 }

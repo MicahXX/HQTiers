@@ -81,7 +81,6 @@ public final class HqTiersClientConfig {
     }
 
     private static List<Boolean> defaultSeparatorStates() {
-        // Matches the two SEPARATOR entries in defaultNametagOrder().
         return List.of(false, false);
     }
 
@@ -171,11 +170,7 @@ public final class HqTiersClientConfig {
     }
 
     public enum NametagAlignment {
-        LEFT, RIGHT;
-
-        public NametagAlignment next() {
-            return this == LEFT ? RIGHT : LEFT;
-        }
+        LEFT, RIGHT
     }
 
     public enum NametagComponent {
@@ -207,8 +202,8 @@ public final class HqTiersClientConfig {
             if (tierIndex >= 0 && tierIndex < nametagOrder.size() - 1
                     && nametagOrder.get(tierIndex + 1) != NametagComponent.SEPARATOR) {
                 nametagOrder.add(tierIndex + 1, NametagComponent.SEPARATOR);
-            } else if (nametagOrder.isEmpty() || nametagOrder.get(0) != NametagComponent.SEPARATOR) {
-                nametagOrder.add(0, NametagComponent.SEPARATOR);
+            } else if (nametagOrder.isEmpty() || nametagOrder.getFirst() != NametagComponent.SEPARATOR) {
+                nametagOrder.addFirst(NametagComponent.SEPARATOR);
             } else {
                 nametagOrder.add(NametagComponent.SEPARATOR);
             }
@@ -229,7 +224,7 @@ public final class HqTiersClientConfig {
             nametagSeparatorStates.add(false);
         }
         while (nametagSeparatorStates.size() > needed) {
-            nametagSeparatorStates.remove(nametagSeparatorStates.size() - 1);
+            nametagSeparatorStates.removeLast();
         }
     }
 

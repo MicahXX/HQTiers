@@ -8,6 +8,8 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.jetbrains.annotations.NotNull;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -52,7 +54,7 @@ public class NametagLayoutButtonEntry extends TooltipListEntry<Void> {
     }
 
     @Override
-    public List<? extends net.minecraft.client.gui.components.events.GuiEventListener> children() {
+    public @NotNull List<? extends net.minecraft.client.gui.components.events.GuiEventListener> children() {
         return List.of(button);
     }
 

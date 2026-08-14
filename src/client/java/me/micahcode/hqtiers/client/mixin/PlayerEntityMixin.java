@@ -9,11 +9,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(Player.class)
 public class PlayerEntityMixin {
 
+    @Unique
     private static final String LUNAR_MOD_ID = "ichor";
 
     @ModifyReturnValue(method = "getDisplayName", at = @At("RETURN"), require = 0)
@@ -61,6 +63,7 @@ public class PlayerEntityMixin {
         }
     }
 
+    @Unique
     private static boolean hasTextDisplayPassenger(Player player) {
         for (var passenger : player.getPassengers()) {
             if (passenger instanceof Display.TextDisplay) {
@@ -70,6 +73,7 @@ public class PlayerEntityMixin {
         return false;
     }
 
+    @Unique
     private static Component separator() {
         return Component.literal(" | ").withStyle(net.minecraft.ChatFormatting.GRAY);
     }
