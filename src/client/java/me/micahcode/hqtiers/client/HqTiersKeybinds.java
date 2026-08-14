@@ -1,9 +1,13 @@
 package me.micahcode.hqtiers.client;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersLeaderboardScreen;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen;
+import me.micahcode.hqtiers.client.model.HqTiersLadder;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.ChatFormatting;
@@ -11,27 +15,27 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
 
 public final class HqTiersKeybinds {
-	private HqTiersKeybinds() {
-	}
+    private HqTiersKeybinds() {
+    }
 
-	public static void register() {
-		KeyMapping leaderboard = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
-				"key.hqtiers.open_leaderboard",
-				InputConstants.KEY_L,
-				"category.hqtiers"
-		));
+    public static void register() {
+        KeyMapping leaderboard = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+                "key.hqtiers.open_leaderboard",
+                InputConstants.KEY_L,
+                "category.hqtiers"
+        ));
 
-		KeyMapping cycleForward = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
-				"key.hqtiers.cycle_mode",
+        KeyMapping cycleForward = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+                "key.hqtiers.cycle_mode",
                 InputConstants.KEY_RIGHT,
-				"category.hqtiers"
-		));
+                "category.hqtiers"
+        ));
 
-		KeyMapping cycleBack = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
-				"key.hqtiers.cycle_mode_back",
-				InputConstants.KEY_LEFT,
-				"category.hqtiers"
-		));
+        KeyMapping cycleBack = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+                "key.hqtiers.cycle_mode_back",
+                InputConstants.KEY_LEFT,
+                "category.hqtiers"
+        ));
 
         KeyMapping viewStats = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.view_stats",
@@ -39,97 +43,91 @@ public final class HqTiersKeybinds {
                 "category.hqtiers"
         ));
 
-		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			unbindAdvancementsIfConflicting(client.options, leaderboard);
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            unbindAdvancementsIfConflicting(client.options, leaderboard);
 
-			while (leaderboard.consumeClick()) {
-				if (client.screen instanceof HqTiersPlayerStatsScreen) {
-					client.setScreen(null);
-				} else {
-					client.setScreen(new HqTiersLeaderboardScreen(HqTiersClientState.leaderboardClient()));
-				}
-			}
+            while (leaderboard.consumeClick()) {
+                if (client.screen instanceof HqTiersPlayerStatsScreen) {
+                    client.setScreen(null);
+                } else {
+                    client.setScreen(new HqTiersLeaderboardScreen(HqTiersClientState.leaderboardClient()));
+                }
+            }
 
-			while (cycleForward.consumeClick()) {
-				cycleLadder(client, 1);
-			}
+            while (cycleForward.consumeClick()) {
+                cycleLadder(client, 1);
+            }
 
-			while (cycleBack.consumeClick()) {
-				cycleLadder(client, -1);
-			}
+            while (cycleBack.consumeClick()) {
+                cycleLadder(client, -1);
+            }
 
             while (viewStats.consumeClick()) {
                 if (client.player != null) {
-                    client.setScreen(new me.micahcode.hqtiers.client.leaderboard.HqTiersPlayerStatsScreen(
+                    client.setScreen(new HqTiersPlayerStatsScreen(
                             null,
                             client.player.getUUID().toString(),
                             client.player.getName().getString()
                     ));
                 }
             }
-		});
-	}
+        });
+    }
 
-	private static final String[] CYCLE = {
-			"MODE:GLOBAL",
-			"MODE:HIGHEST_TIER",
-			"SWORD", "AXE", "UHC", "VANILLA", "MACE", "SPEAR_MACE", "CART",
-			"DIAMOND_POT", "NETHERITE_OP", "SMP", "DIAMOND_SMP"
-	};
+    private static final List<Object> CYCLE = buildCycle();
 
-	private static void cycleLadder(net.minecraft.client.Minecraft client, int direction) {
-		String current;
-		if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL) {
-			current = "MODE:GLOBAL";
-		} else if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.HIGHEST_TIER) {
-			current = "MODE:HIGHEST_TIER";
-		} else {
-			current = HqTiersClientConfig.preferredLadder;
-		}
+    private static List<Object> buildCycle() {
+        List<Object> cycle = new ArrayList<>();
+        cycle.add(HqTiersClientConfig.DisplayMode.GLOBAL);
+        cycle.add(HqTiersClientConfig.DisplayMode.HIGHEST_TIER);
+        cycle.addAll(HqTiersLadder.ranked());
+        return cycle;
+    }
 
-		int idx = 0;
-		for (int i = 0; i < CYCLE.length; i++) {
-			if (CYCLE[i].equals(current)) { idx = i; break; }
-		}
+    private static void cycleLadder(net.minecraft.client.Minecraft client, int direction) {
+        Object current = switch (HqTiersClientConfig.displayMode) {
+            case GLOBAL -> HqTiersClientConfig.DisplayMode.GLOBAL;
+            case HIGHEST_TIER -> HqTiersClientConfig.DisplayMode.HIGHEST_TIER;
+            case PREFERRED_LADDER -> HqTiersLadder.fromString(HqTiersClientConfig.preferredLadder);
+        };
 
-		String next = CYCLE[((idx + direction) % CYCLE.length + CYCLE.length) % CYCLE.length];
+        int idx = Math.max(0, CYCLE.indexOf(current));
+        Object next = CYCLE.get(((idx + direction) % CYCLE.size() + CYCLE.size()) % CYCLE.size());
 
-		if (next.equals("MODE:GLOBAL")) {
-			HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.GLOBAL;
-		} else if (next.equals("MODE:HIGHEST_TIER")) {
-			HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.HIGHEST_TIER;
-		} else {
-			HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.PREFERRED_LADDER;
-			HqTiersClientConfig.preferredLadder = next;
-		}
+        String label;
+        if (next == HqTiersClientConfig.DisplayMode.GLOBAL) {
+            HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.GLOBAL;
+            label = "Global";
+        } else if (next == HqTiersClientConfig.DisplayMode.HIGHEST_TIER) {
+            HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.HIGHEST_TIER;
+            label = "Highest Tier";
+        } else {
+            HqTiersLadder nextLadder = (HqTiersLadder) next;
+            HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.PREFERRED_LADDER;
+            HqTiersClientConfig.preferredLadder = nextLadder.name();
+            label = nextLadder.displayName();
+        }
 
-		HqTiersClientConfig.save();
+        HqTiersClientConfig.save();
 
-		if (client.player != null) {
-			String label = next.equals("MODE:GLOBAL") ? "Global"
-					: next.equals("MODE:HIGHEST_TIER") ? "Highest Tier"
-					: HqTiersFormatter.displayName(next);
+        if (client.player != null) {
+            net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal("HQTiers: " + label + " ")
+                    .withStyle(ChatFormatting.GOLD);
 
-			net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal("HQTiers: " + label + " ")
-					.withStyle(ChatFormatting.GOLD);
+            String iconLadderName = next instanceof HqTiersLadder ladder ? ladder.name() : HqTiersLadder.GLOBAL.name();
+            msg.append(HqTiersFormatter.icon(iconLadderName));
 
-			if (next.equals("MODE:GLOBAL") || next.equals("MODE:HIGHEST_TIER")) {
-				msg.append(HqTiersFormatter.icon("GLOBAL"));
-			} else {
-				msg.append(HqTiersFormatter.icon(next));
-			}
+            client.player.displayClientMessage(msg, true);
+        }
+    }
 
-			client.player.displayClientMessage(msg, true);
-		}
-	}
-
-	private static void unbindAdvancementsIfConflicting(Options options, KeyMapping leaderboardKey) {
-		KeyMapping advancementsKey = options.keyAdvancements;
-		if (leaderboardKey.saveString().equals("key.keyboard.l")
-				&& advancementsKey.saveString().equals("key.keyboard.l")) {
-			advancementsKey.setKey(InputConstants.UNKNOWN);
-			KeyMapping.resetMapping();
-			options.save();
-		}
-	}
+    private static void unbindAdvancementsIfConflicting(Options options, KeyMapping leaderboardKey) {
+        KeyMapping advancementsKey = options.keyAdvancements;
+        if (leaderboardKey.saveString().equals("key.keyboard.l")
+                && advancementsKey.saveString().equals("key.keyboard.l")) {
+            advancementsKey.setKey(InputConstants.UNKNOWN);
+            KeyMapping.resetMapping();
+            options.save();
+        }
+    }
 }

@@ -14,6 +14,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -84,6 +85,7 @@ public class TextDisplayEntityRendererMixin {
         }
     }
 
+    @Unique
     private static Component styledTextFromOrdered(FormattedCharSequence ordered) {
         MutableComponent result = Component.empty();
         StringBuilder current = new StringBuilder();
@@ -96,7 +98,7 @@ public class TextDisplayEntityRendererMixin {
                 skippingLeading[0] = false;
             }
 
-            if (!style.equals(currentStyle[0]) && current.length() > 0) {
+            if (!style.equals(currentStyle[0]) && !current.isEmpty()) {
                 result.append(Component.literal(current.toString()).setStyle(currentStyle[0]));
                 current.setLength(0);
             }
@@ -105,13 +107,14 @@ public class TextDisplayEntityRendererMixin {
             return true;
         });
 
-        if (current.length() > 0) {
+        if (!current.isEmpty()) {
             result.append(Component.literal(current.toString()).setStyle(currentStyle[0]));
         }
 
         return result;
     }
 
+    @Unique
     private static Component separator() {
         return Component.literal(" | ").withStyle(net.minecraft.ChatFormatting.GRAY);
     }

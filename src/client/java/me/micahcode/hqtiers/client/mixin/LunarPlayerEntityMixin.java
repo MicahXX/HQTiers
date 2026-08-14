@@ -7,6 +7,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -14,6 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Player.class)
 public class LunarPlayerEntityMixin {
 
+    @Unique
     private static final String LUNAR_MOD_ID = "ichor";
 
     @Inject(
@@ -59,6 +61,7 @@ public class LunarPlayerEntityMixin {
         }
     }
 
+    @Unique
     private static Component separator() {
         return Component.literal(" | ").withStyle(net.minecraft.ChatFormatting.GRAY);
     }
