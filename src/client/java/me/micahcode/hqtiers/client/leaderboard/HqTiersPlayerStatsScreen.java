@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.HqTiersFormatter;
-import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -51,7 +50,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private boolean loaded;
     private boolean failed;
 
-    private String selectedLadder = null;
+    private String selectedLadder;
     private List<HqTiersLeaderboardClient.HistoryPoint> historyPoints = null;
     private boolean historyLoading = false;
     private int[] graphXPositions = null;
@@ -111,7 +110,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int base = rowH();
         if (ladderCount <= 0) return base;
         int available = (tableBottom() - FOOTER_RESERVE) - (tableTop() + 4);
-        int neededRows = ladderCount + 1; // +1 for the header row
+        int neededRows = ladderCount + 1;
         int needed = neededRows * base;
         if (needed <= available) return base;
         return Math.max(11, available / neededRows);
@@ -131,32 +130,30 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                 graphYPositions = null;
                 init();
             } else {
-                if (minecraft != null) minecraft.setScreen(parent);
+                minecraft.setScreen(parent);
             }
         }).bounds(panelLeft(), height - 26, backWidth, 18).build());
 
         if (selectedLadder == null) {
             var cached = HqTiersClientState.cache().getIfFresh(uuid);
-            if (cached.isPresent()) addLadderButtons(cached.get());
+            cached.ifPresent(this::addLadderButtons);
         }
 
         HqTiersClientState.cache().fetch(uuid).thenAccept(stats -> {
             if (!loaded) {
                 loaded = true;
                 failed = stats == null;
-                if (minecraft != null && selectedLadder == null) minecraft.execute(this::init);
+                if (selectedLadder == null) minecraft.execute(this::init);
             }
         });
 
         if (selectedLadder != null && historyPoints == null && historyLoading) {
             HqTiersClientState.leaderboardClient()
                     .fetchHistory(uuid.toString(), selectedLadder)
-                    .thenAccept(pts -> {
-                        if (minecraft != null) minecraft.execute(() -> {
-                            historyPoints = pts;
-                            historyLoading = false;
-                        });
-                    });
+                    .thenAccept(pts -> minecraft.execute(() -> {
+                        historyPoints = pts;
+                        historyLoading = false;
+                    }));
         }
     }
 
@@ -189,12 +186,10 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         init();
         HqTiersClientState.leaderboardClient()
                 .fetchHistory(uuid.toString(), id)
-                .thenAccept(pts -> {
-                    if (minecraft != null) minecraft.execute(() -> {
-                        historyPoints = pts;
-                        historyLoading = false;
-                    });
-                });
+                .thenAccept(pts -> minecraft.execute(() -> {
+                    historyPoints = pts;
+                    historyLoading = false;
+                }));
     }
 
     @Override
@@ -248,7 +243,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         List<HqTiersStats.LadderStats> ladders = sortedLadders(stats);
         int rh = tableRowH(ladders.size());
 
-        // Column headers
         int hy = tt + 4;
         ctx.fill(pl + 2, hy, pr - 2, hy + rh - 2, BG_HEADER);
         ctx.fill(pl + 2, hy + rh - 2, pr - 2, hy + rh - 1, ACCENT_DIM);
@@ -258,8 +252,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.drawString(font, "TR", pl + col(pw, 2, compact), hy + 4, TEXT_HEADER);
         ctx.drawString(font, "RANK", pl + col(pw, 3, compact), hy + 4, TEXT_HEADER);
         if (!compact) {
-            ctx.drawString(font, "W / L", pl + col(pw, 4, compact), hy + 4, TEXT_HEADER);
-            ctx.drawString(font, "STREAK", pl + col(pw, 5, compact), hy + 4, TEXT_HEADER);
+            ctx.drawString(font, "W / L", pl + col(pw, 4, false), hy + 4, TEXT_HEADER);
+            ctx.drawString(font, "STREAK", pl + col(pw, 5, false), hy + 4, TEXT_HEADER);
         }
 
         if (ladders.isEmpty()) {
@@ -286,14 +280,16 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             ctx.drawString(font, HqTiersFormatter.displayName(l.ladder()),
                     pl + col(pw, 0, compact) + 12, y + 4, TEXT_WHITE);
 
+            int resolvedTierColor = 0xFF000000 | l.tierColorInt();
+
             String tierText = unranked ? "Unranked" : rawTierLabel;
-            int tierCol = unranked ? TEXT_DIM : (0xFF000000 | l.tierColorInt());
+            int tierCol = unranked ? TEXT_DIM : resolvedTierColor;
             ctx.drawString(font, trim(tierText, compact ? 8 : 14),
                     pl + col(pw, 1, compact), y + 4, tierCol);
 
             int tr = l.totalRating();
             String trStr = unranked ? "—" : (tr + (compact ? "" : " TR"));
-            ctx.drawString(font, trStr, pl + col(pw, 2, compact), y + 4, unranked ? TEXT_DIM : eloColor(tr));
+            ctx.drawString(font, trStr, pl + col(pw, 2, compact), y + 4, unranked ? TEXT_DIM : resolvedTierColor);
 
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
             int rankCol = l.hasPosition() ? 0xFFFFD700 : TEXT_DIM;
@@ -301,9 +297,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
             if (!compact) {
                 ctx.drawString(font, l.wins() + " / " + l.losses(),
-                        pl + col(pw, 4, compact), y + 4, wlColor(l.wins(), l.losses()));
+                        pl + col(pw, 4, false), y + 4, wlColor(l.wins(), l.losses()));
                 ctx.drawString(font, streakStr(l.currentStreak()),
-                        pl + col(pw, 5, compact), y + 4, streakColor(l.currentStreak()));
+                        pl + col(pw, 5, false), y + 4, streakColor(l.currentStreak()));
             }
 
             if (hovered) ctx.drawString(font, "→", pr - 14, y + 4, ACCENT_GOLD);
@@ -323,7 +319,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private static int col(int pw, int col, boolean compact) {
         if (compact) {
             return switch (col) {
-                case 0 -> 8;
                 case 1 -> pw * 40 / 100;
                 case 2 -> pw * 62 / 100;
                 case 3 -> pw * 82 / 100;
@@ -331,7 +326,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             };
         }
         return switch (col) {
-            case 0 -> 10;
             case 1 -> pw * 26 / 100;
             case 2 -> pw * 40 / 100;
             case 3 -> pw * 52 / 100;
@@ -437,7 +431,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             ctx.fill(x - 1, y - 1, x + 2, y + 2, dotCol);
         }
 
-        ctx.drawString(font, dateLabel(historyPoints.get(0).timestamp()),
+        ctx.drawString(font, dateLabel(historyPoints.getFirst().timestamp()),
                 gl, gbt + 4, TEXT_DIM);
         String lastDate = dateLabel(historyPoints.get(n - 1).timestamp());
         ctx.drawString(font, lastDate,
@@ -452,17 +446,18 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                     closest = i;
                 }
             }
-            if (closest >= 0) renderTooltip(ctx, closest, gl, gr, gt, gbt);
+            if (closest >= 0) renderTooltip(ctx, closest, gl, gr, gt, gbt, tierRaw);
         }
     }
 
-    private void renderTooltip(GuiGraphics ctx, int idx, int gl, int gr, int gt, int gbt) {
+    private void renderTooltip(GuiGraphics ctx, int idx, int gl, int gr, int gt, int gbt, int tierColorRaw) {
         int elo = historyPoints.get(idx).elo();
         int prev = idx > 0 ? historyPoints.get(idx - 1).elo() : elo;
         int delta = elo - prev;
         String deltaStr = idx == 0 ? "start" : (delta >= 0 ? "+" + delta : Integer.toString(delta));
         String date = dateLabel(historyPoints.get(idx).timestamp());
         int deltaColor = idx == 0 ? TEXT_DIM : (delta >= 0 ? 0xFF4ADE80 : 0xFFF87171);
+        int eloTextColor = 0xFF000000 | (tierColorRaw & 0xFFFFFF);
 
         ctx.fill(graphXPositions[idx], gt, graphXPositions[idx] + 1, gbt, 0x553B82F6);
 
@@ -477,7 +472,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(tx - 2, ty - 2, tx + tw + 2, ty - 1, ACCENT_GOLD);
         ctx.fill(tx - 2, ty - 2, tx - 1, ty + th + 2, ACCENT_DIM);
 
-        ctx.drawString(font, elo + " TR", tx + 2, ty + 2, eloColor(elo));
+        ctx.drawString(font, elo + " TR", tx + 2, ty + 2, eloTextColor);
         ctx.drawString(font, deltaStr, tx + 2, ty + 12, deltaColor);
         if (!date.isEmpty())
             ctx.drawString(font, date, tx + 2, ty + 22, TEXT_HEADER);
@@ -544,10 +539,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (s < -2) return 0xFFF87171;
         if (s < 0) return 0xFFFCA5A5;
         return TEXT_DIM;
-    }
-
-    private static int eloColor(int elo) {
-        return 0xFF000000 | HqTiersRankSystem.ratingColor(elo);
     }
 
     private static String trim(String value, int max) {
