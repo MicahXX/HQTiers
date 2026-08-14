@@ -42,8 +42,6 @@ public final class HqTiersMinecraftCompat {
 	}
 
 	public static Style fontStyle(Identifier fontId) {
-		MappingResolver mappings = FabricLoader.getInstance().getMappingResolver();
-
 		for (Method method : Style.class.getMethods()) {
 			if (!method.getReturnType().isAssignableFrom(Style.class)) continue;
 			if (method.getParameterCount() != 1) continue;

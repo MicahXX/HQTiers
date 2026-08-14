@@ -18,7 +18,7 @@ import java.util.UUID;
 public class HqTiersApiClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/ranked/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
-    private static final String USER_AGENT = "HQTiers/1.0 (micahcode)";
+    private static final String USER_AGENT = "HQTiers/1.0 (discord: micahcode)";
     private static final Gson GSON = new Gson();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -77,7 +77,7 @@ public class HqTiersApiClient {
             int placementTarget = intValue(entry, "placementTarget", 10);
             int leaderboardPosition = intValue(entry, "leaderboardPosition", -1);
             int gamesPlayed = intValue(entry, "gamesPlayed", 0);
-            String tier = string(entry, "grantedTier", null);
+            String tier = string(entry, "grantedTier");
             double winRate = (wins + losses) > 0 ? (double) wins / (wins + losses) : 0.0;
 
             HqTiersStats.LadderStats existing = ladders.get(key);
@@ -95,7 +95,7 @@ public class HqTiersApiClient {
                     gamesPlayed,
                     winRate,
                     tier,
-                    string(entry, "tierColor", null),
+                    string(entry, "tierColor"),
                     0,
                     tier == null,
                     false,
@@ -111,7 +111,7 @@ public class HqTiersApiClient {
                     0,
                     false,
                     0,
-                    leaderboardPosition > 0 ? leaderboardPosition : 0
+                    Math.max(leaderboardPosition, 0)
             ));
         }
 
@@ -119,14 +119,14 @@ public class HqTiersApiClient {
     }
 
     private static HqTiersStats.LadderStats buildGlobal(JsonObject root) {
-        String globalRank = string(root, "rank", null);
+        String globalRank = string(root, "rank");
         int globalPosition = intValue(root, "globalPosition", -1);
 
         return new HqTiersStats.LadderStats(
                 "GLOBAL", 0, 0, 0, 0, 0, 0, 0.0,
                 globalRank, null, 0, globalRank == null, false, 0, 0, 0L, 0, 0,
                 null, null, false, false, 0, false, 0,
-                globalPosition > 0 ? globalPosition : 0
+                Math.max(globalPosition, 0)
         );
     }
 
@@ -134,9 +134,9 @@ public class HqTiersApiClient {
         return HqTiersClientConfig.fromApiLadder(apiKey);
     }
 
-    private static String string(JsonObject object, String key, String fallback) {
+    private static String string(JsonObject object, String key) {
         JsonElement value = object.get(key);
-        return value == null || value.isJsonNull() ? fallback : value.getAsString();
+        return value == null || value.isJsonNull() ? null : value.getAsString();
     }
 
     private static int intValue(JsonObject object, String key, int fallback) {

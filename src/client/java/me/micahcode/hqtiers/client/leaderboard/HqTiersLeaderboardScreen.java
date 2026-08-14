@@ -1,16 +1,16 @@
 package me.micahcode.hqtiers.client.leaderboard;
 
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
-import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
-import me.micahcode.hqtiers.client.model.HqTiersStats;
 import me.micahcode.hqtiers.client.MojangProfileResolver;
+import me.micahcode.hqtiers.client.model.HqTiersLadder;
+import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -19,11 +19,11 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 
 public final class HqTiersLeaderboardScreen extends Screen {
-    private static final String[] LADDERS = {
-            "SWORD", "AXE", "MACE", "SPEAR_MACE", "UHC", "VANILLA",
-            "CART", "DIAMOND_POT", "NETHERITE_OP", "SMP", "DIAMOND_SMP"
-    };
-    private static final Set<String> LADDERS_COMING_SOON = Set.of();
+    private static final List<HqTiersLadder> LADDERS = List.of(
+            HqTiersLadder.GLOBAL, HqTiersLadder.SWORD, HqTiersLadder.AXE, HqTiersLadder.MACE, HqTiersLadder.SPEAR_MACE,
+            HqTiersLadder.UHC, HqTiersLadder.VANILLA, HqTiersLadder.CART, HqTiersLadder.DIAMOND_POT,
+            HqTiersLadder.NETHERITE_OP, HqTiersLadder.SMP, HqTiersLadder.DIAMOND_SMP
+    );
 
     private static final int TAB_HEIGHT = 15;
     private static final int TAB_GAP = 3;
@@ -34,13 +34,13 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private static final int MAX_PANEL_WIDTH = 480;
     private static final int ROW_HEIGHT = 16;
 
-    // Podium accent colors (ARGB)
+    private static final long LEADERBOARD_REFRESH_INTERVAL_MS = 10_000;
+    private static final long TIER_REFETCH_COOLDOWN_MS = 5_000;
+
     private static final int GOLD = 0xFFFFD700;
     private static final int SILVER = 0xFFE3E6EA;
     private static final int BRONZE = 0xFFCD7F32;
 
-    // Dim placeholder color shared by the "loading" (···) and "Unranked"
-    // tier states, so both read as clearly non-final/non-real data.
     private static final int TIER_DIM = 0xFF5C5138;
 
     private final HqTiersLeaderboardClient leaderboardClient;
@@ -51,7 +51,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private String searchStatus = "";
     private HqTiersLeaderboardClient.Entry resolvedSearchEntry;
     private String pendingResolveName = "";
-    private final Set<String> tierRequested = new HashSet<>();
+    private final Map<String, Long> lastLeaderboardRefreshAt = new HashMap<>();
+    private final Map<String, Long> tierRequestedAt = new HashMap<>();
     private boolean firstInit = true;
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
@@ -69,20 +70,22 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int columns = tabColumns(availableWidth);
         int tabWidth = (availableWidth - (columns - 1) * TAB_GAP) / columns;
 
-        for (int i = 0; i < LADDERS.length; i++) {
-            String tabLadder = LADDERS[i];
+        for (int i = 0; i < LADDERS.size(); i++) {
+            HqTiersLadder tabLadder = LADDERS.get(i);
+            String tabLadderName = tabLadder.name();
             int row = i / columns;
             int col = i % columns;
             int x = startX + col * (tabWidth + TAB_GAP);
             int y = 20 + row * (TAB_HEIGHT + TAB_ROW_GAP);
-            String prefix = tabLadder.equals(ladder) ? "> " : "";
+            String prefix = tabLadderName.equals(ladder) ? "> " : "";
             Button tab = Button.builder(Component.literal(prefix + tabButtonLabel(tabLadder)), button -> {
-                ladder = tabLadder;
+                ladder = tabLadderName;
                 scrollOffset = 0;
                 leaderboardClient.load(ladder);
+                lastLeaderboardRefreshAt.put(ladder, System.currentTimeMillis());
                 init();
             }).bounds(x, y, tabWidth, TAB_HEIGHT).build();
-            tab.active = !tabLadder.equals(ladder);
+            tab.active = !tabLadderName.equals(ladder);
             addRenderableWidget(tab);
         }
 
@@ -110,13 +113,17 @@ public final class HqTiersLeaderboardScreen extends Screen {
         if (firstInit) {
             firstInit = false;
             leaderboardClient.refresh(ladder);
+            lastLeaderboardRefreshAt.put(ladder, System.currentTimeMillis());
         } else {
             leaderboardClient.load(ladder);
+            lastLeaderboardRefreshAt.putIfAbsent(ladder, System.currentTimeMillis());
         }
     }
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
+        maybeRefreshLeaderboard();
+
         context.fill(0, 0, width, height, 0xF0100C05);
         super.extractRenderState(context, mouseX, mouseY, delta);
 
@@ -143,10 +150,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         context.text(font, "Tier", tierColX, top - 14, 0xFFFFE7A3, true);
         context.text(font, "TR", eloColX, top - 14, 0xFFFFE7A3, true);
 
-        context.text(font, LADDERS_COMING_SOON.contains(ladder)
-                        ? "* Ladder coming soon to PvPHQ"
-                        : "Click a player to view full stats",
-                panelLeft + 8, legendY() + 1, 0xFF6B5D3A, true);
+        context.text(font, "Click a player to view full stats", panelLeft + 8, legendY() + 1, 0xFF6B5D3A, true);
 
         if (resolvedSearchEntry != null) {
             context.text(font, "Found: " + resolvedSearchEntry.name(), panelLeft + 310, searchY + 5, 0xFF55FF55, true);
@@ -157,7 +161,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         if (visibleEntries.isEmpty()) {
             String message;
             int color;
-            if (state.unsupported()) { // not used anymore
+            if (state.unsupported()) {
                 message = HqTiersFormatter.displayName(ladder) + " leaderboard is coming soon to PvPHQ.";
                 color = 0xFFD4AF37;
             } else if (state.error() != null) {
@@ -216,21 +220,11 @@ public final class HqTiersLeaderboardScreen extends Screen {
             context.text(font, trim(entry.name(), nameMaxChars), nameColX, y + 3, nameColor, true);
 
             TierLookup tier = tierFor(entry);
-            String tierText;
-            int tierColor;
-            if (!tier.loaded()) {
-                tierText = "···";
-                tierColor = TIER_DIM;
-            } else if (tier.label().isEmpty() || tier.label().equalsIgnoreCase("Unranked")) {
-                tierText = "Unranked";
-                tierColor = TIER_DIM;
-            } else {
-                tierText = trim(tier.label(), 12);
-                tierColor = 0xFF000000 | tier.colorInt();
-            }
+            String tierText = tier.loaded() ? trim(tier.label(), 12) : "···";
+            int tierColor = tier.loaded() ? (0xFF000000 | tier.colorInt()) : TIER_DIM;
             context.text(font, tierText, tierColX, y + 3, tierColor, true);
 
-            context.text(font, entry.elo() + " TR", eloColX, y + 3, eloColor(entry.elo()), true);
+            context.text(font, entry.elo() + " TR", eloColX, y + 3, tierColor, true);
         }
         context.disableScissor();
 
@@ -239,6 +233,22 @@ public final class HqTiersLeaderboardScreen extends Screen {
         } else {
             context.text(font, entries.size() + " players | page " + Math.max(1, state.page()), panelLeft, height - 18, 0xFF7C8BA1, true);
         }
+    }
+
+    private void maybeRefreshLeaderboard() {
+        HqTiersLeaderboardClient.PageState state = leaderboardClient.state(ladder);
+        if (state.loading() || !searchText().isBlank()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long last = lastLeaderboardRefreshAt.getOrDefault(ladder, 0L);
+        if (now - last < LEADERBOARD_REFRESH_INTERVAL_MS) {
+            return;
+        }
+
+        lastLeaderboardRefreshAt.put(ladder, now);
+        leaderboardClient.refresh(ladder);
     }
 
     @Override
@@ -323,7 +333,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int panelRight = panelRight();
         int availableWidth = (panelRight - 8) - (panelLeft + 8);
         int columns = tabColumns(availableWidth);
-        return (LADDERS.length + columns - 1) / columns;
+        return (LADDERS.size() + columns - 1) / columns;
     }
 
     private int legendY() {
@@ -473,15 +483,12 @@ public final class HqTiersLeaderboardScreen extends Screen {
         ));
     }
 
-    private static String tabButtonLabel(String ladder) {
-        String label = switch (ladder) {
-            case "DIAMOND_POT" -> "Pot";
-            case "NETHERITE_OP" -> "NethOP";
-            case "DIAMOND_SMP" -> "D.SMP";
-            case "SPEAR_MACE" -> "S.Mace";
-            default -> HqTiersFormatter.displayName(ladder);
+    private static String tabButtonLabel(HqTiersLadder ladder) {
+        return switch (ladder) {
+            case SPEAR_MACE -> "S.Mace";
+            case DIAMOND_SMP -> "D.SMP";
+            default -> ladder.displayName();
         };
-        return LADDERS_COMING_SOON.contains(ladder) ? label + "*" : label;
     }
 
     private record TierLookup(boolean loaded, String label, int colorInt) {
@@ -508,7 +515,10 @@ public final class HqTiersLeaderboardScreen extends Screen {
             return new TierLookup(true, "", 0);
         }
 
-        if (tierRequested.add(entry.uuid())) {
+        long now = System.currentTimeMillis();
+        long last = tierRequestedAt.getOrDefault(entry.uuid(), 0L);
+        if (now - last >= TIER_REFETCH_COOLDOWN_MS) {
+            tierRequestedAt.put(entry.uuid(), now);
             HqTiersClientState.cache().fetch(uuid);
         }
         return TierLookup.unloaded();
@@ -525,9 +535,5 @@ public final class HqTiersLeaderboardScreen extends Screen {
 
     private static int nameColor(int rank) {
         return 0xFFFFFFFF;
-    }
-
-    private static int eloColor(int elo) {
-        return 0xFF000000 | HqTiersRankSystem.ratingColor(elo);
     }
 }

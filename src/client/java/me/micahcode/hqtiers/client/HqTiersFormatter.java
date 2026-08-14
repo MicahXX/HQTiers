@@ -1,6 +1,7 @@
 package me.micahcode.hqtiers.client;
 
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
+import me.micahcode.hqtiers.client.model.HqTiersLadder;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.ChatFormatting;
@@ -8,28 +9,22 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public final class HqTiersFormatter {
     private HqTiersFormatter() {
     }
 
-    public static final List<String> KNOWN_LADDERS = List.of(
-            "SWORD",
-            "AXE",
-            "VANILLA",
-            "UHC",
-            "MACE",
-            "NETHERITE_POT",
-            "DIAMOND_POT",
-            "SMP",
-            "DIAMOND_SMP",
-            "SPEAR_MACE",
-            "CART"
-    );
+    public static final List<String> KNOWN_LADDERS = HqTiersLadder.ranked().stream()
+            .map(Enum::name)
+            .toList();
 
     public static Component compact(HqTiersStats stats) {
-
         HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
 
         if (ladder == null) {
@@ -57,7 +52,7 @@ public final class HqTiersFormatter {
         ));
 
         var client = net.minecraft.client.Minecraft.getInstance();
-        if (client != null && client.player != null) {
+        if (client.player != null) {
             var real = HqTiersClientState.cache()
                     .getIfFresh(client.player.getUUID())
                     .map(HqTiersFormatter::compact)
@@ -69,45 +64,6 @@ public final class HqTiersFormatter {
         }
 
         return preview;
-    }
-
-    public static Component nametag(HqTiersStats stats, Component currentName) {
-        Component tier = compact(stats);
-
-        if (tier.getString().isEmpty()) {
-            return currentName;
-        }
-
-        if (currentName == null) {
-            currentName = Component.empty();
-        }
-
-        if (HqTiersClientConfig.nametagAlignment ==
-                HqTiersClientConfig.NametagAlignment.LEFT) {
-
-            return tier.copy()
-                    .append(Component.literal(""))
-                    .append(currentName);
-
-        } else {
-
-            return currentName.copy()
-                    .append(Component.literal(""))
-                    .append(tier);
-        }
-    }
-
-    public static Component hud(HqTiersStats stats) {
-        HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
-
-        if (ladder == null) {
-            return Component.literal("PvPHQ: Unranked").withStyle(ChatFormatting.GRAY);
-        }
-
-        return Component.literal("PvPHQ: ").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal(stats.name()).withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(" "))
-                .append(decorated(ladder));
     }
 
     public static Component details(HqTiersStats stats) {
@@ -135,7 +91,7 @@ public final class HqTiersFormatter {
                 .append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(ladder.tierLabel()).withStyle(ChatFormatting.GOLD))
                 .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(ratingText(ladder.totalRating())).setStyle(Style.EMPTY.withColor(ratingColor(ladder.totalRating()))))
+                .append(Component.literal(ratingText(ladder.totalRating())).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())))
                 .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(ladder.wins() + "W/" + ladder.losses() + "L").withStyle(ChatFormatting.WHITE))
                 .append(positionDetails(ladder));
@@ -184,7 +140,7 @@ public final class HqTiersFormatter {
                 }
                 case ELO -> {
                     if (!HqTiersClientConfig.eloEnabled) continue;
-                    Style eloStyle = Style.EMPTY.withColor(HqTiersClientConfig.coloredElo ? ratingColor(ladder.totalRating()) : 0xFFFFFF);
+                    Style eloStyle = Style.EMPTY.withColor(HqTiersClientConfig.coloredElo ? ladder.tierColorInt() : 0xFFFFFF);
                     text.append(Component.literal(Integer.toString(ladder.totalRating())).setStyle(eloStyle));
                     if (HqTiersClientConfig.eloLabelEnabled)
                         text.append(Component.literal(" " + HqTiersRankSystem.RATING_LABEL).setStyle(eloStyle));
@@ -242,44 +198,15 @@ public final class HqTiersFormatter {
         return rating + " " + HqTiersRankSystem.RATING_LABEL;
     }
 
-    public static int ratingColor(int rating) {
-        return HqTiersRankSystem.ratingColor(rating);
-    }
-
     private static char iconGlyph(String ladder) {
-        return switch (HqTiersClientConfig.normalizeLadder(ladder)) {
-            case "SWORD" -> '\uE001';
-            case "AXE" -> '\uE002';
-            case "VANILLA", "CRYSTAL" -> '\uE003';
-            case "UHC" -> '\uE004';
-            case "MACE" -> '\uE005';
-            case "NETHERITE_POT", "NETHERITE_OP" -> '\uE006';
-            case "DIAMOND_POT", "POT" -> '\uE007';
-            case "SMP", "NETHERITE_SMP" -> '\uE008';
-            case "DIAMOND_SMP" -> '\uE009';
-            case "GLOBAL" -> '\uE00A';
-            case "SPEAR_MACE" -> '\uE00B';
-            case "CART", "HT_CART" -> '\uE00C';
-            default -> '\uE00A';
-        };
+        HqTiersLadder resolved = HqTiersLadder.fromString(HqTiersClientConfig.normalizeLadder(ladder));
+        return resolved != null ? resolved.glyph() : HqTiersLadder.GLOBAL.glyph();
     }
 
     public static String displayName(String ladder) {
-        return switch (HqTiersClientConfig.normalizeLadder(ladder)) {
-            case "GLOBAL" -> "Global";
-            case "SWORD" -> "Sword";
-            case "AXE" -> "Axe";
-            case "UHC" -> "UHC";
-            case "VANILLA", "CRYSTAL" -> "Vanilla";
-            case "MACE" -> "Mace";
-            case "SPEAR_MACE", "SPEAR" -> "Spear Mace";
-            case "CART", "HT_CART" -> "Cart"; // why is it HT_CART lmao
-            case "DIAMOND_POT" -> "Pot";
-            case "NETHERITE_POT", "NETHERITE_OP" -> "NethOP";
-            case "SMP", "NETHERITE_SMP" -> "SMP";
-            case "DIAMOND_SMP" -> "DiamondSMP";
-            default -> HqTiersClientConfig.normalizeLadder(ladder);
-        };
+        String normalized = HqTiersClientConfig.normalizeLadder(ladder);
+        HqTiersLadder resolved = HqTiersLadder.fromString(normalized);
+        return resolved != null ? resolved.displayName() : normalized;
     }
 
     public static Optional<HqTiersStats.LadderStats> bestLadder(Map<String, HqTiersStats.LadderStats> ladders) {
