@@ -14,7 +14,7 @@ public enum HqTiersLadder {
     SPEAR_MACE('\uE00B', "Spear Mace", "SPEAR", "SPEARMACE"),
     CART('\uE00C', "Cart", "HT_CART", "CARTS", "MINECART", "MINECARTS"),
     DIAMOND_POT('\uE007', "Pot", "POT"),
-    NETHERITE_POT('\uE006', "NethPot", "NETHERITE_POT"),
+    NETHERITE_POT('\uE006', "NethPot", "NETHERITE_OP"),
     SMP('\uE008', "SMP", "NETHERITE_SMP"),
     DIAMOND_SMP('\uE009', "DiamondSMP"),
     GLOBAL('\uE00A', "Global");
