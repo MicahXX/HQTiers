@@ -305,15 +305,16 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
             int resolvedTierColor = 0xFF000000 | l.tierColorInt();
 
-            String tierText = unranked ? "Unranked" : rawTierLabel;
-            int tierCol = unranked ? TEXT_DIM : resolvedTierColor;
+            String tierText = isGlobal ? "—" : (unranked ? "Unranked" : rawTierLabel);
+            int tierCol = (isGlobal || unranked) ? TEXT_DIM : resolvedTierColor;
 
             ctx.text(font, trim(tierText, compact ? 8 : 14), pl + col(pw, 1, compact), y + 4, tierCol, true);
 
+            boolean noTr = unranked || isGlobal;
             int tr = l.totalRating();
-            String trStr = unranked ? "—" : (tr + (compact ? "" : " TR"));
+            String trStr = noTr ? "—" : (tr + (compact ? "" : " TR"));
 
-            ctx.text(font, trStr, pl + col(pw, 2, compact), y + 4, unranked ? TEXT_DIM : resolvedTierColor, true);
+            ctx.text(font, trStr, pl + col(pw, 2, compact), y + 4, noTr ? TEXT_DIM : resolvedTierColor, true);
 
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
             int rankCol = l.hasPosition() ? 0xFFFFD700 : TEXT_DIM;

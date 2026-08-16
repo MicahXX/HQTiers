@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.HqTiersFormatter;
@@ -35,7 +34,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private static final int ROW_HEIGHT = 16;
 
     private static final long LEADERBOARD_REFRESH_INTERVAL_MS = 10_000;
-    private static final long TIER_REFETCH_COOLDOWN_MS = 5_000;
 
     private static final int GOLD = 0xFFFFD700;
     private static final int SILVER = 0xFFE3E6EA;
@@ -52,7 +50,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private HqTiersLeaderboardClient.Entry resolvedSearchEntry;
     private String pendingResolveName = "";
     private final Map<String, Long> lastLeaderboardRefreshAt = new HashMap<>();
-    private final Map<String, Long> tierRequestedAt = new HashMap<>();
     private boolean firstInit = true;
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
@@ -219,9 +216,10 @@ public final class HqTiersLeaderboardScreen extends Screen {
             int nameColor = isPodium ? podiumColor(rank) : nameColor(rank);
             context.text(font, trim(entry.name(), nameMaxChars), nameColX, y + 3, nameColor, true);
 
-            TierLookup tier = tierFor(entry);
-            String tierText = tier.loaded() ? trim(tier.label(), 12) : "···";
-            int tierColor = tier.loaded() ? (0xFF000000 | tier.colorInt()) : TIER_DIM;
+            String rawTierLabel = entry.tierLabel();
+            boolean unranked = rawTierLabel.isEmpty();
+            String tierText = trim(unranked ? "Unranked" : rawTierLabel, 12);
+            int tierColor = unranked ? TIER_DIM : (0xFF000000 | entry.tierColorInt());
             context.text(font, tierText, tierColX, y + 3, tierColor, true);
 
             context.text(font, entry.elo() + " TR", eloColX, y + 3, tierColor, true);
@@ -267,7 +265,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean focused) {
         if (event.button() == 0) {
             HqTiersLeaderboardClient.Entry entry = rowAt(event.x(), event.y());
-            if (entry != null) {
+            if (entry != null && minecraft != null) {
                 minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, entry.uuid(), entry.name(), ladder));
                 return true;
             }
@@ -280,6 +278,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return false;
     }
 
+    // todo: make this the global ladder later
     private static String initialLadder() {
         return "SWORD";
     }
@@ -383,7 +382,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
 
     private void searchPlayer() {
         String query = searchText();
-        if (query.isBlank()) return;
+        if (query.isBlank() || minecraft == null) return;
 
         if (resolvedSearchEntry != null && resolvedSearchEntry.name().equalsIgnoreCase(query)) {
             minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, resolvedSearchEntry.uuid(), resolvedSearchEntry.name(), ladder));
@@ -405,15 +404,18 @@ public final class HqTiersLeaderboardScreen extends Screen {
         } catch (IllegalArgumentException ignored) {
         }
 
-        HqTiersClientState.profileResolver().resolve(query).thenAccept(result -> minecraft.execute(() -> {
-            if (result.status() == MojangProfileResolver.Status.FOUND) {
-                minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, result.profile().uuid().toString(), result.profile().name(), ladder));
-            } else if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
-                searchStatus = "Player not found.";
-            } else {
-                searchStatus = "Search failed.";
-            }
-        }));
+        HqTiersClientState.profileResolver().resolve(query).thenAccept(result -> {
+            if (minecraft == null) return;
+            minecraft.execute(() -> {
+                if (result.status() == MojangProfileResolver.Status.FOUND) {
+                    minecraft.gui.setScreen(new HqTiersPlayerStatsScreen(this, result.profile().uuid().toString(), result.profile().name(), ladder));
+                } else if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
+                    searchStatus = "Player not found.";
+                } else {
+                    searchStatus = "Search failed.";
+                }
+            });
+        });
     }
 
     private void resolveSearchIfNeeded(String query) {
@@ -429,37 +431,48 @@ public final class HqTiersLeaderboardScreen extends Screen {
 
         pendingResolveName = query;
         searchStatus = "Resolving...";
-        HqTiersClientState.profileResolver().resolve(query).thenAccept(result -> minecraft.execute(() -> {
-            if (!query.equals(searchText())) return;
-            if (result.status() == MojangProfileResolver.Status.FOUND) {
-                searchStatus = "Fetching stats...";
-                HqTiersClientState.cache().fetch(result.profile().uuid()).thenAccept(stats -> minecraft.execute(() -> {
-                    if (!query.equals(searchText())) return;
-                    int elo = 0;
-                    int position = 0;
-                    if (stats != null) {
-                        HqTiersStats.LadderStats ladderStats = stats.ladder(ladder)
-                                .or(stats::displayLadder)
-                                .orElse(null);
-                        if (ladderStats != null) {
-                            elo = ladderStats.totalRating();
-                            position = ladderStats.position();
-                        }
-                    }
-                    if (stats == null) {
-                        resolvedSearchEntry = null;
-                        searchStatus = "Player has not played PvPHQ ranked.";
-                        return;
-                    }
-                    resolvedSearchEntry = new HqTiersLeaderboardClient.Entry(position, result.profile().uuid().toString(), result.profile().name(), elo);
-                    searchStatus = "";
-                }));
-            } else if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
-                searchStatus = "Player not found.";
-            } else {
-                searchStatus = "Search failed.";
-            }
-        }));
+        HqTiersClientState.profileResolver().resolve(query).thenAccept(result -> {
+            if (minecraft == null) return;
+            minecraft.execute(() -> {
+                if (!query.equals(searchText())) return;
+                if (result.status() == MojangProfileResolver.Status.FOUND) {
+                    searchStatus = "Fetching stats...";
+                    HqTiersClientState.cache().fetch(result.profile().uuid()).thenAccept(stats -> {
+                        if (minecraft == null) return;
+                        minecraft.execute(() -> {
+                            if (!query.equals(searchText())) return;
+                            int elo = 0;
+                            int position = 0;
+                            String tierName = null;
+                            String tierColorHex = null;
+                            if (stats != null) {
+                                HqTiersStats.LadderStats ladderStats = stats.ladder(ladder)
+                                        .or(() -> stats.displayLadder())
+                                        .orElse(null);
+                                if (ladderStats != null) {
+                                    elo = ladderStats.totalRating();
+                                    position = ladderStats.position();
+                                    tierName = ladderStats.tierName();
+                                    tierColorHex = ladderStats.tierColorHex();
+                                }
+                            }
+                            if (stats == null) {
+                                resolvedSearchEntry = null;
+                                searchStatus = "Player has not played PvPHQ ranked.";
+                                return;
+                            }
+                            resolvedSearchEntry = new HqTiersLeaderboardClient.Entry(
+                                    position, result.profile().uuid().toString(), result.profile().name(), elo, tierName, tierColorHex);
+                            searchStatus = "";
+                        });
+                    });
+                } else if (result.status() == MojangProfileResolver.Status.NOT_FOUND) {
+                    searchStatus = "Player not found.";
+                } else {
+                    searchStatus = "Search failed.";
+                }
+            });
+        });
     }
 
     private static UUID parseUuid(String value) {
@@ -479,39 +492,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
             case DIAMOND_SMP -> "D.SMP";
             default -> ladder.displayName();
         };
-    }
-
-    private record TierLookup(boolean loaded, String label, int colorInt) {
-        static TierLookup unloaded() {
-            return new TierLookup(false, "", 0);
-        }
-    }
-
-    private TierLookup tierFor(HqTiersLeaderboardClient.Entry entry) {
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(entry.uuid());
-        } catch (IllegalArgumentException invalid) {
-            return TierLookup.unloaded();
-        }
-
-        Optional<HqTiersStats> cached = HqTiersClientState.cache().getIfFresh(uuid);
-        if (cached.isPresent()) {
-            Optional<HqTiersStats.LadderStats> real = cached.get().ladder(ladder);
-            if (real.isPresent()) {
-                HqTiersStats.LadderStats l = real.get();
-                return new TierLookup(true, l.tierLabel(), l.tierColorInt());
-            }
-            return new TierLookup(true, "", 0);
-        }
-
-        long now = System.currentTimeMillis();
-        long last = tierRequestedAt.getOrDefault(entry.uuid(), 0L);
-        if (now - last >= TIER_REFETCH_COOLDOWN_MS) {
-            tierRequestedAt.put(entry.uuid(), now);
-            HqTiersClientState.cache().fetch(uuid);
-        }
-        return TierLookup.unloaded();
     }
 
     private static String trim(String value, int max) {
