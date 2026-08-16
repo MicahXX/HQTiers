@@ -22,7 +22,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private static final List<HqTiersLadder> LADDERS = List.of(
             HqTiersLadder.GLOBAL, HqTiersLadder.SWORD, HqTiersLadder.AXE, HqTiersLadder.MACE, HqTiersLadder.SPEAR_MACE,
             HqTiersLadder.UHC, HqTiersLadder.VANILLA, HqTiersLadder.CART, HqTiersLadder.DIAMOND_POT,
-            HqTiersLadder.NETHERITE_OP, HqTiersLadder.SMP, HqTiersLadder.DIAMOND_SMP
+            HqTiersLadder.NETHERITE_POT, HqTiersLadder.SMP, HqTiersLadder.DIAMOND_SMP
     );
 
     private static final int TAB_HEIGHT = 15;
