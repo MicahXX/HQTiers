@@ -5,6 +5,7 @@ import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -29,8 +30,11 @@ public class LunarPlayerEntityMixin {
             if (!FabricLoader.getInstance().isModLoaded(LUNAR_MOD_ID)) return;
             if (!HqTiersClientConfig.nametagEnabled) return;
 
-            Component original = cir.getReturnValue();
             Player player = (Player) (Object) this;
+
+            if (hasTextDisplayPassenger(player)) return;
+
+            Component original = cir.getReturnValue();
 
             if (HqTiersClientConfig.suppressRankedDuplicates) {
                 String text = original == null ? "" : original.getString();
@@ -59,6 +63,16 @@ public class LunarPlayerEntityMixin {
             });
         } catch (Throwable ignored) {
         }
+    }
+
+    @Unique
+    private static boolean hasTextDisplayPassenger(Player player) {
+        for (var passenger : player.getPassengers()) {
+            if (passenger instanceof Display.TextDisplay) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Unique
