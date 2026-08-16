@@ -20,6 +20,7 @@ import com.google.gson.JsonObject;
 
 import me.micahcode.hqtiers.Hqtiers;
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import net.minecraft.client.Minecraft;
 
 public final class HqTiersLeaderboardClient {
@@ -165,11 +166,14 @@ public final class HqTiersLeaderboardClient {
                 }
 
                 JsonObject object = element.getAsJsonObject();
+                // API's "position" is 0-indexed (first place = 0), so +1 to get the real rank
                 entries.add(new Entry(
-                        intValue(object, "position", entries.size() + 1),
+                        intValue(object, "position", entries.size()) + 1,
                         string(object, "uuid", ""),
                         string(object, "name", "Unknown"),
-                        intValue(object, "elo", 0)
+                        intValue(object, "elo", 0),
+                        string(object, "tier", null),
+                        string(object, "tierColor", null)
                 ));
             }
             return entries;
@@ -188,7 +192,20 @@ public final class HqTiersLeaderboardClient {
         return value == null || value.isJsonNull() ? fallback : value.getAsInt();
     }
 
-    public record Entry(int position, String uuid, String name, int elo) {
+    public record Entry(int position, String uuid, String name, int elo, String tierName, String tierColorHex) {
+        public String tierLabel() {
+            if (tierName != null && !tierName.isBlank() && !tierName.equalsIgnoreCase("Unranked")) {
+                return tierName;
+            }
+            return "";
+        }
+
+        public int tierColorInt() {
+            if (tierColorHex != null && !tierColorHex.isBlank()) {
+                return HqTiersRankSystem.hexToColor(tierColorHex);
+            }
+            return HqTiersRankSystem.tierColor(HqTiersRankSystem.normalizeRank(tierName));
+        }
     }
 
     private record InitialLoad(List<Entry> entries, int page, boolean hasMore) {

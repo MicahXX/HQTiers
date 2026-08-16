@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.HqTiersFormatter;
@@ -36,7 +35,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
 
 
     private static final long LEADERBOARD_REFRESH_INTERVAL_MS = 10_000;
-    private static final long TIER_REFETCH_COOLDOWN_MS = 5_000;
 
     private static final int GOLD = 0xFFFFD700;
     private static final int SILVER = 0xFFE3E6EA;
@@ -51,7 +49,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private HqTiersLeaderboardClient.Entry resolvedSearchEntry;
     private String pendingResolveName = "";
     private final Map<String, Long> lastLeaderboardRefreshAt = new HashMap<>();
-    private final Map<String, Long> tierRequestedAt = new HashMap<>();
     private boolean firstInit = true;
 
     public HqTiersLeaderboardScreen(HqTiersLeaderboardClient leaderboardClient) {
@@ -220,9 +217,10 @@ public final class HqTiersLeaderboardScreen extends Screen {
             int nameColor = isPodium ? podiumColor(rank) : nameColor(rank);
             context.drawString(font, trim(entry.name(), nameMaxChars), nameColX, y + 3, nameColor);
 
-            TierLookup tier = tierFor(entry);
-            String tierText = tier.loaded() ? trim(tier.label(), 12) : "···";
-            int tierColor = tier.loaded() ? (0xFF000000 | tier.colorInt()) : 0xFF5C5138;
+            String rawTierLabel = entry.tierLabel();
+            boolean unranked = rawTierLabel.isEmpty();
+            String tierText = trim(unranked ? "Unranked" : rawTierLabel, 12);
+            int tierColor = unranked ? 0xFF5C5138 : (0xFF000000 | entry.tierColorInt());
             context.drawString(font, tierText, tierColX, y + 3, tierColor);
 
             context.drawString(font, entry.elo() + " TR", eloColX, y + 3, tierColor);
@@ -446,6 +444,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
                             if (!query.equals(searchText())) return;
                             int elo = 0;
                             int position = 0;
+                            String tierName = null;
+                            String tierColorHex = null;
                             if (stats != null) {
                                 HqTiersStats.LadderStats ladderStats = stats.ladder(ladder)
                                         .or(() -> stats.displayLadder())
@@ -453,6 +453,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
                                 if (ladderStats != null) {
                                     elo = ladderStats.totalRating();
                                     position = ladderStats.position();
+                                    tierName = ladderStats.tierName();
+                                    tierColorHex = ladderStats.tierColorHex();
                                 }
                             }
                             if (stats == null) {
@@ -460,7 +462,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
                                 searchStatus = "Player has not played PvPHQ ranked.";
                                 return;
                             }
-                            resolvedSearchEntry = new HqTiersLeaderboardClient.Entry(position, result.profile().uuid().toString(), result.profile().name(), elo);
+                            resolvedSearchEntry = new HqTiersLeaderboardClient.Entry(
+                                    position, result.profile().uuid().toString(), result.profile().name(), elo, tierName, tierColorHex);
                             searchStatus = "";
                         });
                     });
@@ -490,39 +493,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
             case DIAMOND_SMP -> "D.SMP";
             default -> ladder.displayName();
         };
-    }
-
-    private record TierLookup(boolean loaded, String label, int colorInt) {
-        static TierLookup unloaded() {
-            return new TierLookup(false, "", 0);
-        }
-    }
-
-    private TierLookup tierFor(HqTiersLeaderboardClient.Entry entry) {
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(entry.uuid());
-        } catch (IllegalArgumentException invalid) {
-            return TierLookup.unloaded();
-        }
-
-        Optional<HqTiersStats> cached = HqTiersClientState.cache().getIfFresh(uuid);
-        if (cached.isPresent()) {
-            Optional<HqTiersStats.LadderStats> real = cached.get().ladder(ladder);
-            if (real.isPresent()) {
-                HqTiersStats.LadderStats l = real.get();
-                return new TierLookup(true, l.tierLabel(), l.tierColorInt());
-            }
-            return new TierLookup(true, "", 0);
-        }
-
-        long now = System.currentTimeMillis();
-        long last = tierRequestedAt.getOrDefault(entry.uuid(), 0L);
-        if (now - last >= TIER_REFETCH_COOLDOWN_MS) {
-            tierRequestedAt.put(entry.uuid(), now);
-            HqTiersClientState.cache().fetch(uuid);
-        }
-        return TierLookup.unloaded();
     }
 
     private static String trim(String value, int max) {
