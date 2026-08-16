@@ -4,6 +4,7 @@ import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.DisplayRenderer;
 import net.minecraft.client.renderer.entity.state.TextDisplayEntityRenderState;
@@ -25,6 +26,9 @@ import java.util.Optional;
 @Mixin(DisplayRenderer.TextDisplayRenderer.class)
 public class TextDisplayEntityRendererMixin {
 
+    @Unique
+    private static final String LUNAR_MOD_ID = "ichor";
+
     @Inject(
             method = "extractRenderState(Lnet/minecraft/world/entity/Display$TextDisplay;Lnet/minecraft/client/renderer/entity/state/TextDisplayEntityRenderState;F)V",
             at = @At("TAIL"),
@@ -37,6 +41,7 @@ public class TextDisplayEntityRendererMixin {
             CallbackInfo ci
     ) {
         try {
+            if (FabricLoader.getInstance().isModLoaded(LUNAR_MOD_ID)) return;
             if (!HqTiersClientConfig.nametagEnabled) return;
             if (state.cachedInfo == null) return;
 
