@@ -11,10 +11,12 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.WeakHashMap;
 
 public final class HqTiersFormatter {
     private HqTiersFormatter() {
@@ -24,7 +26,24 @@ public final class HqTiersFormatter {
             .map(Enum::name)
             .toList();
 
+    private record CompactCacheEntry(int configVersion, Component component) {}
+
+    private static final Map<HqTiersStats, CompactCacheEntry> COMPACT_CACHE =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
     public static Component compact(HqTiersStats stats) {
+        int version = HqTiersClientConfig.configVersion();
+        CompactCacheEntry cached = COMPACT_CACHE.get(stats);
+        if (cached != null && cached.configVersion() == version) {
+            return cached.component();
+        }
+
+        Component computed = computeCompact(stats);
+        COMPACT_CACHE.put(stats, new CompactCacheEntry(version, computed));
+        return computed;
+    }
+
+    private static Component computeCompact(HqTiersStats stats) {
         HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
 
         if (ladder == null) {

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
@@ -44,6 +45,8 @@ public final class HqTiersClientConfig {
     public static boolean showUnranked = false;
 
     public static List<Boolean> nametagSeparatorStates = new ArrayList<>(defaultSeparatorStates());
+
+    private static final AtomicInteger configVersion = new AtomicInteger(0);
 
     private HqTiersClientConfig() {}
 
@@ -82,6 +85,10 @@ public final class HqTiersClientConfig {
 
     private static List<Boolean> defaultSeparatorStates() {
         return List.of(false, false);
+    }
+
+    public static int configVersion() {
+        return configVersion.get();
     }
 
     public static void load() {
@@ -131,12 +138,14 @@ public final class HqTiersClientConfig {
                     ? new ArrayList<>(data.nametagSeparatorStates)
                     : new ArrayList<>();
             normalizeNametagOrder();
+            configVersion.incrementAndGet();
         } catch (IOException exception) {
             Hqtiers.logger.warn("Failed to load HqTiers config.", exception);
         }
     }
 
     public static void save() {
+        configVersion.incrementAndGet();
         try {
             Files.createDirectories(CONFIG_PATH.getParent());
             try (Writer writer = Files.newBufferedWriter(CONFIG_PATH)) {
