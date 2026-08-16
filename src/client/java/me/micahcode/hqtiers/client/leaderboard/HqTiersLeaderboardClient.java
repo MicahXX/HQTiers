@@ -26,7 +26,7 @@ import net.minecraft.client.Minecraft;
 public final class HqTiersLeaderboardClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
-    private static final String USER_AGENT = "HQTiers/1 (micahcode)";
+    private static final String USER_AGENT = "HQTiers/3.0 (micahcode)";
     private static final Gson GSON = new Gson();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
