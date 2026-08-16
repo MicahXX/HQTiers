@@ -2,27 +2,26 @@ package me.micahcode.hqtiers.client.model;
 
 public enum HqTiersRanks {
 
-    // tbh idk what to do with this
-    // could be removed
-    LT5("#8A8A8A"),
-    MT5("#A0A0A0"),
-    HT5("#C2C2C2"),
+    // this actually uses real colors now type ahh
+    LT5("#4C3822"),
+    MT5("#705332"),
+    HT5("#936D42"),
 
-    LT4("#4C9A4C"),
-    MT4("#5FBF5F"),
-    HT4("#79E079"),
+    LT4("#64686B"),
+    MT4("#83888C"),
+    HT4("#A2A9AD"),
 
-    LT3("#3A7BD5"),
-    MT3("#4C97F0"),
-    HT3("#6FB4FF"),
+    LT3("#9E5A32"),
+    MT3("#BF6C3D"),
+    HT3("#DD7E46"),
 
-    LT2("#8B4CD5"),
-    MT2("#A362E8"),
-    HT2("#C08CFF"),
+    LT2("#64728C"),
+    MT2("#7C8DAD"),
+    HT2("#92A5CC"),
 
-    LT1("#D5A93A"),
-    MT1("#E8C24C"),
-    HT1("#FFD966");
+    LT1("#BF942F"),
+    MT1("#DDAB37"),
+    HT1("#FFC53F");
 
     private final String hexColor;
 

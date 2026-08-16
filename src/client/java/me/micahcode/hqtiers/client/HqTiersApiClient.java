@@ -75,7 +75,7 @@ public class HqTiersApiClient {
             int losses = intValue(entry, "losses", 0);
             int placementGames = intValue(entry, "placementGames", 0);
             int placementTarget = intValue(entry, "placementTarget", 10);
-            int leaderboardPosition = intValue(entry, "leaderboardPosition", -1);
+            int leaderboardPosition = resolvePosition(intValue(entry, "leaderboardPosition", -1));
             int gamesPlayed = intValue(entry, "gamesPlayed", 0);
             String tier = string(entry, "grantedTier");
             double winRate = (wins + losses) > 0 ? (double) wins / (wins + losses) : 0.0;
@@ -111,7 +111,7 @@ public class HqTiersApiClient {
                     0,
                     false,
                     0,
-                    Math.max(leaderboardPosition, 0)
+                    leaderboardPosition
             ));
         }
 
@@ -120,14 +120,19 @@ public class HqTiersApiClient {
 
     private static HqTiersStats.LadderStats buildGlobal(JsonObject root) {
         String globalRank = string(root, "rank");
-        int globalPosition = intValue(root, "globalPosition", -1);
+        // Same 0-indexing rule as leaderboardPosition above.
+        int globalPosition = resolvePosition(intValue(root, "globalPosition", -1));
 
         return new HqTiersStats.LadderStats(
                 "GLOBAL", 0, 0, 0, 0, 0, 0, 0.0,
                 globalRank, null, 0, globalRank == null, false, 0, 0, 0L, 0, 0,
                 null, null, false, false, 0, false, 0,
-                Math.max(globalPosition, 0)
+                globalPosition
         );
+    }
+
+    private static int resolvePosition(int rawPosition) {
+        return rawPosition < 0 ? 0 : rawPosition + 1;
     }
 
     private static String canonicalLadder(String apiKey) {
