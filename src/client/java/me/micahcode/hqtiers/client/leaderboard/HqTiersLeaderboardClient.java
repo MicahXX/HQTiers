@@ -20,12 +20,13 @@ import com.google.gson.JsonObject;
 
 import me.micahcode.hqtiers.Hqtiers;
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import net.minecraft.client.Minecraft;
 
 public final class HqTiersLeaderboardClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
-    private static final String USER_AGENT = "HQTiers/1 (micahcode)";
+    private static final String USER_AGENT = "HQTiers/3.0 (micahcode)";
     private static final Gson GSON = new Gson();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -166,10 +167,12 @@ public final class HqTiersLeaderboardClient {
 
                 JsonObject object = element.getAsJsonObject();
                 entries.add(new Entry(
-                        intValue(object, "position", entries.size() + 1),
+                        intValue(object, "position", entries.size()) + 1,
                         string(object, "uuid", ""),
                         string(object, "name", "Unknown"),
-                        intValue(object, "elo", 0)
+                        intValue(object, "elo", 0),
+                        string(object, "tier", null),
+                        string(object, "tierColor", null)
                 ));
             }
             return entries;
@@ -188,7 +191,20 @@ public final class HqTiersLeaderboardClient {
         return value == null || value.isJsonNull() ? fallback : value.getAsInt();
     }
 
-    public record Entry(int position, String uuid, String name, int elo) {
+    public record Entry(int position, String uuid, String name, int elo, String tierName, String tierColorHex) {
+        public String tierLabel() {
+            if (tierName != null && !tierName.isBlank() && !tierName.equalsIgnoreCase("Unranked")) {
+                return tierName;
+            }
+            return "";
+        }
+
+        public int tierColorInt() {
+            if (tierColorHex != null && !tierColorHex.isBlank()) {
+                return HqTiersRankSystem.hexToColor(tierColorHex);
+            }
+            return HqTiersRankSystem.tierColor(HqTiersRankSystem.normalizeRank(tierName));
+        }
     }
 
     private record InitialLoad(List<Entry> entries, int page, boolean hasMore) {
