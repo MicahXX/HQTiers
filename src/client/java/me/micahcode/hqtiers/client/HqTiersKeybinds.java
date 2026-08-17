@@ -39,13 +39,13 @@ public final class HqTiersKeybinds {
 
         KeyMapping viewStats = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.view_stats",
-                InputConstants.KEY_K,
+                -1,
                 "category.hqtiers"
         ));
 
         KeyMapping tablist = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.tablist",
-                InputConstants.KEY_T,
+                        -1,
                 "category.hqtiers"
         ));
 
@@ -147,7 +147,7 @@ public final class HqTiersKeybinds {
 
         if (client.player != null) {
             net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal(
-                    "HQTiers: Tablist stats " + (HqTiersClientConfig.tabListEnabled ? "enabled" : "disabled")
+                    "HQTiers: Tablist " + (HqTiersClientConfig.tabListEnabled ? "enabled" : "disabled")
             ).withStyle(ChatFormatting.GOLD);
             client.gui.hud.setOverlayMessage(msg, false);
         }
@@ -159,7 +159,7 @@ public final class HqTiersKeybinds {
 
         if (client.player != null) {
             net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal(
-                    "HQTiers: Nametag stats " + (HqTiersClientConfig.nametagEnabled ? "enabled" : "disabled")
+                    "HQTiers: Nametag " + (HqTiersClientConfig.nametagEnabled ? "enabled" : "disabled")
             ).withStyle(ChatFormatting.GOLD);
             client.gui.hud.setOverlayMessage(msg, false);
         }
