@@ -1,8 +1,10 @@
 {
   "key.category.assets.category": "HQTiers",
-  "key.hqtiers.open_config": "HQTiers Config",
+  "key.hqtiers.open_config": "Open HQTiers Config",
   "key.hqtiers.open_leaderboard": "Open PvPHQ Leaderboard",
-  "key.hqtiers.cycle_mode": "Cycle Display Mode (forward)",
-  "key.hqtiers.cycle_mode_back": "Cycle Display Mode (back)",
-  "key.hqtiers.view_stats": "View My Stats"
+  "key.hqtiers.cycle_mode": "Cycle Display Mode (Forward)",
+  "key.hqtiers.cycle_mode_back": "Cycle Display Mode (Back)",
+  "key.hqtiers.view_stats": "View My Stats",
+  "key.hqtiers.tablist": "Toggle Tablist Stats",
+  "key.hqtiers.nametag": "Toggle Nametag Stats"
 }

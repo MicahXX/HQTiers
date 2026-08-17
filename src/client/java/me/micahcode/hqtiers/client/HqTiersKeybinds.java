@@ -43,6 +43,18 @@ public final class HqTiersKeybinds {
                 "category.hqtiers"
         ));
 
+        KeyMapping tablist = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
+                "key.hqtiers.tablist",
+                -1,
+                "category.hqtiers"
+        ));
+
+        KeyMapping nametag = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
+                "key.hqtiers.nametag",
+                -1,
+                "category.hqtiers"
+        ));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             unbindAdvancementsIfConflicting(client.options, leaderboard);
 
@@ -70,6 +82,14 @@ public final class HqTiersKeybinds {
                             client.player.getName().getString()
                     ));
                 }
+            }
+
+            while (tablist.consumeClick()) {
+                toggleTablist(client);
+            }
+
+            while (nametag.consumeClick()) {
+                toggleNametag(client);
             }
         });
     }
@@ -117,6 +137,30 @@ public final class HqTiersKeybinds {
             String iconLadderName = next instanceof HqTiersLadder ladder ? ladder.name() : HqTiersLadder.GLOBAL.name();
             msg.append(HqTiersFormatter.icon(iconLadderName));
 
+            client.gui.setOverlayMessage(msg, false);
+        }
+    }
+
+    private static void toggleTablist(net.minecraft.client.Minecraft client) {
+        HqTiersClientConfig.tabListEnabled = !HqTiersClientConfig.tabListEnabled;
+        HqTiersClientConfig.save();
+
+        if (client.player != null) {
+            net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal(
+                    "HQTiers: Tablist " + (HqTiersClientConfig.tabListEnabled ? "enabled" : "disabled")
+            ).withStyle(ChatFormatting.GOLD);
+            client.gui.setOverlayMessage(msg, false);
+        }
+    }
+
+    private static void toggleNametag(net.minecraft.client.Minecraft client) {
+        HqTiersClientConfig.nametagEnabled = !HqTiersClientConfig.nametagEnabled;
+        HqTiersClientConfig.save();
+
+        if (client.player != null) {
+            net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal(
+                    "HQTiers: Nametag " + (HqTiersClientConfig.nametagEnabled ? "enabled" : "disabled")
+            ).withStyle(ChatFormatting.GOLD);
             client.gui.setOverlayMessage(msg, false);
         }
     }
