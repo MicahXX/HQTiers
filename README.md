@@ -18,10 +18,12 @@ A client-side Fabric mod that brings your [PvPHQ](https://pvphq.com/) stats in-g
 | Key | Action |
 |-----|--------|
 | `L` | Open the leaderboard |
-| `K` | Open player stats |
+| `K` | Open your player stats |
 | `←` / `→` | Switch between ladders (gamemodes displayed in the nametag and tab list) |
+| *Unbound* | Toggle nametag |
+| *Unbound* | Toggle tablist |
 
-All keybinds are rebindable in the settings under **Controls**.
+All keybinds are rebindable in the settings under **Controls** and the leaderboard bind disables the advancements screen so if you want that rebind it.
 
 ## Requirements
 
