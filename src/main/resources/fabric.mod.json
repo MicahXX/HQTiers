@@ -3,7 +3,7 @@
   "id": "hqtiers",
   "version": "${version}",
   "name": "HQTiers",
-  "description": "Unofficial Tier Tagger built by a member of the server's staff team",
+  "description": "Tier Tagger built by a member of the server's staff team",
   "authors": [
     "micahcode"
   ],

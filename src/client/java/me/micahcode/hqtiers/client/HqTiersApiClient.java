@@ -18,7 +18,7 @@ import java.util.UUID;
 public class HqTiersApiClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/ranked/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
-    private static final String USER_AGENT = "HQTiers/1.0 (discord: micahcode)";
+    private static final String USER_AGENT = "HQTiers/3.0 (discord: micahcode)";
     private static final Gson GSON = new Gson();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -120,7 +120,6 @@ public class HqTiersApiClient {
 
     private static HqTiersStats.LadderStats buildGlobal(JsonObject root) {
         String globalRank = string(root, "rank");
-        // Same 0-indexing rule as leaderboardPosition above.
         int globalPosition = resolvePosition(intValue(root, "globalPosition", -1));
 
         return new HqTiersStats.LadderStats(
