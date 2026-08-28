@@ -97,7 +97,7 @@ public final class HqTiersFormatter {
         stats.ladders().values().stream()
                 .filter(HqTiersStats.LadderStats::hasPlayedRanked)
                 .filter(ladder -> !ladder.ladder().equals("GLOBAL"))
-                .sorted(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating).reversed())
+                .sorted(Comparator.comparingInt(HqTiersStats.LadderStats::tr).reversed())
                 .forEach(ladder -> lines.add(ladderDetailLine(ladder)));
         return lines;
     }
@@ -110,7 +110,7 @@ public final class HqTiersFormatter {
                 .append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(ladder.tierLabel()).withStyle(ChatFormatting.GOLD))
                 .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(ratingText(ladder.totalRating())).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())))
+                .append(Component.literal(ratingText(ladder.tr())).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())))
                 .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(ladder.wins() + "W/" + ladder.losses() + "L").withStyle(ChatFormatting.WHITE))
                 .append(positionDetails(ladder));
@@ -160,7 +160,7 @@ public final class HqTiersFormatter {
                 case ELO -> {
                     if (!HqTiersClientConfig.eloEnabled) continue;
                     Style eloStyle = Style.EMPTY.withColor(HqTiersClientConfig.coloredElo ? ladder.tierColorInt() : 0xFFFFFF);
-                    text.append(Component.literal(Integer.toString(ladder.totalRating())).setStyle(eloStyle));
+                    text.append(Component.literal(Integer.toString(ladder.tr())).setStyle(eloStyle));
                     if (HqTiersClientConfig.eloLabelEnabled)
                         text.append(Component.literal(" " + HqTiersRankSystem.RATING_LABEL).setStyle(eloStyle));
                     wrotePart = true;
@@ -234,6 +234,6 @@ public final class HqTiersFormatter {
                 .filter(ladder -> !ladder.ladder().equals("GLOBAL"))
                 .filter(ladder -> !ladder.unranked())
                 .filter(ladder -> ladder.placementGames() >= ladder.placementTarget())
-                .max(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating));
+                .max(Comparator.comparingInt(HqTiersStats.LadderStats::tr));
     }
 }
