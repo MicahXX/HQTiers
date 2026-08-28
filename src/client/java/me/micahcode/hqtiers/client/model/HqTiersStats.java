@@ -38,6 +38,7 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
             String ladder,
             int totalRating,
             int peakRating,
+            int tr,
             int rd,
             int wins,
             int losses,
@@ -65,7 +66,7 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
         public static LadderStats minimal(String ladder, int rating, int wins, int losses,
                                           int placementGames, String tierName, int position) {
             return new LadderStats(
-                    ladder, rating, rating, 350, wins, losses, wins + losses, 0.0,
+                    ladder, rating, rating, rating, 350, wins, losses, wins + losses, 0.0,
                     tierName, null, 0, tierName == null, false,
                     placementGames, 10, 0L, 0, 0,
                     null, null, false, false, 0, false, 0, position
