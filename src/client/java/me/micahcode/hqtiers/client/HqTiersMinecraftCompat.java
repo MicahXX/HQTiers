@@ -81,7 +81,7 @@ public final class HqTiersMinecraftCompat {
 		try {
 			Constructor<KeyMapping> constructor = KeyMapping.class.getConstructor(
 					String.class, InputConstants.Type.class, int.class, String.class);
-			return constructor.newInstance(translationKey, InputConstants.Type.KEYSYM, code, categoryTranslationKey);
+			return constructor.newInstance(translationKey, InputConstants.Type.KEYBOARD, code, categoryTranslationKey);
 		} catch (ReflectiveOperationException ignored) {
 		}
 
@@ -131,6 +131,6 @@ public final class HqTiersMinecraftCompat {
 
 		Constructor<KeyMapping> constructor = KeyMapping.class.getConstructor(
 				String.class, InputConstants.Type.class, int.class, cachedCategory.getClass());
-		return constructor.newInstance(translationKey, InputConstants.Type.KEYSYM, code, cachedCategory);
+		return constructor.newInstance(translationKey, InputConstants.Type.KEYBOARD, code, cachedCategory);
 	}
 }

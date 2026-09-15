@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "me.micahcode.hqtiers.client.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "priority": 2000,
   "mixins": [
     "PlayerEntityMixin",
