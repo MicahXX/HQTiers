@@ -39,13 +39,13 @@ public final class HqTiersKeybinds {
 
         KeyMapping viewStats = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.view_stats",
-                -1,
+                InputConstants.UNKNOWN.getValue(),
                 "category.hqtiers"
         ));
 
         KeyMapping tablist = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.tablist",
-                        -1,
+                        InputConstants.UNKNOWN.getValue(),
                 "category.hqtiers"
         ));
 
