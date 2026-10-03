@@ -49,11 +49,9 @@ public class LunarDisplayTextMixin {
             }
 
             Component tier = HqTiersFormatter.compact(statsOpt.get());
-            if (tier.getString().isEmpty() || plain.contains(tier.getString())) return;
+            if (tier.getString().isEmpty()) return;
 
-            Component merged = HqTiersClientConfig.nametagAlignment == HqTiersClientConfig.NametagAlignment.LEFT
-                    ? tier.copy().append(separator()).append(original)
-                    : original.copy().append(separator()).append(tier);
+            Component merged = HqTiersFormatter.decorateName(statsOpt.get(), original);
 
             cir.setReturnValue(merged);
         } catch (Throwable ignored) {
@@ -61,8 +59,4 @@ public class LunarDisplayTextMixin {
         }
     }
 
-    @Unique
-    private static Component separator() {
-        return Component.literal(" | ").withStyle(net.minecraft.ChatFormatting.GRAY);
-    }
 }

@@ -53,11 +53,8 @@ public class LunarPlayerEntityMixin {
 
                 Component tier = HqTiersFormatter.compact(stats);
                 if (tier.getString().isEmpty()) return;
-                if (base.getString().contains(tier.getString())) return;
 
-                Component merged = HqTiersClientConfig.nametagAlignment == HqTiersClientConfig.NametagAlignment.LEFT
-                        ? tier.copy().append(separator()).append(base)
-                        : base.copy().append(separator()).append(tier);
+                Component merged = HqTiersFormatter.decorateName(stats, base);
 
                 cir.setReturnValue(merged);
             });
@@ -75,8 +72,4 @@ public class LunarPlayerEntityMixin {
         return false;
     }
 
-    @Unique
-    private static Component separator() {
-        return Component.literal(" | ").withStyle(net.minecraft.ChatFormatting.GRAY);
-    }
 }

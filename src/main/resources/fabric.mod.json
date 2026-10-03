@@ -14,7 +14,6 @@
   "license": "MIT",
   "icon": "assets/hqtiers/icon.png",
   "environment": "*",
-
   "entrypoints": {
     "modmenu": [
       "me.micahcode.hqtiers.client.config.HqTiersModMenu"
@@ -26,22 +25,19 @@
       "me.micahcode.hqtiers.Hqtiers"
     ]
   },
-
   "mixins": [
     {
       "config": "hqtiers.client.mixins.json",
       "environment": "client"
     }
   ],
-
   "depends": {
-    "fabricloader": ">=0.17.2",
+    "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
     "minecraft": ">=26.1.0 <26.2.0",
-    "cloth-config": "*",
-    "modmenu": "*"
+    "cloth-config": ">=26.1.154",
+    "modmenu": ">=18.0.2"
   },
-
   "custom": {
     "modmenu": {
       "links": {
