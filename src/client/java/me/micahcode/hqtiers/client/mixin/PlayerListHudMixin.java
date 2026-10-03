@@ -34,15 +34,9 @@ public class PlayerListHudMixin {
                         return current;
                     }
 
-                    if (current.getString().contains(formatted.getString())) {
-                        return current;
-                    }
-
                     Component cleanName = stripLeadingSeparator(current);
 
-                    return HqTiersClientConfig.nametagAlignment == HqTiersClientConfig.NametagAlignment.LEFT
-                            ? formatted.copy().append(separator()).append(cleanName)
-                            : cleanName.copy().append(separator()).append(formatted);
+                    return HqTiersFormatter.decorateName(stats, cleanName);
                 })
                 .orElse(current);
     }
@@ -54,8 +48,4 @@ public class PlayerListHudMixin {
         return stripped.equals(raw) ? text : Component.literal(stripped);
     }
 
-    @Unique
-    private static Component separator() {
-        return Component.literal(" | ").withStyle(ChatFormatting.GRAY);
-    }
 }
