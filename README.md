@@ -50,7 +50,3 @@ Use Java 25 to run Gradle. The 1.21.11 branch emits Java 21 bytecode; 26.x branc
 ```
 
 The build runs regression tests for nametag layout, settings migration, unplayed profiles, global placement, and the official leaderboard response format. Install the regular JAR from `build/libs` with Fabric API, Cloth Config, and Mod Menu for the **same Minecraft version**. The `26.1` branch targets Minecraft **26.1.2**.
-
-Existing settings are migrated: a previous whole-tag Right preference is preserved until individual sides are changed. New layouts default to Left. The name-divider toggle removes the vertical bar and keeps a space around the name. Icon spacing controls the gap between the icon and adjacent stats. Global placement uses the Tier slot; enabling Position does not repeat it.
-
-Streaks are no longer shown because the player API does not supply them. The profile displays win rate from ranked wins and losses instead. Rating history remains rating history; TR is displayed separately.
