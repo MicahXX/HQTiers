@@ -74,7 +74,8 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
         }
 
         public boolean hasPlayedRanked() {
-            return ladder.equals("GLOBAL")
+            if (ladder.equals("GLOBAL")) return gamesPlayed > 0 || wins > 0 || losses > 0;
+            return gamesPlayed > 0
                     || wins > 0
                     || losses > 0
                     || placementGames >= 10
@@ -83,10 +84,6 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
 
         public boolean hasPosition() {
             return position > 0;
-        }
-
-        public int currentStreak() {
-            return 0;
         }
 
         public HqTiersRanks tier() {

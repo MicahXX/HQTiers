@@ -65,11 +65,9 @@ public class TextDisplayEntityRendererMixin {
                 }
 
                 Component tier = HqTiersFormatter.compact(statsOpt.get());
-                if (tier.getString().isEmpty() || plain.contains(tier.getString())) return;
+                if (tier.getString().isEmpty()) return;
 
-                Component merged = HqTiersClientConfig.nametagAlignment == HqTiersClientConfig.NametagAlignment.LEFT
-                        ? tier.copy().append(separator()).append(baseStyled)
-                        : baseStyled.copy().append(separator()).append(tier);
+                Component merged = HqTiersFormatter.decorateName(statsOpt.get(), baseStyled);
 
                 FormattedCharSequence newContents = merged.getVisualOrderText();
                 int newWidth = Minecraft.getInstance().font.width(merged);
@@ -119,8 +117,4 @@ public class TextDisplayEntityRendererMixin {
         return result;
     }
 
-    @Unique
-    private static Component separator() {
-        return Component.literal(" | ").withStyle(net.minecraft.ChatFormatting.GRAY);
-    }
 }

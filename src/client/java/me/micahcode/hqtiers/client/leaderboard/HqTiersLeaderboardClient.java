@@ -8,6 +8,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -23,6 +24,7 @@ import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import net.minecraft.client.Minecraft;
 
+/** Loads official leaderboard pages asynchronously and keeps each ladder independent. */
 public final class HqTiersLeaderboardClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
@@ -61,126 +63,88 @@ public final class HqTiersLeaderboardClient {
         loadPage(ladder, state.page() + 1, false);
     }
 
+    /** Refreshes the first page in one request, keeping old rows visible until it succeeds. */
     private void loadInitial(String ladder) {
-        PageState state = state(ladder);
-        if (state.loading()) {
-            return;
-        }
-
-        if (HqTiersClientConfig.toApiLadder(ladder).isEmpty()) {
-            state.entries.clear();
-            state.page = 0;
-            state.hasMore = false;
-            state.loading = false;
-            state.unsupported = true;
-            state.error = null;
-            return;
-        }
-
-        state.unsupported = false;
-        state.loading = true;
-        state.error = null;
-        CompletableFuture.supplyAsync(() -> {
-            List<Entry> combined = new ArrayList<>();
-            int lastPage = 0;
-            boolean hasMorePages = true;
-            for (int page = 1; page <= 5; page++) {
-                List<Entry> entries = fetchPage(ladder, page);
-                if (entries.isEmpty()) {
-                    hasMorePages = false;
-                    break;
-                }
-                combined.addAll(entries);
-                lastPage = page;
-            }
-            return new InitialLoad(combined, lastPage, hasMorePages);
-        }).whenComplete((result, throwable) -> Minecraft.getInstance().execute(() -> {
-            if (throwable != null) {
-                state.error = "Failed to load leaderboard.";
-                state.loading = false;
-                Hqtiers.logger.warn("Failed to load initial HQTiers leaderboard for {}", ladder, throwable);
-                return;
-            }
-
-            state.entries.clear();
-            state.entries.addAll(result.entries());
-            state.page = result.page();
-            state.hasMore = result.hasMore();
-            state.loading = false;
-        }));
+        if (!state(ladder).loading()) loadPage(ladder, 0, true);
     }
 
+    /** Appends a page once and respects the server's pagination metadata. */
     private void loadPage(String ladder, int page, boolean replace) {
         PageState state = state(ladder);
         state.loading = true;
         state.error = null;
-
-        CompletableFuture.supplyAsync(() -> fetchPage(ladder, page)).whenComplete((entries, throwable) -> Minecraft.getInstance().execute(() -> {
+        CompletableFuture.supplyAsync(() -> fetchPage(ladder, page)).whenComplete((result, throwable) -> Minecraft.getInstance().execute(() -> {
+            state.loading = false;
             if (throwable != null) {
-                state.error = "Failed to load leaderboard.";
-                state.loading = false;
+                state.error = "Could not load leaderboard. Retry with Refresh.";
                 Hqtiers.logger.warn("Failed to load HQTiers leaderboard for {} page {}", ladder, page, throwable);
                 return;
             }
-
-            if (replace) {
-                state.entries.clear();
+            if (replace) state.entries.clear();
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            state.entries.forEach(entry -> seen.add(entry.uuid()));
+            for (Entry entry : result.entries()) {
+                if (seen.add(entry.uuid())) state.entries.add(entry);
             }
-
-            state.entries.addAll(entries);
             state.page = page;
-            state.hasMore = !entries.isEmpty();
-            state.loading = false;
+            state.hasMore = result.hasMore();
+            state.total = result.total();
         }));
     }
 
-    private List<Entry> fetchPage(String ladder, int page) {
-        Optional<String> apiLadder = HqTiersClientConfig.toApiLadder(ladder);
-        if (apiLadder.isEmpty()) {
-            return List.of();
-        }
-
+    /** Uses the website's v1 route; page numbers are zero-based, ranks are one-based. */
+    private LeaderboardPage fetchPage(String ladder, int page) {
+        String gametype = switch (HqTiersClientConfig.normalizeLadder(ladder)) {
+            case "GLOBAL" -> "overall";
+            case "DIAMOND_POT" -> "pot";
+            case "CART" -> "cart";
+            default -> ladder.toLowerCase(Locale.ROOT);
+        };
         try {
-            URI uri = BASE_URI.resolve("leaderboard/" + apiLadder.get() + "?page=" + page);
-            HttpRequest request = HttpRequest.newBuilder(uri)
-                    .timeout(TIMEOUT)
-                    .header("Accept", "application/json")
-                    .header("User-Agent", USER_AGENT)
-                    .GET()
-                    .build();
-
+            URI uri = BASE_URI.resolve("v1/leaderboard/ranked/" + gametype + "?page=" + page + "&size=50");
+            HttpRequest request = HttpRequest.newBuilder(uri).timeout(TIMEOUT)
+                    .header("Accept", "application/json").header("User-Agent", USER_AGENT).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IOException("HQPvP API returned HTTP " + response.statusCode());
+                throw new IOException("PvPHQ API returned HTTP " + response.statusCode());
             }
-
-            JsonArray array = GSON.fromJson(response.body(), JsonArray.class);
-            List<Entry> entries = new ArrayList<>();
-            if (array == null) {
-                return entries;
-            }
-
-            for (JsonElement element : array) {
-                if (!element.isJsonObject()) {
-                    continue;
-                }
-
-                JsonObject object = element.getAsJsonObject();
-                // API's "position" is 0-indexed (first place = 0), so +1 to get the real rank
-                entries.add(new Entry(
-                        intValue(object, "position", entries.size()) + 1,
-                        string(object, "uuid", ""),
-                        string(object, "name", "Unknown"),
-                        intValue(object, "elo", 0),
-                        string(object, "tier", null),
-                        string(object, "tierColor", null)
-                ));
-            }
-            return entries;
-        } catch (Exception exception) {
+            return parsePage(response.body());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(exception);
+        } catch (IOException exception) {
             throw new RuntimeException(exception);
         }
     }
+
+    /** Parses the public API contract without inferring rank from array position. */
+    static LeaderboardPage parsePage(String json) {
+        JsonElement parsed = GSON.fromJson(json, JsonElement.class);
+        if (parsed == null || !parsed.isJsonObject()) throw new IllegalArgumentException("Missing leaderboard object");
+        JsonObject root = parsed.getAsJsonObject();
+        if (!root.has("entries") || !root.get("entries").isJsonArray()) {
+            throw new IllegalArgumentException("Missing leaderboard entries");
+        }
+        List<Entry> entries = new ArrayList<>();
+        for (JsonElement element : root.getAsJsonArray("entries")) {
+            if (!element.isJsonObject()) continue;
+            JsonObject object = element.getAsJsonObject();
+            JsonArray tiers = object.has("tiers") && object.get("tiers").isJsonArray()
+                    ? object.getAsJsonArray("tiers") : new JsonArray();
+            String uuid = string(object, "uuid", "");
+            if (uuid.isBlank()) continue;
+            entries.add(new Entry(intValue(object, "rank", 0), uuid, string(object, "name", "Unknown"),
+                    intValue(object, "tr", 0), string(object, "tier", null), string(object, "tierColor", null),
+                    intValue(object, "points", 0), tiers.size()));
+        }
+        JsonObject page = root.getAsJsonObject("page");
+        boolean hasMore = page != null && page.has("hasNext") && page.get("hasNext").getAsBoolean();
+        return new LeaderboardPage(List.copyOf(entries), hasMore && !entries.isEmpty(),
+                page == null ? entries.size() : intValue(page, "total", entries.size()));
+    }
+
+    /** Carries one server page and its explicit continuation state. */
+    record LeaderboardPage(List<Entry> entries, boolean hasMore, int total) {}
 
     private static String string(JsonObject object, String key, String fallback) {
         JsonElement value = object.get(key);
@@ -192,7 +156,7 @@ public final class HqTiersLeaderboardClient {
         return value == null || value.isJsonNull() ? fallback : value.getAsInt();
     }
 
-    public record Entry(int position, String uuid, String name, int elo, String tierName, String tierColorHex) {
+    public record Entry(int position, String uuid, String name, int elo, String tierName, String tierColorHex, int points, int gamemodes) {
         public String tierLabel() {
             if (tierName != null && !tierName.isBlank() && !tierName.equalsIgnoreCase("Unranked")) {
                 return tierName;
@@ -208,16 +172,13 @@ public final class HqTiersLeaderboardClient {
         }
     }
 
-    private record InitialLoad(List<Entry> entries, int page, boolean hasMore) {
-    }
-
     public static final class PageState {
         private final List<Entry> entries = new ArrayList<>();
         private int page;
         private boolean loading;
         private boolean hasMore = true;
         private String error;
-        private boolean unsupported;
+        private int total;
 
         public List<Entry> entries() {
             return entries;
@@ -239,8 +200,9 @@ public final class HqTiersLeaderboardClient {
             return error;
         }
 
-        public boolean unsupported() {
-            return unsupported;
+        /** Returns the server's total player count for this leaderboard. */
+        public int total() {
+            return total;
         }
     }
 

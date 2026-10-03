@@ -53,6 +53,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private String selectedLadder;
     private List<HqTiersLeaderboardClient.HistoryPoint> historyPoints = null;
     private boolean historyLoading = false;
+    private int historyRequest;
+    private boolean historyRequested;
     private int[] graphXPositions = null;
     private int[] graphYPositions = null;
 
@@ -61,8 +63,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         this.parent = parent;
         this.uuid = UUID.fromString(uuid);
         this.fallbackName = fallbackName;
-        this.selectedLadder = autoOpenLadder == null ? null : autoOpenLadder.toLowerCase();
-        if (autoOpenLadder != null) this.historyLoading = true;
+        this.selectedLadder = autoOpenLadder == null || autoOpenLadder.equalsIgnoreCase("GLOBAL")
+                ? null : autoOpenLadder.toLowerCase(java.util.Locale.ROOT);
+        if (selectedLadder != null) this.historyLoading = true;
     }
 
     public HqTiersPlayerStatsScreen(Screen parent, String uuid, String fallbackName) {
@@ -125,6 +128,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         addRenderableWidget(Button.builder(Component.literal(backLabel), btn -> {
             if (selectedLadder != null) {
                 selectedLadder = null;
+                historyRequest++;
+                historyRequested = false;
+                historyLoading = false;
                 historyPoints = null;
                 graphXPositions = null;
                 graphYPositions = null;
@@ -139,22 +145,31 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             cached.ifPresent(this::addLadderButtons);
         }
 
-        HqTiersClientState.cache().fetch(uuid).thenAccept(stats -> {
+        HqTiersClientState.cache().fetch(uuid).thenAccept(stats -> minecraft.execute(() -> {
             if (!loaded) {
                 loaded = true;
                 failed = stats == null;
-                if (selectedLadder == null) minecraft.execute(this::init);
+                if (selectedLadder == null && minecraft.screen == this) init();
             }
-        });
+        }));
 
-        if (selectedLadder != null && historyPoints == null && historyLoading) {
-            HqTiersClientState.leaderboardClient()
-                    .fetchHistory(uuid.toString(), selectedLadder)
-                    .thenAccept(pts -> minecraft.execute(() -> {
-                        historyPoints = pts;
-                        historyLoading = false;
-                    }));
+        if (selectedLadder != null && historyPoints == null && !historyRequested) {
+            loadHistory();
         }
+    }
+
+    /** Keeps one request per selection and ignores results from a previously selected ladder. */
+    private void loadHistory() {
+        historyRequested = true;
+        historyLoading = true;
+        int request = ++historyRequest;
+        String ladder = selectedLadder;
+        HqTiersClientState.leaderboardClient().fetchHistory(uuid.toString(), ladder)
+                .thenAccept(points -> minecraft.execute(() -> {
+                    if (request != historyRequest || !ladder.equals(selectedLadder)) return;
+                    historyPoints = points;
+                    historyLoading = false;
+                }));
     }
 
     private void addLadderButtons(HqTiersStats stats) {
@@ -177,19 +192,15 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
+    /** Starts a fresh graph selection without duplicate requests during screen initialization. */
     private void openLadder(String id) {
-        selectedLadder = id.toLowerCase();
+        selectedLadder = id.toLowerCase(java.util.Locale.ROOT);
+        historyRequest++;
+        historyRequested = false;
         historyPoints = null;
         graphXPositions = null;
         graphYPositions = null;
-        historyLoading = true;
         init();
-        HqTiersClientState.leaderboardClient()
-                .fetchHistory(uuid.toString(), id)
-                .thenAccept(pts -> minecraft.execute(() -> {
-                    historyPoints = pts;
-                    historyLoading = false;
-                }));
     }
 
     @Override
@@ -253,7 +264,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.drawString(font, "RANK", pl + col(pw, 3, compact), hy + 4, TEXT_HEADER);
         if (!compact) {
             ctx.drawString(font, "W / L", pl + col(pw, 4, false), hy + 4, TEXT_HEADER);
-            ctx.drawString(font, "STREAK", pl + col(pw, 5, false), hy + 4, TEXT_HEADER);
+            ctx.drawString(font, "WIN %", pl + col(pw, 5, false), hy + 4, TEXT_HEADER);
         }
 
         if (ladders.isEmpty()) {
@@ -288,7 +299,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                     pl + col(pw, 1, compact), y + 4, tierCol);
 
             boolean noTr = unranked || isGlobal;
-            int tr = l.totalRating();
+            int tr = l.tr();
             String trStr = noTr ? "—" : (tr + (compact ? "" : " TR"));
             ctx.drawString(font, trStr, pl + col(pw, 2, compact), y + 4, noTr ? TEXT_DIM : resolvedTierColor);
 
@@ -299,8 +310,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             if (!compact) {
                 ctx.drawString(font, l.wins() + " / " + l.losses(),
                         pl + col(pw, 4, false), y + 4, wlColor(l.wins(), l.losses()));
-                ctx.drawString(font, streakStr(l.currentStreak()),
-                        pl + col(pw, 5, false), y + 4, streakColor(l.currentStreak()));
+                ctx.drawString(font, l.wins() + l.losses() == 0 ? "—" : String.format(java.util.Locale.ROOT, "%.1f%%", 100.0 * l.wins() / (l.wins() + l.losses())),
+                        pl + col(pw, 5, false), y + 4, wlColor(l.wins(), l.losses()));
             }
 
             if (hovered) ctx.drawString(font, "→", pr - 14, y + 4, ACCENT_GOLD);
@@ -344,7 +355,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         );
 
         ctx.drawCenteredString(font,
-                trim(HqTiersFormatter.displayName(selectedLadder), compact ? 12 : 30) + "  ·  TR History",
+                trim(HqTiersFormatter.displayName(selectedLadder), compact ? 12 : 30) + "  ·  Rating History",
                 width / 2, tt + 5, TEXT_HEADER);
 
         if (ladder != null) {
@@ -354,7 +365,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             int tierCol = unranked ? TEXT_DIM : (0xFF000000 | ladder.tierColorInt());
 
             String summary = tierText
-                    + "   " + (unranked ? "—" : ladder.totalRating() + " TR")
+                    + "   " + (unranked ? "—" : ladder.tr() + " TR")
                     + "   " + ladder.wins() + "W / " + ladder.losses() + "L";
             ctx.drawCenteredString(font, summary, width / 2, tt + 17, tierCol);
         }
@@ -473,7 +484,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(tx - 2, ty - 2, tx + tw + 2, ty - 1, ACCENT_GOLD);
         ctx.fill(tx - 2, ty - 2, tx - 1, ty + th + 2, ACCENT_DIM);
 
-        ctx.drawString(font, elo + " TR", tx + 2, ty + 2, eloTextColor);
+        ctx.drawString(font, elo + " rating", tx + 2, ty + 2, eloTextColor);
         ctx.drawString(font, deltaStr, tx + 2, ty + 12, deltaColor);
         if (!date.isEmpty())
             ctx.drawString(font, date, tx + 2, ty + 22, TEXT_HEADER);
@@ -519,12 +530,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                 .toList();
     }
 
-    private static String streakStr(int s) {
-        if (s > 0) return "+" + s;
-        if (s < 0) return Integer.toString(s);
-        return "—";
-    }
-
     private static int wlColor(int w, int l) {
         int t = w + l;
         if (t == 0) return TEXT_DIM;
@@ -532,14 +537,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (r >= 0.55) return 0xFF4ADE80;
         if (r >= 0.45) return 0xFFB0B8CC;
         return 0xFFF87171;
-    }
-
-    private static int streakColor(int s) {
-        if (s > 2) return 0xFF4ADE80;
-        if (s > 0) return 0xFF86EFAC;
-        if (s < -2) return 0xFFF87171;
-        if (s < 0) return 0xFFFCA5A5;
-        return TEXT_DIM;
     }
 
     private static String trim(String value, int max) {

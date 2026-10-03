@@ -43,7 +43,12 @@ public class HqTiersApiClient {
             throw new IOException("PvPHQ API returned HTTP " + response.statusCode());
         }
 
-        JsonObject root = GSON.fromJson(response.body(), JsonObject.class);
+        return parseRanked(uuid, response.body());
+    }
+
+    /** Parses ranked data independently of transport so API edge cases can be verified. */
+    static HqTiersStats parseRanked(UUID uuid, String json) {
+        JsonObject root = GSON.fromJson(json, JsonObject.class);
         if (root == null || root.isJsonNull()) {
             return null;
         }
@@ -52,7 +57,7 @@ public class HqTiersApiClient {
         String name = playerUuid.toString();
 
         Map<String, HqTiersStats.LadderStats> ladders = readLadders(root.getAsJsonObject("data"));
-        ladders.put("GLOBAL", buildGlobal(root));
+        ladders.put("GLOBAL", buildGlobal(root, ladders));
 
         return new HqTiersStats(playerUuid, name, ladders, System.currentTimeMillis());
     }
@@ -69,7 +74,7 @@ public class HqTiersApiClient {
             }
 
             JsonObject entry = element.getValue().getAsJsonObject();
-            String key = canonicalLadder(element.getKey().toUpperCase());
+            String key = canonicalLadder(element.getKey().toUpperCase(java.util.Locale.ROOT));
 
             int wins = intValue(entry, "wins", 0);
             int losses = intValue(entry, "losses", 0);
@@ -121,12 +126,17 @@ public class HqTiersApiClient {
         return ladders;
     }
 
-    private static HqTiersStats.LadderStats buildGlobal(JsonObject root) {
+    /** Aggregates participation so an empty account never receives a global nametag. */
+    private static HqTiersStats.LadderStats buildGlobal(JsonObject root, Map<String, HqTiersStats.LadderStats> ladders) {
+        int wins = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::wins).sum();
+        int losses = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::losses).sum();
+        int games = ladders.values().stream().mapToInt(l -> Math.max(l.gamesPlayed(), l.wins() + l.losses())).sum();
         String globalRank = string(root, "rank");
         int globalPosition = resolvePosition(intValue(root, "globalPosition", -1));
 
         return new HqTiersStats.LadderStats(
-                "GLOBAL", 0, 0, 0, 0, 0, 0, 0, 0.0,
+                "GLOBAL", 0, 0, 0, 0, wins, losses, games,
+                wins + losses > 0 ? (double) wins / (wins + losses) : 0.0,
                 globalRank, null, 0, globalRank == null, false, 0, 0, 0L, 0, 0,
                 null, null, false, false, 0, false, 0,
                 globalPosition

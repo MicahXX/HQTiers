@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.EnumMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -19,6 +21,7 @@ import com.google.gson.GsonBuilder;
 import me.micahcode.hqtiers.Hqtiers;
 import net.fabricmc.loader.api.FabricLoader;
 
+/** Persists client display preferences and migrates older nametag layouts. */
 public final class HqTiersClientConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("hqtiers.json");
@@ -32,6 +35,10 @@ public final class HqTiersClientConfig {
     public static boolean shortTierNames = false;
     public static boolean coloredElo = true;
     public static NametagAlignment nametagAlignment = NametagAlignment.LEFT;
+    public static Map<NametagComponent, NametagAlignment> componentSides = new EnumMap<>(NametagComponent.class);
+    public static List<NametagAlignment> separatorSides = new ArrayList<>();
+    public static boolean iconSpacing = true;
+    public static boolean nameSeparator = true;
     public static boolean gamemodeIconEnabled = true;
     public static boolean tierEnabled = true;
     public static boolean eloEnabled = false;
@@ -121,7 +128,18 @@ public final class HqTiersClientConfig {
             positionEnabled = data.positionEnabled;
             positionLabelEnabled = data.positionLabelEnabled;
             nametagAlignment = data.nametagAlignment == null ? NametagAlignment.LEFT :
-                    NametagAlignment.valueOf(data.nametagAlignment.toUpperCase());
+                    parseSide(data.nametagAlignment);
+            componentSides.clear();
+            if (data.componentSides != null) {
+                data.componentSides.forEach((key, value) -> {
+                    try { componentSides.put(NametagComponent.valueOf(key), parseSide(value)); }
+                    catch (IllegalArgumentException ignored) { /* Ignore unknown future components. */ }
+                });
+            }
+            separatorSides = new ArrayList<>();
+            if (data.separatorSides != null) data.separatorSides.forEach(side -> separatorSides.add(parseSide(side)));
+            iconSpacing = data.iconSpacing;
+            nameSeparator = data.nameSeparator;
             suppressRankedDuplicates = data.suppressRankedDuplicates;
             if (data.nametagOrder != null && !data.nametagOrder.isEmpty()) {
                 nametagOrder = new ArrayList<>();
@@ -137,7 +155,7 @@ public final class HqTiersClientConfig {
                     : new ArrayList<>();
             normalizeNametagOrder();
             configVersion.incrementAndGet();
-        } catch (IOException exception) {
+        } catch (IOException | com.google.gson.JsonParseException | IllegalArgumentException exception) {
             Hqtiers.logger.warn("Failed to load HqTiers config.", exception);
         }
     }
@@ -155,7 +173,7 @@ public final class HqTiersClientConfig {
     }
 
     public static String normalizeLadder(String ladder) {
-        String normalized = ladder.trim().toUpperCase().replace('-', '_').replace(' ', '_');
+        String normalized = ladder.trim().toUpperCase(Locale.ROOT).replace('-', '_').replace(' ', '_');
         return switch (normalized) {
             case "SPEARMACE", "SPEAR_MACE", "SPEAR" -> "SPEAR_MACE";
             case "CARTS", "MINECART", "MINECARTS" -> "CART";
@@ -169,7 +187,7 @@ public final class HqTiersClientConfig {
         public static DisplayMode fromName(String name) {
             if (name == null) return HIGHEST_TIER;
             try {
-                return DisplayMode.valueOf(name.trim().toUpperCase());
+                return DisplayMode.valueOf(name.trim().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException ignored) {
                 return HIGHEST_TIER;
             }
@@ -185,16 +203,23 @@ public final class HqTiersClientConfig {
     }
 
     public static void normalizeNametagOrder() {
-        nametagOrder = hasNametagPart(nametagOrder) ? new ArrayList<>(nametagOrder) : defaultNametagOrder();
+        List<NametagComponent> normalized = new ArrayList<>();
+        Set<NametagComponent> seen = java.util.EnumSet.noneOf(NametagComponent.class);
+        int separators = 0;
+        if (nametagOrder != null) {
+            for (NametagComponent component : nametagOrder) {
+                if (component == null) continue;
+                if (component == NametagComponent.SEPARATOR) {
+                    if (separators++ < 2) normalized.add(component);
+                } else if (seen.add(component)) normalized.add(component);
+            }
+        }
+        for (NametagComponent component : NametagComponent.values()) {
+            if (component != NametagComponent.SEPARATOR && seen.add(component)) normalized.add(component);
+        }
+        nametagOrder = normalized;
         ensureSeparatorComponents();
         ensureSeparatorStatesSize();
-    }
-
-    private static boolean hasNametagPart(List<NametagComponent> components) {
-        for (NametagComponent component : components) {
-            if (component != NametagComponent.SEPARATOR) return true;
-        }
-        return false;
     }
 
     private static void ensureSeparatorComponents() {
@@ -239,7 +264,7 @@ public final class HqTiersClientConfig {
         if (occurrenceIndex < 0 || occurrenceIndex >= nametagSeparatorStates.size()) {
             return true;
         }
-        return nametagSeparatorStates.get(occurrenceIndex);
+        return Boolean.TRUE.equals(nametagSeparatorStates.get(occurrenceIndex));
     }
 
     public static void setSeparatorEnabled(int occurrenceIndex, boolean enabled) {
@@ -247,6 +272,34 @@ public final class HqTiersClientConfig {
         if (occurrenceIndex >= 0 && occurrenceIndex < nametagSeparatorStates.size()) {
             nametagSeparatorStates.set(occurrenceIndex, enabled);
         }
+    }
+
+    /** Reads a side safely, including malformed or missing legacy values. */
+    private static NametagAlignment parseSide(String value) {
+        try { return NametagAlignment.valueOf(value.toUpperCase(Locale.ROOT)); }
+        catch (IllegalArgumentException | NullPointerException ignored) { return NametagAlignment.LEFT; }
+    }
+
+    /** Returns the selected side, preserving the whole-tag setting from old configs. */
+    public static NametagAlignment side(NametagComponent component, int separator) {
+        if (component == NametagComponent.SEPARATOR) {
+            return separator >= 0 && separator < separatorSides.size() ? separatorSides.get(separator) : nametagAlignment;
+        }
+        return componentSides.getOrDefault(component, nametagAlignment);
+    }
+
+    /** Changes one element's side without moving the other elements. */
+    public static void setSide(NametagComponent component, int separator, NametagAlignment side) {
+        if (component == NametagComponent.SEPARATOR) {
+            while (separatorSides.size() <= separator) separatorSides.add(nametagAlignment);
+            separatorSides.set(separator, side);
+        } else componentSides.put(component, side);
+        changed();
+    }
+
+    /** Invalidates formatted nametags immediately while editing a live preview. */
+    public static void changed() {
+        configVersion.incrementAndGet();
     }
 
     private static final class Data {
@@ -265,6 +318,10 @@ public final class HqTiersClientConfig {
         boolean positionEnabled = false;
         boolean positionLabelEnabled = false;
         String nametagAlignment = NametagAlignment.LEFT.name();
+        Map<String, String> componentSides;
+        List<String> separatorSides;
+        boolean iconSpacing = true;
+        boolean nameSeparator = true;
         List<String> nametagOrder = null;
         List<Boolean> nametagSeparatorStates = null;
         boolean suppressRankedDuplicates = true;
@@ -289,6 +346,11 @@ public final class HqTiersClientConfig {
             data.positionEnabled = HqTiersClientConfig.positionEnabled;
             data.positionLabelEnabled = HqTiersClientConfig.positionLabelEnabled;
             data.nametagAlignment = HqTiersClientConfig.nametagAlignment.name();
+            data.componentSides = new java.util.HashMap<>();
+            HqTiersClientConfig.componentSides.forEach((key, value) -> data.componentSides.put(key.name(), value.name()));
+            data.separatorSides = HqTiersClientConfig.separatorSides.stream().map(Enum::name).toList();
+            data.iconSpacing = HqTiersClientConfig.iconSpacing;
+            data.nameSeparator = HqTiersClientConfig.nameSeparator;
             data.nametagOrder = HqTiersClientConfig.nametagOrder.stream()
                     .map(Enum::name).collect(Collectors.toList());
             data.nametagSeparatorStates = new ArrayList<>(HqTiersClientConfig.nametagSeparatorStates);
