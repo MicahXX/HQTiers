@@ -31,7 +31,7 @@ public final class HqTiersConfigScreen {
                         Component.literal("Display mode"),
                         HqTiersClientConfig.DisplayMode.class,
                         HqTiersClientConfig.displayMode)
-                .setDefaultValue(HqTiersClientConfig.DisplayMode.PREFERRED_LADDER)
+                .setDefaultValue(HqTiersClientConfig.DisplayMode.HIGHEST_TIER)
                 .setSaveConsumer(value -> HqTiersClientConfig.displayMode = value)
                 .build());
         general.addEntry(entries.startSelector(
@@ -54,13 +54,6 @@ public final class HqTiersConfigScreen {
         overlay.addEntry(entries.startBooleanToggle(Component.literal("Show tab list stats"), HqTiersClientConfig.tabListEnabled)
                 .setDefaultValue(true)
                 .setSaveConsumer(value -> HqTiersClientConfig.tabListEnabled = value)
-                .build());
-        overlay.addEntry(entries.startEnumSelector(
-                        Component.literal("Stats position"),
-                        HqTiersClientConfig.NametagAlignment.class,
-                        HqTiersClientConfig.nametagAlignment)
-                .setDefaultValue(HqTiersClientConfig.NametagAlignment.LEFT)
-                .setSaveConsumer(value -> HqTiersClientConfig.nametagAlignment = value)
                 .build());
         overlay.addEntry(entries.startBooleanToggle(Component.literal("Colored tier in nametag"), HqTiersClientConfig.coloredTier)
                 .setDefaultValue(true)

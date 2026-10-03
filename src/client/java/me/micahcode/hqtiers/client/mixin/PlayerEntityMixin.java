@@ -50,11 +50,8 @@ public class PlayerEntityMixin {
                         Component tier = HqTiersFormatter.compact(stats);
 
                         if (tier.getString().isEmpty()) return base;
-                        if (base.getString().contains(tier.getString())) return base;
 
-                        return HqTiersClientConfig.nametagAlignment == HqTiersClientConfig.NametagAlignment.LEFT
-                                ? tier.copy().append(separator()).append(base)
-                                : base.copy().append(separator()).append(tier);
+                        return HqTiersFormatter.decorateName(stats, base);
                     })
                     .orElse(original);
 
@@ -73,8 +70,4 @@ public class PlayerEntityMixin {
         return false;
     }
 
-    @Unique
-    private static Component separator() {
-        return Component.literal(" | ").withStyle(net.minecraft.ChatFormatting.GRAY);
-    }
 }

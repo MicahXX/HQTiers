@@ -1,6 +1,5 @@
 package me.micahcode.hqtiers.client;
 
-import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.model.HqTiersLadder;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
@@ -26,63 +25,52 @@ public final class HqTiersFormatter {
             .map(Enum::name)
             .toList();
 
-    private record CompactCacheEntry(int configVersion, Component component) {}
+    private record CompactCacheEntry(int configVersion, NametagParts parts) {}
 
     private static final Map<HqTiersStats, CompactCacheEntry> COMPACT_CACHE =
             Collections.synchronizedMap(new WeakHashMap<>());
 
-    public static Component compact(HqTiersStats stats) {
+    /** Returns both sides of the nametag, cached until settings or player data change. */
+    private static NametagParts parts(HqTiersStats stats) {
         int version = HqTiersClientConfig.configVersion();
         CompactCacheEntry cached = COMPACT_CACHE.get(stats);
-        if (cached != null && cached.configVersion() == version) {
-            return cached.component();
-        }
-
-        Component computed = computeCompact(stats);
-        COMPACT_CACHE.put(stats, new CompactCacheEntry(version, computed));
-        return computed;
-    }
-
-    private static Component computeCompact(HqTiersStats stats) {
+        if (cached != null && cached.configVersion() == version) return cached.parts();
         HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
-
-        if (ladder == null) {
-            return HqTiersClientConfig.showUnranked
-                    ? Component.literal("Unranked").withStyle(ChatFormatting.GRAY)
-                    : Component.empty();
+        NametagParts parts;
+        if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL
+                && (ladder == null || !ladder.hasPlayedRanked() || !ladder.hasPosition())) {
+            parts = NametagParts.empty();
+        } else if (ladder == null) {
+            Component label = HqTiersClientConfig.showUnranked
+                    ? Component.literal("Unranked").withStyle(ChatFormatting.GRAY) : Component.empty();
+            parts = HqTiersClientConfig.side(HqTiersClientConfig.NametagComponent.TIER, -1)
+                    == HqTiersClientConfig.NametagAlignment.LEFT
+                    ? new NametagParts(label, Component.empty()) : new NametagParts(Component.empty(), label);
+        } else {
+            parts = NametagComposer.compose(ladder);
         }
-
-        if (!HqTiersClientConfig.showUnranked && !ladder.hasPlayedRanked()) {
-            return Component.empty();
-        }
-
-        return decorated(ladder);
+        COMPACT_CACHE.put(stats, new CompactCacheEntry(version, parts));
+        return parts;
     }
 
+    /** Returns the visible stats without a player name. */
+    public static Component compact(HqTiersStats stats) {
+        return parts(stats).combined();
+    }
+
+    /** Inserts stats around the original name while preserving its styles and events. */
+    public static Component decorateName(HqTiersStats stats, Component name) {
+        NametagParts parts = parts(stats);
+        return parts.surrounds(name) ? name : parts.around(name);
+    }
+
+    /** Renders example stats around the signed-in player's actual Minecraft username. */
     public static Component previewCompact() {
-        Component preview = decorated(HqTiersStats.LadderStats.minimal(
-                HqTiersClientConfig.preferredLadder,
-                800,
-                10,
-                5,
-                10,
-                "MT4",
-                123
-        ));
-
-        var client = net.minecraft.client.Minecraft.getInstance();
-        if (client.player != null) {
-            var real = HqTiersClientState.cache()
-                    .getIfFresh(client.player.getUUID())
-                    .map(HqTiersFormatter::compact)
-                    .orElse(Component.empty());
-
-            if (!real.getString().isEmpty()) {
-                preview = real;
-            }
-        }
-
-        return preview;
+        String ladder = HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL
+                ? "GLOBAL" : HqTiersClientConfig.preferredLadder;
+        String username = net.minecraft.client.Minecraft.getInstance().getUser().getName();
+        return NametagComposer.compose(HqTiersStats.LadderStats.minimal(ladder, 125, 10, 5, 10, "MT4", 123))
+                .around(Component.literal(username).withStyle(ChatFormatting.WHITE));
     }
 
     public static Component details(HqTiersStats stats) {
@@ -125,60 +113,8 @@ public final class HqTiersFormatter {
                 .append(Component.literal(Integer.toString(ladder.position())).withStyle(ChatFormatting.WHITE));
     }
 
-    private static Component decorated(HqTiersStats.LadderStats ladder) {
-        MutableComponent text = Component.empty();
-        boolean wrotePart = false;
-        int separatorOccurrence = -1;
-
-        for (HqTiersClientConfig.NametagComponent component : HqTiersClientConfig.nametagOrder) {
-            if (!HqTiersClientConfig.showUnranked && ladder.tierLabel().isEmpty()) {
-                return Component.empty();
-            }
-
-            switch (component) {
-                case GAMEMODE_ICON -> {
-                    if (!HqTiersClientConfig.gamemodeIconEnabled) continue;
-                    if (wrotePart) text.append(Component.literal(" "));
-                    text.append(icon(ladder.ladder()));
-                    wrotePart = true;
-                }
-                case TIER -> {
-                    if (!HqTiersClientConfig.tierEnabled) continue;
-                    if (wrotePart) text.append(Component.literal(" "));
-                    if (HqTiersClientConfig.coloredTier) {
-                        text.append(Component.literal(tierLabel(ladder)).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())));
-                    } else {
-                        text.append(Component.literal(tierLabel(ladder)).withStyle(ChatFormatting.WHITE));
-                    }
-                    wrotePart = true;
-                }
-                case SEPARATOR -> {
-                    separatorOccurrence++;
-                    if (!HqTiersClientConfig.isSeparatorEnabled(separatorOccurrence) || !wrotePart) continue;
-                    text.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY));
-                }
-                case ELO -> {
-                    if (!HqTiersClientConfig.eloEnabled) continue;
-                    Style eloStyle = Style.EMPTY.withColor(HqTiersClientConfig.coloredElo ? ladder.tierColorInt() : 0xFFFFFF);
-                    text.append(Component.literal(Integer.toString(ladder.tr())).setStyle(eloStyle));
-                    if (HqTiersClientConfig.eloLabelEnabled)
-                        text.append(Component.literal(" " + HqTiersRankSystem.RATING_LABEL).setStyle(eloStyle));
-                    wrotePart = true;
-                }
-                case POSITION -> {
-                    if (!HqTiersClientConfig.positionEnabled || !ladder.hasPosition()) continue;
-                    int posColor = HqTiersClientConfig.coloredPosition ? ladder.tierColorInt() : 0xFFFFFF;
-                    if (HqTiersClientConfig.positionLabelEnabled)
-                        text.append(Component.literal("#").setStyle(Style.EMPTY.withColor(posColor)));
-                    text.append(Component.literal(Integer.toString(ladder.position())).setStyle(Style.EMPTY.withColor(posColor)));
-                    wrotePart = true;
-                }
-            }
-        }
-        return text;
-    }
-
-    private static String tierLabel(HqTiersStats.LadderStats ladder) {
+    /** Formats a tier according to the configured abbreviation preference. */
+    public static String tierLabel(HqTiersStats.LadderStats ladder) {
         if (!HqTiersClientConfig.shortTierNames) {
             return ladder.tierLabel();
         }
@@ -234,6 +170,8 @@ public final class HqTiersFormatter {
                 .filter(ladder -> !ladder.ladder().equals("GLOBAL"))
                 .filter(ladder -> !ladder.unranked())
                 .filter(ladder -> ladder.placementGames() >= ladder.placementTarget())
-                .max(Comparator.comparingInt(HqTiersStats.LadderStats::tr));
+                .max(Comparator.comparingInt((HqTiersStats.LadderStats ladder) ->
+                        ladder.tier() == null ? -1 : ladder.tier().ordinal())
+                        .thenComparingInt(HqTiersStats.LadderStats::totalRating));
     }
 }
