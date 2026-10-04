@@ -45,7 +45,7 @@ public final class HqTiersClientConfig {
     public static boolean eloLabelEnabled = false;
     public static boolean positionEnabled = false;
     public static boolean positionLabelEnabled = false;
-    public static boolean suppressRankedDuplicates = true;
+    public static boolean suppressRankedDuplicates = false;
     public static boolean coloredTier = true;
     public static boolean coloredPosition = true;
     public static List<NametagComponent> nametagOrder = defaultNametagOrder();
@@ -324,7 +324,7 @@ public final class HqTiersClientConfig {
         boolean nameSeparator = true;
         List<String> nametagOrder = null;
         List<Boolean> nametagSeparatorStates = null;
-        boolean suppressRankedDuplicates = true;
+        boolean suppressRankedDuplicates = false;
         boolean coloredTier = true;
         boolean coloredPosition = true;
         boolean showUnranked = false;
