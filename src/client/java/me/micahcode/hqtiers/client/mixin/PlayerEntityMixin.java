@@ -3,6 +3,7 @@ package me.micahcode.hqtiers.client.mixin;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.NametagDuplicateDetector;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
@@ -31,7 +32,7 @@ public class PlayerEntityMixin {
 
             if (HqTiersClientConfig.suppressRankedDuplicates) {
                 String text = original == null ? "" : original.getString();
-                if (text.contains("MT") || text.contains("LT") || text.contains("HT")) {
+                if (NametagDuplicateDetector.hasTierLabel(text, player.getScoreboardName())) {
                     return original;
                 }
             }

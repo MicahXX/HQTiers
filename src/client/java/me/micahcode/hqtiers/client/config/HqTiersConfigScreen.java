@@ -47,8 +47,9 @@ public final class HqTiersConfigScreen {
                 .setDefaultValue(true)
                 .setSaveConsumer(value -> HqTiersClientConfig.nametagEnabled = value)
                 .build());
-        overlay.addEntry(entries.startBooleanToggle(Component.literal("Hide nametag if Ranked System"), HqTiersClientConfig.suppressRankedDuplicates)
+        overlay.addEntry(entries.startBooleanToggle(Component.literal("Hide HQTiers stats when a tier is already shown"), HqTiersClientConfig.suppressRankedDuplicates)
                 .setDefaultValue(true)
+                .setTooltip(Component.literal("Skip HQTiers nametag stats when the existing name contains a tier label such as [HT3] or LT2. Your name stays visible."))
                 .setSaveConsumer(value -> HqTiersClientConfig.suppressRankedDuplicates = value)
                 .build());
         overlay.addEntry(entries.startBooleanToggle(Component.literal("Show tab list stats"), HqTiersClientConfig.tabListEnabled)
