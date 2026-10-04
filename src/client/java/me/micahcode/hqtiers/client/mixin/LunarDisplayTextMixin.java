@@ -2,6 +2,7 @@ package me.micahcode.hqtiers.client.mixin;
 
 import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.NametagDuplicateDetector;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.fabricmc.loader.api.FabricLoader;
@@ -41,6 +42,8 @@ public class LunarDisplayTextMixin {
             String scoreboardName = player.getScoreboardName();
 
             if (plain.isBlank() || !plain.contains(scoreboardName)) return;
+            if (HqTiersClientConfig.suppressRankedDuplicates
+                    && NametagDuplicateDetector.hasTierLabel(plain, scoreboardName)) return;
 
             Optional<HqTiersStats> statsOpt = HqTiersClientState.cache().getIfFresh(player.getUUID());
             if (statsOpt.isEmpty()) {
