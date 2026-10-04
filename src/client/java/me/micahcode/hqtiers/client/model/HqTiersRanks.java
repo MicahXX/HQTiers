@@ -2,7 +2,6 @@ package me.micahcode.hqtiers.client.model;
 
 public enum HqTiersRanks {
 
-    // this actually uses real colors now type ahh
     LT5("#4C3822"),
     MT5("#705332"),
     HT5("#936D42"),
