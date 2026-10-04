@@ -3,6 +3,7 @@ package me.micahcode.hqtiers.client;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import me.micahcode.hqtiers.Hqtiers;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 
 import java.io.IOException;
@@ -18,7 +19,6 @@ import java.util.UUID;
 public class HqTiersApiClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/ranked/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
-    private static final String USER_AGENT = "HQTiers/3.0 (discord: micahcode)";
     private static final Gson GSON = new Gson();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -30,7 +30,7 @@ public class HqTiersApiClient {
         HttpRequest request = HttpRequest.newBuilder(BASE_URI.resolve(uuid.toString()))
                 .timeout(TIMEOUT)
                 .header("Accept", "application/json")
-                .header("User-Agent", USER_AGENT)
+                .header("User-Agent", Hqtiers.USER_AGENT)
                 .GET()
                 .build();
 

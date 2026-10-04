@@ -13,6 +13,7 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
+/** Adapts profile, font, and keybinding APIs across Minecraft versions. */
 public final class HqTiersMinecraftCompat {
 	private HqTiersMinecraftCompat() {
 	}
@@ -41,6 +42,7 @@ public final class HqTiersMinecraftCompat {
 		}
 	}
 
+	/** Resolves either a direct font identifier or a wrapped font description. */
 	public static Style fontStyle(Identifier fontId) {
 		for (Method method : Style.class.getMethods()) {
 			if (!method.getReturnType().isAssignableFrom(Style.class)) continue;
@@ -48,7 +50,6 @@ public final class HqTiersMinecraftCompat {
 
 			Class<?> paramType = method.getParameterTypes()[0];
 
-			// 1.21.2+
 			if (paramType.isAssignableFrom(fontId.getClass())) {
 				try {
 					Object result = method.invoke(Style.EMPTY, fontId);
@@ -76,8 +77,8 @@ public final class HqTiersMinecraftCompat {
 		return Style.EMPTY;
 	}
 
+	/** Tries the string-category constructor before the category-object API. */
 	public static KeyMapping keyBinding(String translationKey, int code, String categoryTranslationKey) {
-		// 1.21.2+
 		try {
 			Constructor<KeyMapping> constructor = KeyMapping.class.getConstructor(
 					String.class, InputConstants.Type.class, int.class, String.class);
@@ -85,7 +86,6 @@ public final class HqTiersMinecraftCompat {
 		} catch (ReflectiveOperationException ignored) {
 		}
 
-		// before 1.21.2
 		try {
 			return categorizedKeyBinding(translationKey, code,
 					FabricLoader.getInstance().getMappingResolver());
