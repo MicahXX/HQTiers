@@ -33,7 +33,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private static final int MAX_PANEL_WIDTH = 480;
     private static final int ROW_HEIGHT = 16;
 
-
     private static final long LEADERBOARD_REFRESH_INTERVAL_MS = 60_000;
 
     private static final int GOLD = 0xFFFFD700;

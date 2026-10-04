@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.Optional;
 
-// just to make it work on lunar and pvphq
+/** Adds rank stats to player text displays when Lunar handles nametag rendering. */
 @Mixin(Display.TextDisplay.class)
 public class LunarDisplayTextMixin {
 
@@ -55,7 +55,7 @@ public class LunarDisplayTextMixin {
 
             cir.setReturnValue(merged);
         } catch (Throwable ignored) {
-            // if there is some kind of issue just show nothing
+            /* Preserve the original display if decoration fails. */
         }
     }
 

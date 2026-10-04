@@ -52,7 +52,7 @@ public final class MojangProfileResolver {
             HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.mojang.com/users/profiles/minecraft/" + encodedName))
                     .timeout(TIMEOUT)
                     .header("Accept", "application/json")
-                    .header("User-Agent", "HQTiers Minecraft Tier Tagger Mod")
+                    .header("User-Agent", Hqtiers.USER_AGENT)
                     .GET()
                     .build();
 
