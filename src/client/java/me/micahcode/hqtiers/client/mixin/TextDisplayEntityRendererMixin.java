@@ -84,7 +84,7 @@ public class TextDisplayEntityRendererMixin {
                 return;
             }
         } catch (Throwable ignored) {
-            // if there is some kind of issue just show nothing
+            /* Preserve the original display if decoration fails. */
         }
     }
 
@@ -97,7 +97,7 @@ public class TextDisplayEntityRendererMixin {
 
         ordered.accept((index, style, codePoint) -> {
             if (skippingLeading[0]) {
-                if (codePoint == ' ') return true; // skip leading spaces entirely
+                if (codePoint == ' ') return true;
                 skippingLeading[0] = false;
             }
 

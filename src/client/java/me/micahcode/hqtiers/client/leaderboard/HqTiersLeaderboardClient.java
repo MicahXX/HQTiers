@@ -28,7 +28,6 @@ import net.minecraft.client.Minecraft;
 public final class HqTiersLeaderboardClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
-    private static final String USER_AGENT = "HQTiers/3.0 (micahcode)";
     private static final Gson GSON = new Gson();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -103,7 +102,7 @@ public final class HqTiersLeaderboardClient {
         try {
             URI uri = BASE_URI.resolve("v1/leaderboard/ranked/" + gametype + "?page=" + page + "&size=50");
             HttpRequest request = HttpRequest.newBuilder(uri).timeout(TIMEOUT)
-                    .header("Accept", "application/json").header("User-Agent", USER_AGENT).GET().build();
+                    .header("Accept", "application/json").header("User-Agent", Hqtiers.USER_AGENT).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new IOException("PvPHQ API returned HTTP " + response.statusCode());
@@ -226,7 +225,7 @@ public final class HqTiersLeaderboardClient {
                 HttpRequest request = HttpRequest.newBuilder(uri)
                         .timeout(TIMEOUT)
                         .header("Accept", "application/json")
-                        .header("User-Agent", USER_AGENT)
+                        .header("User-Agent", Hqtiers.USER_AGENT)
                         .GET()
                         .build();
 
