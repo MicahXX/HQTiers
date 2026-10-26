@@ -15,6 +15,7 @@ public abstract class ChatComponentMixin {
 
     @Inject(method = "tick", at = @At("TAIL"))
     private void hqtiers$refreshChat(CallbackInfo ci) {
+        // refresh it on new config version
         if (HqTiersChatFormatter.needsRefresh()) refreshTrimmedMessages();
     }
 }

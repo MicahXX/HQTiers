@@ -39,7 +39,6 @@ repositories {
 }
 
 dependencies {
-    /* Minecraft 26.1+ ships unobfuscated, so no mappings dependency is needed. */
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 

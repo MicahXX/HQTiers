@@ -158,7 +158,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
-    /** Keeps one request per selection and ignores results from a previously selected ladder. */
     private void loadHistory() {
         historyRequested = true;
         historyLoading = true;
@@ -192,7 +191,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
     }
 
-    /** Starts a fresh graph selection without duplicate requests during screen initialization. */
     private void openLadder(String id) {
         selectedLadder = id.toLowerCase(java.util.Locale.ROOT);
         historyRequest++;

@@ -2,6 +2,7 @@ package me.micahcode.hqtiers.client.model;
 
 public enum HqTiersRanks {
 
+    // ignore this --> could be deleted
     LT5("#4C3822"),
     MT5("#705332"),
     HT5("#936D42"),

@@ -27,6 +27,8 @@ import java.util.Optional;
 @Mixin(DisplayRenderer.TextDisplayRenderer.class)
 public class TextDisplayEntityRendererMixin {
 
+    // we need it like this as some servers like PvPHQ modify the nametag or build it on their own
+    // and this method is the best for that and also servers that don't sdo that
     @Unique
     private static final String LUNAR_MOD_ID = "ichor";
 
@@ -87,7 +89,6 @@ public class TextDisplayEntityRendererMixin {
                 return;
             }
         } catch (Throwable ignored) {
-            /* Preserve the original display if decoration fails. */
         }
     }
 

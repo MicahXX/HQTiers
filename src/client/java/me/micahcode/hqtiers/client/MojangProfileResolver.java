@@ -20,6 +20,7 @@ import com.google.gson.JsonObject;
 import me.micahcode.hqtiers.Hqtiers;
 
 public final class MojangProfileResolver {
+    // this just is responsible for finding the UUId of a player
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final Gson GSON = new Gson();
 

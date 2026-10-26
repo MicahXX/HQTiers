@@ -16,10 +16,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.Optional;
 
-/** Adds rank stats to player text displays when Lunar handles nametag rendering. */
 @Mixin(Display.TextDisplay.class)
 public class LunarDisplayTextMixin {
 
+    // for Lunar we need to use a unique method to display the tier in the nametag
+    // as Lunar changes mixins so ye
     @Unique
     private static final String LUNAR_MOD_ID = "ichor";
 
@@ -58,7 +59,6 @@ public class LunarDisplayTextMixin {
 
             cir.setReturnValue(merged);
         } catch (Throwable ignored) {
-            /* Preserve the original display if decoration fails. */
         }
     }
 
