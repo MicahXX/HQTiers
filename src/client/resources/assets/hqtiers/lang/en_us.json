@@ -6,5 +6,6 @@
   "key.hqtiers.cycle_mode_back": "Cycle Display Mode (Back)",
   "key.hqtiers.view_stats": "View My Stats",
   "key.hqtiers.tablist": "Toggle Tablist Stats",
-  "key.hqtiers.nametag": "Toggle Nametag Stats"
+  "key.hqtiers.nametag": "Toggle Nametag Stats",
+  "key.hqtiers.chat": "Toggle Chat Stats"
 }
