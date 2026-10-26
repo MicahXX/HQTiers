@@ -24,7 +24,6 @@ import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import net.minecraft.client.Minecraft;
 
-/** Loads official leaderboard pages asynchronously and keeps each ladder independent. */
 public final class HqTiersLeaderboardClient {
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
@@ -62,12 +61,10 @@ public final class HqTiersLeaderboardClient {
         loadPage(ladder, state.page() + 1, false);
     }
 
-    /** Refreshes the first page in one request, keeping old rows visible until it succeeds. */
     private void loadInitial(String ladder) {
         if (!state(ladder).loading()) loadPage(ladder, 0, true);
     }
 
-    /** Appends a page once and respects the server's pagination metadata. */
     private void loadPage(String ladder, int page, boolean replace) {
         PageState state = state(ladder);
         state.loading = true;
@@ -91,7 +88,6 @@ public final class HqTiersLeaderboardClient {
         }));
     }
 
-    /** Uses the website's v1 route; page numbers are zero-based, ranks are one-based. */
     private LeaderboardPage fetchPage(String ladder, int page) {
         String gametype = switch (HqTiersClientConfig.normalizeLadder(ladder)) {
             case "GLOBAL" -> "overall";
@@ -116,7 +112,6 @@ public final class HqTiersLeaderboardClient {
         }
     }
 
-    /** Parses the public API contract without inferring rank from array position. */
     static LeaderboardPage parsePage(String json) {
         JsonElement parsed = GSON.fromJson(json, JsonElement.class);
         if (parsed == null || !parsed.isJsonObject()) throw new IllegalArgumentException("Missing leaderboard object");
@@ -142,7 +137,6 @@ public final class HqTiersLeaderboardClient {
                 page == null ? entries.size() : intValue(page, "total", entries.size()));
     }
 
-    /** Carries one server page and its explicit continuation state. */
     record LeaderboardPage(List<Entry> entries, boolean hasMore, int total) {}
 
     private static String string(JsonObject object, String key, String fallback) {
@@ -199,7 +193,6 @@ public final class HqTiersLeaderboardClient {
             return error;
         }
 
-        /** Returns the server's total player count for this leaderboard. */
         public int total() {
             return total;
         }

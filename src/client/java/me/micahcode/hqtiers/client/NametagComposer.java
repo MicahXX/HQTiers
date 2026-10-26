@@ -7,11 +7,9 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
-/** Formats ordered elements on each side and avoids dangling or doubled separators. */
 public final class NametagComposer {
     private NametagComposer() {}
 
-    /** Builds both sides using a single shared set of visibility and spacing rules. */
     public static NametagParts compose(HqTiersStats.LadderStats ladder) {
         if (ladder.ladder().equals("GLOBAL") && (!ladder.hasPlayedRanked() || !ladder.hasPosition() || ladder.position() == 100000)) {
             return NametagParts.empty();
@@ -19,7 +17,6 @@ public final class NametagComposer {
         return new NametagParts(side(ladder, NametagAlignment.LEFT), side(ladder, NametagAlignment.RIGHT));
     }
 
-    /** Defers separator output until another visible element exists on the same side. */
     private static Component side(HqTiersStats.LadderStats ladder, NametagAlignment side) {
         MutableComponent result = Component.empty();
         NametagComponent previous = null;
@@ -48,7 +45,6 @@ public final class NametagComposer {
         return result;
     }
 
-    /** Uses the tier slot for global placement; a second position slot is then redundant. */
     private static Component element(HqTiersStats.LadderStats ladder, NametagComponent component) {
         boolean global = ladder.ladder().equals("GLOBAL");
         if (!global && !HqTiersClientConfig.showUnranked && ladder.tierLabel().isEmpty()) return Component.empty();
@@ -69,7 +65,6 @@ public final class NametagComposer {
         };
     }
 
-    /** Formats a leaderboard position using the configured color preference. */
     private static Component position(HqTiersStats.LadderStats ladder, boolean label) {
         return Component.literal((label ? "#" : "") + ladder.position())
                 .withColor(HqTiersClientConfig.coloredPosition ? ladder.tierColorInt() : 0xFFFFFF);

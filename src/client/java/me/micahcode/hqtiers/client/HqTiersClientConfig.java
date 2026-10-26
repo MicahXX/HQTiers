@@ -21,8 +21,8 @@ import com.google.gson.GsonBuilder;
 import me.micahcode.hqtiers.Hqtiers;
 import net.fabricmc.loader.api.FabricLoader;
 
-/** Persists client display preferences and migrates older nametag layouts. */
 public final class HqTiersClientConfig {
+    // this is just for the settings so if smth is off/on, left/right etc, add more here if you need it
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("hqtiers.json");
 
@@ -58,6 +58,7 @@ public final class HqTiersClientConfig {
 
     private HqTiersClientConfig() {}
 
+    // todo: remove this
     private static final Map<String, String> INTERNAL_TO_API = Map.of(
             "DIAMOND_POT", "POT",
             "CART", "HT_CART"
@@ -135,7 +136,7 @@ public final class HqTiersClientConfig {
             if (data.componentSides != null) {
                 data.componentSides.forEach((key, value) -> {
                     try { componentSides.put(NametagComponent.valueOf(key), parseSide(value)); }
-                    catch (IllegalArgumentException ignored) { /* Ignore unknown future components. */ }
+                    catch (IllegalArgumentException ignored) {}
                 });
             }
             separatorSides = new ArrayList<>();
@@ -276,13 +277,11 @@ public final class HqTiersClientConfig {
         }
     }
 
-    /** Reads a side safely, including malformed or missing legacy values. */
     private static NametagAlignment parseSide(String value) {
         try { return NametagAlignment.valueOf(value.toUpperCase(Locale.ROOT)); }
         catch (IllegalArgumentException | NullPointerException ignored) { return NametagAlignment.LEFT; }
     }
 
-    /** Returns the selected side, preserving the whole-tag setting from old configs. */
     public static NametagAlignment side(NametagComponent component, int separator) {
         if (component == NametagComponent.SEPARATOR) {
             return separator >= 0 && separator < separatorSides.size() ? separatorSides.get(separator) : nametagAlignment;
@@ -290,7 +289,6 @@ public final class HqTiersClientConfig {
         return componentSides.getOrDefault(component, nametagAlignment);
     }
 
-    /** Changes one element's side without moving the other elements. */
     public static void setSide(NametagComponent component, int separator, NametagAlignment side) {
         if (component == NametagComponent.SEPARATOR) {
             while (separatorSides.size() <= separator) separatorSides.add(nametagAlignment);
@@ -299,7 +297,6 @@ public final class HqTiersClientConfig {
         changed();
     }
 
-    /** Invalidates formatted nametags immediately while editing a live preview. */
     public static void changed() {
         configVersion.incrementAndGet();
     }

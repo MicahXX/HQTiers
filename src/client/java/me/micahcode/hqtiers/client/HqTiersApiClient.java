@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public class HqTiersApiClient {
+    // there is also V1 endpoints or smth, but Moose will cook me if I use that
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/ranked/");
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final Gson GSON = new Gson();
@@ -46,7 +47,6 @@ public class HqTiersApiClient {
         return parseRanked(uuid, response.body());
     }
 
-    /** Parses ranked data independently of transport so API edge cases can be verified. */
     static HqTiersStats parseRanked(UUID uuid, String json) {
         JsonObject root = GSON.fromJson(json, JsonObject.class);
         if (root == null || root.isJsonNull()) {
@@ -62,6 +62,7 @@ public class HqTiersApiClient {
         return new HqTiersStats(playerUuid, name, ladders, System.currentTimeMillis());
     }
 
+    // pretty much every single available thing I can use is here
     private static Map<String, HqTiersStats.LadderStats> readLadders(JsonObject data) {
         Map<String, HqTiersStats.LadderStats> ladders = new HashMap<>();
         if (data == null) {
@@ -126,7 +127,6 @@ public class HqTiersApiClient {
         return ladders;
     }
 
-    /** Aggregates participation so an empty account never receives a global nametag. */
     private static HqTiersStats.LadderStats buildGlobal(JsonObject root, Map<String, HqTiersStats.LadderStats> ladders) {
         int wins = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::wins).sum();
         int losses = ladders.values().stream().mapToInt(HqTiersStats.LadderStats::losses).sum();

@@ -289,7 +289,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return false;
     }
 
-    /** Opens the overall leaderboard by default. */
     private static String initialLadder() {
         return "GLOBAL";
     }
@@ -517,6 +516,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return 0xFF9CA3AF;
     }
 
+    // this could be deleted
     private static int nameColor(int rank) {
         return 0xFFFFFFFF;
     }
