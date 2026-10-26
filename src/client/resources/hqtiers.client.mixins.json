@@ -5,6 +5,8 @@
   "compatibilityLevel": "JAVA_25",
   "priority": 2000,
   "mixins": [
+    "GuiMessageMixin",
+    "ChatComponentMixin",
     "PlayerEntityMixin",
     "PlayerListHudMixin",
     "TextDisplayEntityRendererMixin",

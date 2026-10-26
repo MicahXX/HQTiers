@@ -25,6 +25,7 @@ class NametagRegressionTest {
     /** Gives the loader a temporary config directory, leaving the user's settings untouched. */
     @BeforeAll
     static void initializeLoader() throws Exception {
+        if (configDirectory != null) return;
         configDirectory = Files.createTempDirectory("hqtiers-test-");
         var field = FabricLoader.getInstance().getClass().getDeclaredField("configDir");
         field.setAccessible(true);
@@ -34,6 +35,7 @@ class NametagRegressionTest {
     /** Resets mutable preferences between independently executed scenarios. */
     @BeforeEach
     void reset() {
+        HqTiersClientConfig.chatEnabled = false;
         HqTiersClientConfig.nametagOrder = HqTiersClientConfig.defaultNametagOrder();
         HqTiersClientConfig.componentSides = new EnumMap<>(NametagComponent.class);
         HqTiersClientConfig.separatorSides = new ArrayList<>();
@@ -186,4 +188,47 @@ class NametagRegressionTest {
         assertFalse(HqTiersClientConfig.isSeparatorEnabled(0));
         assertEquals(NametagAlignment.LEFT, HqTiersClientConfig.side(NametagComponent.TIER, -1));
     }
+
+    @Test
+    void placeholderIsHiddenInGlobalNameDisplays() {
+        HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.GLOBAL;
+        HqTiersClientConfig.showUnranked = true;
+        HqTiersClientConfig.gamemodeIconEnabled = true;
+        HqTiersClientConfig.positionEnabled = true;
+        Component name = Component.literal("Player").withColor(0x123456);
+        for (int position : List.of(99999, 100000, 100001)) {
+            var global = HqTiersStats.LadderStats.minimal("GLOBAL", 0, 1, 0, 0, null, position);
+            var stats = new HqTiersStats(UUID.randomUUID(), "Player", Map.of("GLOBAL", global), 0);
+            assertTrue(HqTiersFormatter.ladderDetails(stats).getFirst().getString().contains("#" + position));
+            if (position == 100000) {
+                assertEquals("", HqTiersFormatter.compact(stats).getString());
+                assertEquals(name.getString(), HqTiersFormatter.decorateName(stats, name).getString());
+            } else {
+                assertTrue(HqTiersFormatter.decorateName(stats, name).getString().contains("#" + position));
+            }
+        }
+    }
+
+    @Test
+    void ladderPositionPlaceholderIsNotHidden() {
+        HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.PREFERRED_LADDER;
+        HqTiersClientConfig.preferredLadder = "SWORD";
+        HqTiersClientConfig.positionEnabled = true;
+        var ladder = HqTiersStats.LadderStats.minimal("SWORD", 125, 10, 5, 10, "MT4", 100000);
+        var stats = new HqTiersStats(UUID.randomUUID(), "Player", Map.of("SWORD", ladder), 0);
+        assertTrue(HqTiersFormatter.decorateName(stats, Component.literal("Player")).getString().contains("100000"));
+    }
+
+    @Test
+    void chatPreferencePersistsAndDefaultsOffForExistingConfigs() throws Exception {
+        HqTiersClientConfig.chatEnabled = true;
+        HqTiersClientConfig.save();
+        HqTiersClientConfig.chatEnabled = false;
+        HqTiersClientConfig.load();
+        assertTrue(HqTiersClientConfig.chatEnabled);
+        Files.writeString(configDirectory.resolve("hqtiers.json"), "{}");
+        HqTiersClientConfig.load();
+        assertFalse(HqTiersClientConfig.chatEnabled);
+    }
+
 }

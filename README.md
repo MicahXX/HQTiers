@@ -4,10 +4,11 @@ A client-side Fabric mod that brings your [PvPHQ](https://pvphq.com/) stats in-g
 
 ### Stats
 - PvPHQ stats shown on player nametags and in the tab list
+- Optional chat sender stats use your configured display mode and nametag layout; disabled by default, toggle with **U** or **Mod Menu → HQTiers → Nametag & Tab → Show chat stats**
 - Global, Highest Tier, and per-ladder (all gamemodes) display modes
 - Arrange each nametag element independently to the left or right of the player name
 - Edit visibility, order, labels, icon spacing, and the name divider with a live preview using your Minecraft username (**Mod Menu → HQTiers → Nametag & Tab → Edit Nametag Layout**)
-- Global mode shows your overall `#placement`; players with no ranked games have no global tag
+- Global mode shows your overall `#placement`; players with no ranked games have no global tag. The placeholder `#100000` is hidden in nametags, the tab list, and chat
 
 ### Leaderboards & Profiles
 - Global leaderboard with overall placement, points, and number of ranked modes
@@ -24,8 +25,9 @@ A client-side Fabric mod that brings your [PvPHQ](https://pvphq.com/) stats in-g
 | `L` | Open the leaderboard |
 | `K` | Open your player stats |
 | `←` / `→` | Switch between ladders (gamemodes displayed in the nametag and tab list) |
-| *Unbound* | Toggle nametag |
-| *Unbound* | Toggle tablist |
+| `↑` | Toggle nametag |
+| `↓` | Toggle tablist |
+| `U` | Toggle chat stats (disabled by default) |
 
 All keybinds are rebindable in the settings under **Controls** and the leaderboard bind disables the advancements screen so if you want that rebind it.
 
