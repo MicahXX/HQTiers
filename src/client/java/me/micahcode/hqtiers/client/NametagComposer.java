@@ -13,7 +13,7 @@ public final class NametagComposer {
 
     /** Builds both sides using a single shared set of visibility and spacing rules. */
     public static NametagParts compose(HqTiersStats.LadderStats ladder) {
-        if (ladder.ladder().equals("GLOBAL") && (!ladder.hasPlayedRanked() || !ladder.hasPosition())) {
+        if (ladder.ladder().equals("GLOBAL") && (!ladder.hasPlayedRanked() || !ladder.hasPosition() || ladder.position() == 100000)) {
             return NametagParts.empty();
         }
         return new NametagParts(side(ladder, NametagAlignment.LEFT), side(ladder, NametagAlignment.RIGHT));
