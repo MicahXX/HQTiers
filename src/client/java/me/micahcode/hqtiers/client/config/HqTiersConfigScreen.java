@@ -13,6 +13,7 @@ import net.minecraft.network.chat.Component;
 
 public final class HqTiersConfigScreen {
 
+    // all settings besides nametaglayout that are on modmenu
     private static final String[] LADDERS = Arrays.stream(HqTiersLadder.values())
             .map(Enum::name)
             .toArray(String[]::new);

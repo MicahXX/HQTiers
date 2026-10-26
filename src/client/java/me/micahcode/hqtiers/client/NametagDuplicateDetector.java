@@ -3,8 +3,8 @@ package me.micahcode.hqtiers.client;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/** Recognizes standalone tier labels supplied by a server or another mod. */
 public final class NametagDuplicateDetector {
+    // this tries to check for any other nametag mod, but it is kinda bad so this is turned off by default
     private static final Pattern TIER_LABEL = Pattern.compile(
             "(?<![\\p{L}\\p{M}\\p{N}_])[HML]T[1-5](?![\\p{L}\\p{M}\\p{N}_])",
             Pattern.CASE_INSENSITIVE);
@@ -14,11 +14,6 @@ public final class NametagDuplicateDetector {
     private NametagDuplicateDetector() {
     }
 
-    /**
-     * Finds complete tier labels outside words and usernames, ignoring legacy color codes.
-     * Tokens identical to the player's account name are deliberately treated as ambiguous:
-     * keeping a possible duplicate is preferable to hiding stats for a player named HT3.
-     */
     public static boolean hasTierLabel(String displayName, String playerName) {
         if (displayName == null || displayName.isBlank()) return false;
 

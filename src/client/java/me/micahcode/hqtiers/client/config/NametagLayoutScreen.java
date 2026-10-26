@@ -12,7 +12,6 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Edits nametag elements with a live preview and pages that fit small GUI sizes. */
 public class NametagLayoutScreen extends Screen {
     private static final int ROW_HEIGHT = 24;
     private static final int ROW_TOP = 84;
@@ -20,7 +19,6 @@ public class NametagLayoutScreen extends Screen {
     private final List<NametagComponent> order;
     private int page;
 
-    /** Copies the saved order while sharing live display preferences with the preview. */
     public NametagLayoutScreen(Screen parent) {
         super(Component.literal("Nametag Layout"));
         this.parent = parent;
@@ -28,17 +26,14 @@ public class NametagLayoutScreen extends Screen {
         this.order = new ArrayList<>(HqTiersClientConfig.nametagOrder);
     }
 
-    /** Reserves room for the preview, spacing controls, and navigation. */
     private int visibleRows() {
         return Math.max(1, Math.min(order.size(), (height - ROW_TOP - 92) / ROW_HEIGHT));
     }
 
-    /** Sizes the panel to the available GUI width. */
     private int panelWidth() {
         return Math.min(480, width - 16);
     }
 
-    /** Creates only the visible rows so every control remains reachable. */
     @Override
     protected void init() {
         clearWidgets();
@@ -85,7 +80,6 @@ public class NametagLayoutScreen extends Screen {
         next.active = (page + 1) * rows < order.size();
     }
 
-    /** Applies an edit and invalidates the cached in-world preview immediately. */
     private Button button(String label, int x, int y, int width, Runnable action) {
         return addRenderableWidget(Button.builder(Component.literal(label), ignored -> {
             action.run();
@@ -94,7 +88,6 @@ public class NametagLayoutScreen extends Screen {
         }).bounds(x, y, width, 20).build());
     }
 
-    /** Draws panel backgrounds before widgets so row highlights never cover controls. */
     @Override
     public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         int left = (width - panelWidth()) / 2;
@@ -120,7 +113,6 @@ public class NametagLayoutScreen extends Screen {
         super.extractRenderState(context, mouseX, mouseY, delta);
     }
 
-    /** Moves element settings together, including independently configured separators. */
     private void swap(int a, int b) {
         if (b < 0 || b >= order.size()) return;
         NametagComponent first = order.get(a);
@@ -140,14 +132,12 @@ public class NametagLayoutScreen extends Screen {
         page = b / visibleRows();
     }
 
-    /** Finds the independent state associated with a separator row. */
     private int separatorOccurrence(int index) {
         int occurrence = -1;
         for (int i = 0; i <= index; i++) if (order.get(i) == NametagComponent.SEPARATOR) occurrence++;
         return occurrence;
     }
 
-    /** Reads visibility for the selected element. */
     private boolean isEnabled(int index) {
         return switch (order.get(index)) {
             case GAMEMODE_ICON -> HqTiersClientConfig.gamemodeIconEnabled;
@@ -158,7 +148,6 @@ public class NametagLayoutScreen extends Screen {
         };
     }
 
-    /** Toggles visibility without altering order or placement. */
     private void toggle(int index) {
         switch (order.get(index)) {
             case GAMEMODE_ICON -> HqTiersClientConfig.gamemodeIconEnabled = !HqTiersClientConfig.gamemodeIconEnabled;
@@ -169,7 +158,6 @@ public class NametagLayoutScreen extends Screen {
         }
     }
 
-    /** Labels the tier slot according to its global-mode behavior. */
     private String componentName(int index) {
         return switch (order.get(index)) {
             case GAMEMODE_ICON -> "Mode icon";
@@ -180,7 +168,6 @@ public class NametagLayoutScreen extends Screen {
         };
     }
 
-    /** Persists changes for both Done and Escape. */
     @Override
     public void onClose() {
         HqTiersClientConfig.nametagOrder = new ArrayList<>(order);
@@ -188,7 +175,6 @@ public class NametagLayoutScreen extends Screen {
         minecraft.setScreen(parent);
     }
 
-    /** Allows an open world to keep updating behind the editor. */
     @Override
     public boolean isPauseScreen() {
         return false;

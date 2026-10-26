@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Set;
 
 public enum HqTiersLadder {
+    // all ladders with an 'id' associated to them for the imgs
     SWORD('\uE001', "Sword"),
     AXE('\uE002', "Axe"),
     UHC('\uE004', "UHC"),
