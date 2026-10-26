@@ -28,7 +28,7 @@ public final class HqTiersClientConfig {
 
     public static boolean nametagEnabled = true;
     public static boolean tabListEnabled = false;
-    public static boolean chatEnabled = false;
+    public static boolean chatEnabled = true;
     public static boolean versionCheckEnabled = true;
     public static String preferredLadder = "SWORD";
     public static DisplayMode displayMode = DisplayMode.HIGHEST_TIER;
@@ -307,7 +307,7 @@ public final class HqTiersClientConfig {
     private static final class Data {
         boolean nametagEnabled = true;
         boolean tabListEnabled = false;
-        boolean chatEnabled = false;
+        boolean chatEnabled = true;
         Boolean versionCheckEnabled = true;
         String preferredLadder = "SWORD";
         String displayMode = DisplayMode.HIGHEST_TIER.name();
