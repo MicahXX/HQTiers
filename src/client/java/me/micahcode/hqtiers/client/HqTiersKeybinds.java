@@ -18,6 +18,8 @@ public final class HqTiersKeybinds {
     private HqTiersKeybinds() {
     }
 
+    // change default keybinds here if you want (the L keybind is kinda
+    // bad for some use cases as it disables the advancements screen)
     public static void register() {
         KeyMapping leaderboard = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.open_leaderboard",
@@ -124,6 +126,7 @@ public final class HqTiersKeybinds {
         int idx = Math.max(0, CYCLE.indexOf(current));
         Object next = CYCLE.get(((idx + direction) % CYCLE.size() + CYCLE.size()) % CYCLE.size());
 
+        // could be done with switch case
         String label;
         if (next == HqTiersClientConfig.DisplayMode.GLOBAL) {
             HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.GLOBAL;
@@ -187,6 +190,7 @@ public final class HqTiersKeybinds {
         }
     }
 
+    // disables advancements if it coincides with leaderboard keybind
     private static void unbindAdvancementsIfConflicting(Options options, KeyMapping leaderboardKey) {
         KeyMapping advancementsKey = options.keyAdvancements;
         if (leaderboardKey.saveString().equals("key.keyboard.l")

@@ -34,6 +34,7 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
                 .or(() -> ladder(HqTiersClientConfig.preferredLadder));
     }
 
+    // used for the lb and playerstatsscreen etc.
     public record LadderStats(
             String ladder,
             int totalRating,

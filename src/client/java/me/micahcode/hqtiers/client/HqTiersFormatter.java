@@ -30,11 +30,14 @@ public final class HqTiersFormatter {
     private static final Map<HqTiersStats, CompactCacheEntry> COMPACT_CACHE =
             Collections.synchronizedMap(new WeakHashMap<>());
 
-    /** Returns both sides of the nametag, cached until settings or player data change. */
+    // this just checks if its global and if not just do the ladder
     private static NametagParts parts(HqTiersStats stats) {
         int version = HqTiersClientConfig.configVersion();
         CompactCacheEntry cached = COMPACT_CACHE.get(stats);
-        if (cached != null && cached.configVersion() == version) return cached.parts();
+        if (cached != null && cached.configVersion() == version) {
+            return cached.parts();
+        }
+
         HqTiersStats.LadderStats ladder = stats.displayLadder().orElse(null);
         NametagParts parts;
         if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL
@@ -53,18 +56,15 @@ public final class HqTiersFormatter {
         return parts;
     }
 
-    /** Returns the visible stats without a player name. */
     public static Component compact(HqTiersStats stats) {
         return parts(stats).combined();
     }
 
-    /** Inserts stats around the original name while preserving its styles and events. */
     public static Component decorateName(HqTiersStats stats, Component name) {
         NametagParts parts = parts(stats);
         return parts.surrounds(name) ? name : parts.around(name);
     }
 
-    /** Renders example stats around the signed-in player's actual Minecraft username. */
     public static Component previewCompact() {
         String ladder = HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL
                 ? "GLOBAL" : HqTiersClientConfig.preferredLadder;
@@ -113,7 +113,6 @@ public final class HqTiersFormatter {
                 .append(Component.literal(Integer.toString(ladder.position())).withStyle(ChatFormatting.WHITE));
     }
 
-    /** Formats a tier according to the configured abbreviation preference. */
     public static String tierLabel(HqTiersStats.LadderStats ladder) {
         if (!HqTiersClientConfig.shortTierNames) {
             return ladder.tierLabel();

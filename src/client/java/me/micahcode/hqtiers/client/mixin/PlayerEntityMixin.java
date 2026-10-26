@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(Player.class)
 public class PlayerEntityMixin {
-
+    // this is for every other launcher besides Lunar
     @Unique
     private static final String LUNAR_MOD_ID = "ichor";
 

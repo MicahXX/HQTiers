@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Player.class)
 public class LunarPlayerEntityMixin {
-
+    // I'm not entirely sure if this is needed
     @Unique
     private static final String LUNAR_MOD_ID = "ichor";
 

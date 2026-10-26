@@ -18,8 +18,10 @@ import net.minecraft.network.chat.Component;
 
 public final class HqTiersCommands {
     private HqTiersCommands() {
+
     }
 
+    // d1 way to register commands, could be done better
     public static void register(HqTiersCache cache) {
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> dispatcher.register(
                 ClientCommandManager.literal("hqtiers")
