@@ -51,4 +51,4 @@ Use Java 25 to run Gradle. The 1.21.11 branch emits Java 21 bytecode; 26.x branc
 ./gradlew build
 ```
 
-The build runs regression tests for nametag layout, settings migration, unplayed profiles, global placement, and the official leaderboard response format. Install the regular JAR from `build/libs` with Fabric API, Cloth Config, and Mod Menu for the **same Minecraft version**. The `26.1` branch targets Minecraft **26.1.2**.
+Install the regular JAR from `build/libs` with Fabric API, Cloth Config, and Mod Menu for the **same Minecraft version**. The `26.1` branch targets Minecraft **26.1.2**.
