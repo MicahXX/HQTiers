@@ -57,7 +57,7 @@ public final class HqTiersConfigScreen {
                 .setSaveConsumer(value -> HqTiersClientConfig.tabListEnabled = value)
                 .build());
         overlay.addEntry(entries.startBooleanToggle(Component.literal("Show chat stats"), HqTiersClientConfig.chatEnabled)
-                .setDefaultValue(false)
+                .setDefaultValue(true)
                 .setTooltip(Component.literal("Show the configured nametag layout beside chat sender names. Toggle with U by default."))
                 .setSaveConsumer(value -> HqTiersClientConfig.chatEnabled = value)
                 .build());
