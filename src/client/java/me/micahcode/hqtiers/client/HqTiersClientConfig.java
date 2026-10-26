@@ -28,6 +28,7 @@ public final class HqTiersClientConfig {
 
     public static boolean nametagEnabled = true;
     public static boolean tabListEnabled = false;
+    public static boolean chatEnabled = false;
     public static boolean versionCheckEnabled = true;
     public static String preferredLadder = "SWORD";
     public static DisplayMode displayMode = DisplayMode.HIGHEST_TIER;
@@ -108,6 +109,7 @@ public final class HqTiersClientConfig {
 
             nametagEnabled = data.nametagEnabled;
             tabListEnabled = data.tabListEnabled;
+            chatEnabled = data.chatEnabled;
             versionCheckEnabled = data.versionCheckEnabled == null || data.versionCheckEnabled;
             preferredLadder = normalizeLadder(data.preferredLadder == null ? "SWORD" : data.preferredLadder);
             displayMode = DisplayMode.fromName(data.displayMode);
@@ -305,6 +307,7 @@ public final class HqTiersClientConfig {
     private static final class Data {
         boolean nametagEnabled = true;
         boolean tabListEnabled = false;
+        boolean chatEnabled = false;
         Boolean versionCheckEnabled = true;
         String preferredLadder = "SWORD";
         String displayMode = DisplayMode.HIGHEST_TIER.name();
@@ -333,6 +336,7 @@ public final class HqTiersClientConfig {
             Data data = new Data();
             data.nametagEnabled = HqTiersClientConfig.nametagEnabled;
             data.tabListEnabled = HqTiersClientConfig.tabListEnabled;
+            data.chatEnabled = HqTiersClientConfig.chatEnabled;
             data.versionCheckEnabled = HqTiersClientConfig.versionCheckEnabled;
             data.preferredLadder = HqTiersClientConfig.preferredLadder;
             data.displayMode = HqTiersClientConfig.displayMode.name();

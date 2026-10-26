@@ -45,13 +45,19 @@ public final class HqTiersKeybinds {
 
         KeyMapping tablist = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.tablist",
-                -1,
+                InputConstants.KEY_DOWN,
                 "category.hqtiers"
         ));
 
         KeyMapping nametag = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
                 "key.hqtiers.nametag",
-                -1,
+                InputConstants.KEY_UP,
+                "category.hqtiers"
+        ));
+
+        KeyMapping chat = KeyMappingHelper.registerKeyMapping(HqTiersMinecraftCompat.keyBinding(
+                "key.hqtiers.chat",
+                InputConstants.KEY_U,
                 "category.hqtiers"
         ));
 
@@ -86,6 +92,10 @@ public final class HqTiersKeybinds {
 
             while (tablist.consumeClick()) {
                 toggleTablist(client);
+            }
+
+            while (chat.consumeClick()) {
+                toggleChat(client);
             }
 
             while (nametag.consumeClick()) {
@@ -160,6 +170,18 @@ public final class HqTiersKeybinds {
         if (client.player != null) {
             net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal(
                     "HQTiers: Nametag " + (HqTiersClientConfig.nametagEnabled ? "enabled" : "disabled")
+            ).withStyle(ChatFormatting.GOLD);
+            client.gui.setOverlayMessage(msg, false);
+        }
+    }
+
+    private static void toggleChat(net.minecraft.client.Minecraft client) {
+        HqTiersClientConfig.chatEnabled = !HqTiersClientConfig.chatEnabled;
+        HqTiersClientConfig.save();
+
+        if (client.player != null) {
+            var msg = net.minecraft.network.chat.Component.literal(
+                    "HQTiers: Chat " + (HqTiersClientConfig.chatEnabled ? "enabled" : "disabled")
             ).withStyle(ChatFormatting.GOLD);
             client.gui.setOverlayMessage(msg, false);
         }
