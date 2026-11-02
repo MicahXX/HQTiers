@@ -2,15 +2,14 @@ package me.micahcode.hqtiers.client;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 public final class HqTiersChatFormatter {
-    private static final AtomicBoolean REFRESH_PENDING = new AtomicBoolean();
     private static int lastConfigVersion = -1;
+    private static long lastStatsRevision = -1;
 
     private HqTiersChatFormatter() {}
 
@@ -23,20 +22,15 @@ public final class HqTiersChatFormatter {
     }
 
     private static Optional<HqTiersStats> statsFor(UUID uuid) {
-        var cache = HqTiersClientState.cache();
-        var stats = cache.getIfFresh(uuid);
-        if (stats.isEmpty()) {
-            cache.fetch(uuid).thenAccept(loaded -> {
-                if (loaded != null) REFRESH_PENDING.set(true);
-            });
-        }
-        return stats;
+        return HqTiersClientState.cache().get(uuid);
     }
 
     public static boolean needsRefresh() {
         int configVersion = HqTiersClientConfig.configVersion();
-        boolean changed = configVersion != lastConfigVersion;
+        long statsRevision = HqTiersClientState.cache().revision();
+        boolean changed = configVersion != lastConfigVersion || statsRevision != lastStatsRevision;
         lastConfigVersion = configVersion;
-        return REFRESH_PENDING.getAndSet(false) || changed;
+        lastStatsRevision = statsRevision;
+        return changed;
     }
 }
