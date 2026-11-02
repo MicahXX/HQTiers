@@ -1,6 +1,5 @@
 package me.micahcode.hqtiers.client.config;
 
-import me.micahcode.hqtiers.client.HqTiersClientConfig;
 import me.shedaniel.clothconfig2.gui.entries.TooltipListEntry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;

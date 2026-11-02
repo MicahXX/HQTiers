@@ -1,5 +1,9 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.chat;
 
+import me.micahcode.hqtiers.client.HqTiersMinecraftCompat;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
+import me.micahcode.hqtiers.client.nametag.NametagParts;
 import com.mojang.authlib.GameProfile;
 import java.util.Collection;
 import java.util.Map;

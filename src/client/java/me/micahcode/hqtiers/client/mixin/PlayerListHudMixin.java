@@ -1,8 +1,8 @@
 package me.micahcode.hqtiers.client.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import me.micahcode.hqtiers.client.HqTiersClientConfig;
-import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.HqTiersMinecraftCompat;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import net.minecraft.ChatFormatting;
