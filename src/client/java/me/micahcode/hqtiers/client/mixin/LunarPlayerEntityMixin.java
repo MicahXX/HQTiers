@@ -45,8 +45,7 @@ public class LunarPlayerEntityMixin {
                 }
             }
 
-            HqTiersClientState.cache().fetch(player.getUUID());
-            HqTiersClientState.cache().getIfFresh(player.getUUID()).ifPresent(stats -> {
+            HqTiersClientState.cache().get(player.getUUID()).ifPresent(stats -> {
                 Component base = original == null ? player.getName() : original;
 
                 if (base.getString().startsWith(" ")) {
