@@ -1,6 +1,6 @@
 package me.micahcode.hqtiers.client.mixin;
 
-import me.micahcode.hqtiers.client.HqTiersChatFormatter;
+import me.micahcode.hqtiers.client.chat.HqTiersChatFormatter;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;

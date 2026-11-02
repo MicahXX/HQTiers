@@ -1,5 +1,6 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.chat;
 
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import java.util.Optional;
 import java.util.UUID;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
