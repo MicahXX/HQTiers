@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;

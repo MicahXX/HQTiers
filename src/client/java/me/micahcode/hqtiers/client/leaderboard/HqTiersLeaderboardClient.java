@@ -20,7 +20,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import me.micahcode.hqtiers.Hqtiers;
-import me.micahcode.hqtiers.client.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import net.minecraft.client.Minecraft;
 

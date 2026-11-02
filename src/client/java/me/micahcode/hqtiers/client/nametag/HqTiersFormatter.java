@@ -1,5 +1,7 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.nametag;
 
+import me.micahcode.hqtiers.client.HqTiersMinecraftCompat;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.model.HqTiersLadder;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.model.HqTiersStats;

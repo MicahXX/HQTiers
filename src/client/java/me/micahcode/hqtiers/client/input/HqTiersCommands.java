@@ -1,5 +1,10 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.input;
 
+import me.micahcode.hqtiers.client.HqTiersMinecraftCompat;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.fetching.HqTiersCache;
+import me.micahcode.hqtiers.client.fetching.MojangProfileResolver;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.function.BiConsumer;

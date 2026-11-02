@@ -1,4 +1,4 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.config;
 
 import java.io.IOException;
 import java.io.Reader;

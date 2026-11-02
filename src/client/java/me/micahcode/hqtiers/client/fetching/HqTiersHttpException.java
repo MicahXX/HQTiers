@@ -1,4 +1,4 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.fetching;
 
 import java.io.IOException;
 import java.time.ZonedDateTime;

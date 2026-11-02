@@ -1,7 +1,7 @@
 package me.micahcode.hqtiers.client.leaderboard;
 
-import me.micahcode.hqtiers.client.HqTiersCache;
-import me.micahcode.hqtiers.client.MojangProfileResolver;
+import me.micahcode.hqtiers.client.fetching.HqTiersCache;
+import me.micahcode.hqtiers.client.fetching.MojangProfileResolver;
 
 public final class HqTiersClientState {
     private static final HqTiersCache CACHE = new HqTiersCache();

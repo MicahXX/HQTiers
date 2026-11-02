@@ -1,7 +1,7 @@
 package me.micahcode.hqtiers.client.model;
 
-import me.micahcode.hqtiers.client.HqTiersClientConfig;
-import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 
 import java.util.Map;
 import java.util.Optional;

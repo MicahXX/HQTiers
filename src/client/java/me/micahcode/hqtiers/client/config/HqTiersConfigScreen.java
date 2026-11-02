@@ -2,8 +2,7 @@ package me.micahcode.hqtiers.client.config;
 
 import java.util.Arrays;
 
-import me.micahcode.hqtiers.client.HqTiersClientConfig;
-import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersLadder;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
