@@ -1,22 +1,22 @@
-A client-side Fabric mod that brings your [PvPHQ](https://pvphq.com/) stats in-game and displays them in the nametags, tab list and leaderboards. Fully customizable via **Mod Menu**.
+A client-side Fabric mod that brings [PvPHQ](https://pvphq.com/) stats directly into Minecraft, displaying player rankings in nametags, the tab list, chat and leaderboards. Fully customizable through **Mod Menu**.
 
 ## Features
 
-### Stats
-- PvPHQ stats shown on player nametags and in the tab list
-- Optional chat sender stats use your configured display mode and nametag layout; enabled by default, toggle with **U** or **Mod Menu → HQTiers → Nametag & Tab → Show chat stats**
-- Global, Highest Tier, and per-ladder (all gamemodes) display modes
-- Arrange each nametag element independently to the left or right of the player name
-- Edit visibility, order, labels, icon spacing, and the name divider with a live preview using your Minecraft username (**Mod Menu → HQTiers → Nametag & Tab → Edit Nametag Layout**)
-- Global mode shows your overall `#placement`; players with no ranked games have no global tag. The placeholder `#100000` is hidden in nametags, the tab list, and chat
+### Stats & Nametags
+- PvPHQ stats displayed on player nametags and in the tab list
+- Optional stats beside chat names, using your configured display mode and layout
+- Global, Highest Tier and per-ladder display modes
+- Choose which stats appear, their order and whether each element sits left or right of your name
+- Customize labels, colors, icon spacing and separators
+- Live preview of your nametag (**Mod Menu → HQTiers → Nametag & Tab → Edit Nametag Layout**)
 
 ### Leaderboards & Profiles
-- Global leaderboard with overall placement, points, and number of ranked modes
-- Per-ladder leaderboards with tier and TR; scroll to load more and use Refresh to reload
-- Click a player to open their profile (Global opens the overview)
-- Search for players by name
-- View ladder stats, win rate, leaderboard positions and rating history
-- You can also look up stats with /hqtiers stats <ign> and more with commands
+- Global leaderboard with placements, points, and ranked gamemode counts
+- Per-ladder leaderboards with tiers and TR
+- Scroll to load more players, switch ladders or refresh the leaderboard
+- Search by name and click a player to open their profile
+- View ladder stats, wins/losses, win rate, leaderboard positions and rating history
+- You can also look up players with **/hqtiers stats <ign>**
 
 ## Keybinds
 
@@ -24,12 +24,13 @@ A client-side Fabric mod that brings your [PvPHQ](https://pvphq.com/) stats in-g
 |-----|--------|
 | `L` | Open the leaderboard |
 | `K` | Open your player stats |
-| `←` / `→` | Switch between ladders (gamemodes displayed in the nametag and tab list) |
-| `↑` | Toggle nametag |
-| `↓` | Toggle tablist |
-| `U` | Toggle chat stats (enabled by default) |
+| `←` / `→` | Switch between ladders |
+| `↑` | Toggle nametag stats |
+| `↓` | Toggle tablist stats |
+| `U` | Toggle chat stats |
+| Unbound | Refresh tiers for nearby players and yourself (10-second cooldown) |
 
-All keybinds are rebindable in the settings under **Controls** and the leaderboard bind disables the advancements screen so if you want that rebind it.
+All keybinds can be customized under **Options → Controls → HQTiers**. By default, the leaderboard keybind conflicts with the advancements screen, so rebind either action if you want to use both.
 
 ## Requirements
 
@@ -39,16 +40,16 @@ All keybinds are rebindable in the settings under **Controls** and the leaderboa
 
 ## Links & Credits
 
-**Made by** [micahcode](https://github.com/MicahXX) · [PvPHQ Website](https://pvphq.com/) · [PvPHQ Discord](https://discord.gg/pvphq)
+**Developed by [micahcode](https://github.com/MicahXX)** · [PvPHQ Website](https://pvphq.com/) · [PvPHQ Discord](https://discord.gg/pvphq)
 
-This is a fork of [FlowTiers](https://modrinth.com/mod/FlowTiers). Credit to [fecl](https://github.com/ykk4ga), the original creator.
+Originally developed as [FlowTiers](https://modrinth.com/mod/FlowTiers) alongside [fecl](https://github.com/ykk4ga), who started the project.
 
-## Building and checking this branch
+## Building
 
-Use Java 25 to run Gradle. The 1.21.11 branch emits Java 21 bytecode; 26.x branches emit Java 25 bytecode.
+Use JDK 25 to run Gradle. This branch builds for Java 25 and Minecraft 26.1.2. From the project directory, run:
 
 ```bash
-./gradlew build
+bash gradlew build
 ```
 
-Install the regular JAR from `build/libs` with Fabric API, Cloth Config, and Mod Menu for the **same Minecraft version**. The `26.1` branch targets Minecraft **26.1.2**.
+The build writes the mod JAR to `build/libs/`. Use the JAR without the `-sources` suffix.
