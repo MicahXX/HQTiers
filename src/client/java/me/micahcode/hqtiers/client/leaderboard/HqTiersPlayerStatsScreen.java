@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
+import me.micahcode.hqtiers.client.fetching.HqTiersCache;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
@@ -47,8 +48,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private final Screen parent;
     private final UUID uuid;
     private final String fallbackName;
-    private boolean loaded;
-    private boolean failed;
+    private HqTiersStats displayedStats;
 
     private String selectedLadder;
     private List<HqTiersLeaderboardClient.HistoryPoint> historyPoints = null;
@@ -140,21 +140,21 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             }
         }).bounds(panelLeft(), height - 26, backWidth, 18).build());
 
-        if (selectedLadder == null) {
-            var cached = HqTiersClientState.cache().get(uuid);
-            cached.ifPresent(this::addLadderButtons);
-        }
-
-        HqTiersClientState.cache().fetch(uuid).thenAccept(stats -> minecraft.execute(() -> {
-            if (!loaded) {
-                loaded = true;
-                failed = stats == null;
-                if (selectedLadder == null && minecraft.screen == this) init();
-            }
-        }));
+        displayedStats = HqTiersClientState.cache().get(uuid).orElse(null);
+        if (selectedLadder == null && displayedStats != null) addLadderButtons(displayedStats);
 
         if (selectedLadder != null && historyPoints == null && !historyRequested) {
             loadHistory();
+        }
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        HqTiersStats stats = HqTiersClientState.cache().get(uuid).orElse(null);
+        if (stats != displayedStats) {
+            displayedStats = stats;
+            if (selectedLadder == null) init();
         }
     }
 
@@ -229,8 +229,13 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         var statsOpt = HqTiersClientState.cache().get(uuid);
         if (statsOpt.isEmpty()) {
-            String msg = loaded || failed ? "No ranked stats found for this player." : "Loading…";
-            int col = loaded || failed ? 0xFFFFD166 : TEXT_DIM;
+            HqTiersCache.Status status = HqTiersClientState.cache().status(uuid);
+            String msg = switch (status) {
+                case MISSING -> "No ranked stats found for this player.";
+                case FAILED -> "Could not load stats. Retrying…";
+                default -> "Loading…";
+            };
+            int col = status == HqTiersCache.Status.LOADING ? TEXT_DIM : 0xFFFFD166;
             ctx.centeredText(font, Component.literal(msg), width / 2, tt + 40, col);
             return;
         }
