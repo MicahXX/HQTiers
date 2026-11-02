@@ -87,7 +87,9 @@ public final class HqTiersCommands {
         source.sendFeedback(Component.literal("Fetching HQPvP stats...").withStyle(ChatFormatting.GRAY));
         cache.fetch(uuid).thenAccept(stats -> Minecraft.getInstance().execute(() -> {
             if (stats == null) {
-                source.sendFeedback(Component.literal("No HQPvP ranked stats found.").withStyle(ChatFormatting.YELLOW));
+                String message = cache.status(uuid) == HqTiersCache.Status.MISSING
+                        ? "No HQPvP ranked stats found." : "Could not load HQPvP stats. Please try again.";
+                source.sendFeedback(Component.literal(message).withStyle(ChatFormatting.YELLOW));
                 return;
             }
 

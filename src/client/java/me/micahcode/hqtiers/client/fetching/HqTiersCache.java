@@ -1,5 +1,6 @@
 package me.micahcode.hqtiers.client.fetching;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -15,7 +16,7 @@ import me.micahcode.hqtiers.client.model.HqTiersStats;
 public class HqTiersCache {
     private static final long CACHE_TTL = 300_000;
     private static final long EMPTY_TTL = 30_000;
-    private static final long[] RETRY_DELAYS = {2_000, 5_000, 15_000, 30_000, 60_000};
+    private static final long[] RETRY_DELAYS = {500, 1_500, 15_000, 30_000, 60_000};
     private static final int MAX_ATTEMPTS = 3;
     private final HqTiersApiClient apiClient;
     private final HqTiersRequestQueue requests;
@@ -35,17 +36,6 @@ public class HqTiersCache {
     }
 
     public synchronized Optional<HqTiersStats> get(UUID uuid) {
-        return get(uuid, false);
-    }
-
-    public synchronized Optional<HqTiersStats> get(UUID uuid, boolean nearby) {
-        if (nearby) {
-            Entry entry = entries.computeIfAbsent(uuid, ignored -> new Entry());
-            long now = clock.getAsLong();
-            boolean promoted = entry.nearbyUntil <= now;
-            entry.nearbyUntil = now + 2_000;
-            if (promoted && entry.inFlight != null) requests.prioritiesChanged();
-        }
         Entry entry = entries.get(uuid);
         if (entry == null || entry.inFlight == null && clock.getAsLong() >= entry.refreshAt) fetch(uuid);
         return Optional.ofNullable(entries.get(uuid).stats);
@@ -61,10 +51,17 @@ public class HqTiersCache {
         return result;
     }
 
+    public synchronized Status status(UUID uuid) {
+        Entry entry = entries.get(uuid);
+        if (entry == null) return Status.LOADING;
+        if (entry.stats != null) return Status.READY;
+        if (entry.inFlight != null) return Status.LOADING;
+        return entry.failures > 0 ? Status.FAILED : Status.MISSING;
+    }
+
     private void request(UUID uuid, Entry entry, CompletableFuture<HqTiersStats> result, int attempt, long delay) {
-        int priority = hasTier(entry.stats) ? HqTiersRequestQueue.BACKGROUND : HqTiersRequestQueue.FIRST_LOAD;
-        requests.submit(() -> apiClient.fetchRanked(uuid),
-                        () -> clock.getAsLong() < entry.nearbyUntil ? HqTiersRequestQueue.NEARBY : priority, delay)
+        requests.submit(() -> attempt == 1 ? apiClient.fetchRanked(uuid)
+                        : apiClient.fetchRanked(uuid, Duration.ofSeconds(8)), delay)
                 .whenComplete((stats, failure) -> complete(uuid, entry, result, attempt, stats, failure));
     }
 
@@ -126,12 +123,15 @@ public class HqTiersCache {
                         && ladder.placementGames() >= ladder.placementTarget());
     }
 
+    public enum Status {
+        LOADING, READY, MISSING, FAILED
+    }
+
     private static final class Entry {
         private HqTiersStats stats;
         private long refreshAt;
         private int failures;
         private int emptyResults;
         private CompletableFuture<HqTiersStats> inFlight;
-        private volatile long nearbyUntil;
     }
 }
