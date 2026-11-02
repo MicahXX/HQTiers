@@ -21,7 +21,7 @@ import java.util.UUID;
 public class HqTiersApiClient {
     // there is also V1 endpoints or smth, but Moose will cook me if I use that
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/ranked/");
-    private static final Duration TIMEOUT = Duration.ofSeconds(8);
+    private static final Duration TIMEOUT = Duration.ofSeconds(4);
     private static final Gson GSON = new Gson();
 
     private final HttpClient httpClient;
@@ -38,8 +38,12 @@ public class HqTiersApiClient {
     }
 
     public HqTiersStats fetchRanked(UUID uuid) throws IOException, InterruptedException {
+        return fetchRanked(uuid, TIMEOUT);
+    }
+
+    HqTiersStats fetchRanked(UUID uuid, Duration timeout) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(uuid.toString()))
-                .timeout(TIMEOUT)
+                .timeout(timeout)
                 .header("Accept", "application/json")
                 .header("User-Agent", Hqtiers.USER_AGENT)
                 .GET()

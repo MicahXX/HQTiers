@@ -16,6 +16,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import me.micahcode.hqtiers.client.fetching.MojangProfileResolver;
+import me.micahcode.hqtiers.client.fetching.HqTiersCache;
 
 public final class HqTiersLeaderboardScreen extends Screen {
     private static final List<HqTiersLadder> LADDERS = List.of(
@@ -469,7 +470,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
                             }
                             if (stats == null) {
                                 resolvedSearchEntry = null;
-                                searchStatus = "Player has not played PvPHQ ranked.";
+                                searchStatus = HqTiersClientState.cache().status(result.profile().uuid()) == HqTiersCache.Status.MISSING
+                                        ? "Player has not played PvPHQ ranked." : "Could not load stats. Please try again.";
                                 return;
                             }
                             resolvedSearchEntry = new HqTiersLeaderboardClient.Entry(
