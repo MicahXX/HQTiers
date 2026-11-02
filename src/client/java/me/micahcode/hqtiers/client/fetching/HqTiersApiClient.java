@@ -1,5 +1,6 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.fetching;
 
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

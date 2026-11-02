@@ -1,4 +1,4 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.nametag;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

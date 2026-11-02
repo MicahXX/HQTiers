@@ -1,8 +1,8 @@
 package me.micahcode.hqtiers.client.mixin;
 
-import me.micahcode.hqtiers.client.HqTiersClientConfig;
-import me.micahcode.hqtiers.client.HqTiersFormatter;
-import me.micahcode.hqtiers.client.NametagDuplicateDetector;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
+import me.micahcode.hqtiers.client.nametag.NametagDuplicateDetector;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;

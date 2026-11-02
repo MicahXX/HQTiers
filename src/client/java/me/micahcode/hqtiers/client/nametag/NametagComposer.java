@@ -1,7 +1,8 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.nametag;
 
-import me.micahcode.hqtiers.client.HqTiersClientConfig.NametagAlignment;
-import me.micahcode.hqtiers.client.HqTiersClientConfig.NametagComponent;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig.NametagAlignment;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig.NametagComponent;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;

@@ -1,6 +1,6 @@
 package me.micahcode.hqtiers.client.mixin;
 
-import me.micahcode.hqtiers.client.HqTiersChatFormatter;
+import me.micahcode.hqtiers.client.chat.HqTiersChatFormatter;
 import net.minecraft.client.gui.components.ChatComponent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;

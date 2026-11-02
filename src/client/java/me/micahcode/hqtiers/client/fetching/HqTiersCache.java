@@ -1,4 +1,4 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.fetching;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -35,6 +35,17 @@ public class HqTiersCache {
     }
 
     public synchronized Optional<HqTiersStats> get(UUID uuid) {
+        return get(uuid, false);
+    }
+
+    public synchronized Optional<HqTiersStats> get(UUID uuid, boolean nearby) {
+        if (nearby) {
+            Entry entry = entries.computeIfAbsent(uuid, ignored -> new Entry());
+            long now = clock.getAsLong();
+            boolean promoted = entry.nearbyUntil <= now;
+            entry.nearbyUntil = now + 2_000;
+            if (promoted && entry.inFlight != null) requests.prioritiesChanged();
+        }
         Entry entry = entries.get(uuid);
         if (entry == null || entry.inFlight == null && clock.getAsLong() >= entry.refreshAt) fetch(uuid);
         return Optional.ofNullable(entries.get(uuid).stats);
@@ -51,7 +62,9 @@ public class HqTiersCache {
     }
 
     private void request(UUID uuid, Entry entry, CompletableFuture<HqTiersStats> result, int attempt, long delay) {
-        requests.submit(() -> apiClient.fetchRanked(uuid), !hasTier(entry.stats), delay)
+        int priority = hasTier(entry.stats) ? HqTiersRequestQueue.BACKGROUND : HqTiersRequestQueue.FIRST_LOAD;
+        requests.submit(() -> apiClient.fetchRanked(uuid),
+                        () -> clock.getAsLong() < entry.nearbyUntil ? HqTiersRequestQueue.NEARBY : priority, delay)
                 .whenComplete((stats, failure) -> complete(uuid, entry, result, attempt, stats, failure));
     }
 
@@ -119,5 +132,6 @@ public class HqTiersCache {
         private int failures;
         private int emptyResults;
         private CompletableFuture<HqTiersStats> inFlight;
+        private volatile long nearbyUntil;
     }
 }

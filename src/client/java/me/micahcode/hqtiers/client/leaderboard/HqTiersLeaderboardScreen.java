@@ -6,7 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
-import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersLadder;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 import net.minecraft.client.gui.GuiGraphics;
@@ -15,7 +15,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import me.micahcode.hqtiers.client.MojangProfileResolver;
+import me.micahcode.hqtiers.client.fetching.MojangProfileResolver;
 
 public final class HqTiersLeaderboardScreen extends Screen {
     private static final List<HqTiersLadder> LADDERS = List.of(

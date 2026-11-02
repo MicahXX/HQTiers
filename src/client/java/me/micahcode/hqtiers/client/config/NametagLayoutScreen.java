@@ -1,9 +1,8 @@
 package me.micahcode.hqtiers.client.config;
 
-import me.micahcode.hqtiers.client.HqTiersClientConfig;
-import me.micahcode.hqtiers.client.HqTiersClientConfig.NametagAlignment;
-import me.micahcode.hqtiers.client.HqTiersClientConfig.NametagComponent;
-import me.micahcode.hqtiers.client.HqTiersFormatter;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig.NametagAlignment;
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig.NametagComponent;
+import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;

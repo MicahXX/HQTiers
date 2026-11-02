@@ -1,5 +1,6 @@
-package me.micahcode.hqtiers.client;
+package me.micahcode.hqtiers.client.nametag;
 
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
