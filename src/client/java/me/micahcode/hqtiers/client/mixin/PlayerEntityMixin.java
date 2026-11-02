@@ -37,10 +37,8 @@ public class PlayerEntityMixin {
                 }
             }
 
-            HqTiersClientState.cache().fetch(player.getUUID());
-
             return HqTiersClientState.cache()
-                    .getIfFresh(player.getUUID())
+                    .get(player.getUUID())
                     .map(stats -> {
                         Component base = original == null ? player.getName() : original;
 

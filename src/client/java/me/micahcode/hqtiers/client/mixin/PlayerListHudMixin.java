@@ -22,11 +22,7 @@ public class PlayerListHudMixin {
 
         var uuid = HqTiersMinecraftCompat.profileId(entry.getProfile());
 
-        if (HqTiersClientState.cache().getIfFresh(uuid).isEmpty()) {
-            HqTiersClientState.cache().fetch(uuid);
-        }
-
-        return HqTiersClientState.cache().getIfFresh(uuid)
+        return HqTiersClientState.cache().get(uuid)
                 .map(stats -> {
                     Component formatted = HqTiersFormatter.compact(stats);
 

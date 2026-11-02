@@ -141,7 +141,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }).bounds(panelLeft(), height - 26, backWidth, 18).build());
 
         if (selectedLadder == null) {
-            var cached = HqTiersClientState.cache().getIfFresh(uuid);
+            var cached = HqTiersClientState.cache().get(uuid);
             cached.ifPresent(this::addLadderButtons);
         }
 
@@ -227,7 +227,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         super.render(ctx, mx, my, delta);
 
-        var statsOpt = HqTiersClientState.cache().getIfFresh(uuid);
+        var statsOpt = HqTiersClientState.cache().get(uuid);
         if (statsOpt.isEmpty()) {
             String msg = loaded || failed ? "No ranked stats found for this player." : "Loading…";
             int col = loaded || failed ? 0xFFFFD166 : TEXT_DIM;

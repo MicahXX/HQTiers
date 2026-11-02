@@ -3,6 +3,7 @@ package me.micahcode.hqtiers.client;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import me.micahcode.hqtiers.Hqtiers;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
 
@@ -22,13 +23,21 @@ public class HqTiersApiClient {
     private static final Duration TIMEOUT = Duration.ofSeconds(8);
     private static final Gson GSON = new Gson();
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NORMAL)
-            .build();
+    private final HttpClient httpClient;
+    private final URI baseUri;
+
+    public HqTiersApiClient() {
+        this(HttpClient.newBuilder().connectTimeout(TIMEOUT)
+                .followRedirects(HttpClient.Redirect.NORMAL).build(), BASE_URI);
+    }
+
+    HqTiersApiClient(HttpClient httpClient, URI baseUri) {
+        this.httpClient = httpClient;
+        this.baseUri = baseUri;
+    }
 
     public HqTiersStats fetchRanked(UUID uuid) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(BASE_URI.resolve(uuid.toString()))
+        HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(uuid.toString()))
                 .timeout(TIMEOUT)
                 .header("Accept", "application/json")
                 .header("User-Agent", Hqtiers.USER_AGENT)
@@ -36,22 +45,31 @@ public class HqTiersApiClient {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() == 404 || response.body() == null || response.body().equals("null")) {
+        if (response.statusCode() == 404) {
             return null;
         }
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException("PvPHQ API returned HTTP " + response.statusCode());
+            throw new HqTiersHttpException(response.statusCode(),
+                    response.headers().firstValue("Retry-After").orElse(null), System.currentTimeMillis());
         }
 
-        return parseRanked(uuid, response.body());
+        if (response.body() == null || response.body().isBlank()) throw new IOException("PvPHQ API returned an empty response");
+
+        try {
+            return parseRanked(uuid, response.body());
+        } catch (JsonParseException | IllegalStateException exception) {
+            throw new IOException("PvPHQ API returned invalid ranked stats", exception);
+        }
     }
 
     static HqTiersStats parseRanked(UUID uuid, String json) {
-        JsonObject root = GSON.fromJson(json, JsonObject.class);
-        if (root == null || root.isJsonNull()) {
+        JsonElement parsed = GSON.fromJson(json, JsonElement.class);
+        if (parsed == null || parsed.isJsonNull()) {
             return null;
         }
+        if (!parsed.isJsonObject()) throw new JsonParseException("Expected a ranked stats object");
+        JsonObject root = parsed.getAsJsonObject();
 
         UUID playerUuid = uuid;
         String name = playerUuid.toString();

@@ -45,9 +45,8 @@ public class LunarDisplayTextMixin {
             if (HqTiersClientConfig.suppressRankedDuplicates
                     && NametagDuplicateDetector.hasTierLabel(plain, scoreboardName)) return;
 
-            Optional<HqTiersStats> statsOpt = HqTiersClientState.cache().getIfFresh(player.getUUID());
+            Optional<HqTiersStats> statsOpt = HqTiersClientState.cache().get(player.getUUID());
             if (statsOpt.isEmpty()) {
-                HqTiersClientState.cache().fetch(player.getUUID());
                 return;
             }
 

@@ -63,6 +63,12 @@ public final class HqTiersKeybinds {
                 "category.hqtiers"
         ));
 
+        KeyMapping refreshTiers = KeyBindingHelper.registerKeyBinding(HqTiersMinecraftCompat.keyBinding(
+                "key.hqtiers.refresh_tiers",
+                InputConstants.UNKNOWN.getValue(),
+                "category.hqtiers"
+        ));
+
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             unbindAdvancementsIfConflicting(client.options, leaderboard);
 
@@ -102,6 +108,16 @@ public final class HqTiersKeybinds {
 
             while (nametag.consumeClick()) {
                 toggleNametag(client);
+            }
+
+            while (refreshTiers.consumeClick()) {
+                if (client.player != null && client.level != null) {
+                    boolean queued = HqTiersClientState.cache().refreshPlayers(
+                            client.level.players().stream().map(player -> player.getUUID()).toList());
+                    client.player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                            queued ? "message.hqtiers.refresh_queued" : "message.hqtiers.refresh_cooldown"
+                    ).withStyle(ChatFormatting.GOLD), true);
+                }
             }
         });
     }

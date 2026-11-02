@@ -7,5 +7,8 @@
   "key.hqtiers.view_stats": "View My Stats",
   "key.hqtiers.tablist": "Toggle Tablist Stats",
   "key.hqtiers.nametag": "Toggle Nametag Stats",
-  "key.hqtiers.chat": "Toggle Chat Stats"
+  "key.hqtiers.chat": "Toggle Chat Stats",
+  "key.hqtiers.refresh_tiers": "Refresh tiers",
+  "message.hqtiers.refresh_queued": "HQTiers: Tier refresh queued",
+  "message.hqtiers.refresh_cooldown": "HQTiers: Please wait before refreshing again"
 }
