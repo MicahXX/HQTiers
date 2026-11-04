@@ -43,14 +43,20 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private static final int SIDE_MARGIN = 16;
     private static final int COMPACT_WIDTH = 360;
 
-    private static final int FOOTER_RESERVE = 16;
+    private static final int FOOTER_HEIGHT = 26;
+    private static final int COLUMN_HEADER_HEIGHT = 16;
+    private static final int MIN_ROW_HEIGHT = 11;
 
     private final Screen parent;
     private final UUID uuid;
     private final String fallbackName;
     private HqTiersStats displayedStats;
 
+    private int tablePage;
+    private List<HqTiersStats.LadderStats> visibleLadders = List.of();
     private String selectedLadder;
+    private HistoryRange historyRange = HistoryRange.ALL_TIME;
+    private List<HqTiersLeaderboardClient.HistoryPoint> fullHistory = List.of();
     private List<HqTiersLeaderboardClient.HistoryPoint> historyPoints = null;
     private boolean historyLoading = false;
     private int historyRequest;
@@ -74,7 +80,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
     private int panelWidth() {
         int target = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, (int) (width * 0.72)));
-        return Math.min(target, Math.max(MIN_PANEL_WIDTH, width - SIDE_MARGIN * 2));
+        return Math.min(target, Math.max(1, width - SIDE_MARGIN * 2));
     }
 
     private boolean compact() {
@@ -102,21 +108,12 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     private int tableBottom() {
-        return height - 32;
+        return height - FOOTER_HEIGHT;
     }
 
-    private int rowH() {
-        return compact() ? 15 : 17;
-    }
-
-    private int tableRowH(int ladderCount) {
-        int base = rowH();
-        if (ladderCount <= 0) return base;
-        int available = (tableBottom() - FOOTER_RESERVE) - (tableTop() + 4);
-        int neededRows = ladderCount + 1;
-        int needed = neededRows * base;
-        if (needed <= available) return base;
-        return Math.max(11, available / neededRows);
+    private int rowBoundary(int index) {
+        int top = tableTop() + 4 + COLUMN_HEADER_HEIGHT;
+        return top + (tableBottom() - top) * index / Math.max(1, visibleLadders.size());
     }
 
     @Override
@@ -138,11 +135,12 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             } else {
                 minecraft.setScreen(parent);
             }
-        }).bounds(panelLeft(), height - 26, backWidth, 18).build());
+        }).bounds(panelRight() - backWidth - 4, height - FOOTER_HEIGHT + 4, backWidth, 18).build());
 
         displayedStats = HqTiersClientState.cache().get(uuid).orElse(null);
         if (selectedLadder == null && displayedStats != null) addLadderButtons(displayedStats);
 
+        if (selectedLadder != null) addRangeButtons(backWidth);
         if (selectedLadder != null && historyPoints == null && !historyRequested) {
             loadHistory();
         }
@@ -166,32 +164,69 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         HqTiersClientState.leaderboardClient().fetchHistory(uuid.toString(), ladder)
                 .thenAccept(points -> minecraft.execute(() -> {
                     if (request != historyRequest || !ladder.equals(selectedLadder)) return;
-                    historyPoints = points;
+                    fullHistory = points;
+                    applyHistoryRange();
                     historyLoading = false;
                 }));
     }
 
-    private void addLadderButtons(HqTiersStats stats) {
-        List<HqTiersStats.LadderStats> ladders = sortedLadders(stats);
-        int pl = panelLeft() + 2;
-        int pr = panelRight() - 2;
-        int rh = tableRowH(ladders.size());
-        int y = tableTop() + rh + 4;
-
-        for (HqTiersStats.LadderStats l : ladders) {
-            if (!l.ladder().equals("GLOBAL")) {
-                final String id = l.ladder();
-                final int fy = y;
-                Button btn = Button.builder(Component.empty(), b -> openLadder(id))
-                        .bounds(pl, fy, pr - pl, rh).build();
-                btn.setAlpha(0f);
-                addRenderableWidget(btn);
-            }
-            y += rh;
+    private void addRangeButtons(int backWidth) {
+        int left = panelLeft() + 4;
+        int available = Math.min(240, panelWidth() - backWidth - 14);
+        HistoryRange[] ranges = HistoryRange.values();
+        for (int i = 0; i < ranges.length; i++) {
+            HistoryRange range = ranges[i];
+            int x = left + available * i / (ranges.length + 1);
+            int right = range == HistoryRange.ALL_TIME ? left + available
+                    : left + available * (i + 1) / (ranges.length + 1);
+            Button button = Button.builder(Component.literal(range.label), b -> {
+                historyRange = range;
+                applyHistoryRange();
+                init();
+            }).bounds(x, height - FOOTER_HEIGHT + 4, right - x - 1, 18).build();
+            button.active = range != historyRange;
+            addRenderableWidget(button);
         }
     }
 
+    private void applyHistoryRange() {
+        historyPoints = historyRange.filter(fullHistory, System.currentTimeMillis());
+    }
+
+    private void addLadderButtons(HqTiersStats stats) {
+        List<HqTiersStats.LadderStats> ladders = sortedLadders(stats);
+        int capacity = Math.max(1, (tableBottom() - tableTop() - 4 - COLUMN_HEADER_HEIGHT) / MIN_ROW_HEIGHT);
+        int lastPage = Math.max(0, (ladders.size() - 1) / capacity);
+        tablePage = Math.min(tablePage, lastPage);
+        int pageSize = Math.ceilDiv(ladders.size(), lastPage + 1);
+        int first = tablePage * pageSize;
+        visibleLadders = ladders.subList(first, Math.min(ladders.size(), first + pageSize));
+        if (lastPage > 0) {
+            addPageButton("<", panelLeft() + 4, -1, tablePage > 0);
+            addPageButton(">", panelRight() - 24, 1, tablePage < lastPage);
+        }
+        for (int i = 0; i < visibleLadders.size(); i++) {
+            String id = visibleLadders.get(i).ladder();
+            if (id.equals("GLOBAL")) continue;
+            int top = rowBoundary(i);
+            Button button = Button.builder(Component.literal(HqTiersFormatter.displayName(id)), b -> openLadder(id))
+                    .bounds(panelLeft() + 2, top, panelWidth() - 4, rowBoundary(i + 1) - top).build();
+            addWidget(button);
+        }
+    }
+
+    private void addPageButton(String label, int x, int step, boolean enabled) {
+        Button button = Button.builder(Component.literal(label), b -> {
+            tablePage += step;
+            init();
+        }).bounds(x, headerTop() + 6, 20, 16).build();
+        button.active = enabled;
+        addRenderableWidget(button);
+    }
+
     private void openLadder(String id) {
+        historyRange = HistoryRange.ALL_TIME;
+        fullHistory = List.of();
         selectedLadder = id.toLowerCase(java.util.Locale.ROOT);
         historyRequest++;
         historyRequested = false;
@@ -212,11 +247,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         ctx.fillGradient(pl - 3, ht - 2, pr + 3, tb + 3, 0x552A1E0C, 0x00000000);
 
-        ctx.fill(pl, tt, pr, tb, BG_PANEL);
+        ctx.fill(pl, tt, pr, height, BG_PANEL);
         ctx.fill(pl, tt, pr, tt + 1, BORDER);
         ctx.fill(pl, tb - 1, pr, tb, BORDER);
-        ctx.fill(pl, tt, pl + 1, tb, BORDER);
-        ctx.fill(pr - 1, tt, pr, tb, BORDER);
+        ctx.fill(pl, tt, pl + 1, height, BORDER);
+        ctx.fill(pr - 1, tt, pr, height, BORDER);
 
         ctx.fillGradient(pl, ht, pr, hb, 0xEE33260F, BG_HEADER);
         ctx.fill(pl, hb - 1, pr, hb, ACCENT_DIM);
@@ -254,12 +289,12 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int pw = pr - pl;
         boolean compact = compact();
 
-        List<HqTiersStats.LadderStats> ladders = sortedLadders(stats);
-        int rh = tableRowH(ladders.size());
+        List<HqTiersStats.LadderStats> ladders = visibleLadders;
+        var best = stats.bestLadder().orElse(null);
 
         int hy = tt + 4;
-        ctx.fill(pl + 2, hy, pr - 2, hy + rh - 2, BG_HEADER);
-        ctx.fill(pl + 2, hy + rh - 2, pr - 2, hy + rh - 1, ACCENT_DIM);
+        ctx.fill(pl + 2, hy, pr - 2, hy + COLUMN_HEADER_HEIGHT - 2, BG_HEADER);
+        ctx.fill(pl + 2, hy + COLUMN_HEADER_HEIGHT - 2, pr - 2, hy + COLUMN_HEADER_HEIGHT - 1, ACCENT_DIM);
 
         ctx.drawString(font, "LADDER", pl + col(pw, 0, compact), hy + 4, TEXT_HEADER);
         ctx.drawString(font, "TIER", pl + col(pw, 1, compact), hy + 4, TEXT_HEADER);
@@ -275,60 +310,67 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             return;
         }
 
-        int y = tt + rh + 4;
         for (int i = 0; i < ladders.size(); i++) {
             HqTiersStats.LadderStats l = ladders.get(i);
             boolean isGlobal = l.ladder().equals("GLOBAL");
+            int y = rowBoundary(i);
+            int bottom = rowBoundary(i + 1);
+            int textY = (y + bottom - font.lineHeight) / 2;
+            boolean isBest = l.equals(best);
             boolean hovered = !isGlobal && mx >= pl + 2 && mx <= pr - 2
-                    && my >= y && my < y + rh;
+                    && my >= y && my < bottom;
 
-            if (hovered) ctx.fill(pl + 2, y, pr - 2, y + rh, BG_ROW_HOVER);
-            else if (i % 2 == 0) ctx.fill(pl + 2, y, pr - 2, y + rh, BG_ROW_ALT);
+            if (hovered) ctx.fill(pl + 2, y, pr - 2, bottom, BG_ROW_HOVER);
+            else if (i % 2 == 0) ctx.fill(pl + 2, y, pr - 2, bottom, BG_ROW_ALT);
 
-            if (isGlobal) ctx.fill(pl + 2, y, pl + 4, y + rh, ACCENT_GOLD);
+            if (isGlobal) {
+                ctx.fill(pl + 2, y, pr - 2, bottom, BG_HEADER);
+                ctx.fill(pl + 2, bottom - 1, pr - 2, bottom, ACCENT_DIM);
+            } else if (isBest) {
+                ctx.fill(pl + 2, y, pr - 2, bottom, 0x25FFD86B);
+                ctx.fill(pl + 2, y, pl + 4, bottom, ACCENT_GOLD);
+            }
 
             String rawTierLabel = l.tierLabel();
             boolean unranked = rawTierLabel.isEmpty() || rawTierLabel.equalsIgnoreCase("Unranked");
 
-            ctx.drawString(font, HqTiersFormatter.icon(l.ladder()), pl + col(pw, 0, compact), y + 4, TEXT_WHITE);
-            ctx.drawString(font, HqTiersFormatter.displayName(l.ladder()),
-                    pl + col(pw, 0, compact) + 12, y + 4, TEXT_WHITE);
-
-            int resolvedTierColor = 0xFF000000 | l.tierColorInt();
-
-            String tierText = isGlobal ? "—" : (unranked ? "Unranked" : rawTierLabel);
-            int tierCol = (isGlobal || unranked) ? TEXT_DIM : resolvedTierColor;
-            ctx.drawString(font, trim(tierText, compact ? 8 : 14),
-                    pl + col(pw, 1, compact), y + 4, tierCol);
-
-            boolean noTr = unranked || isGlobal;
-            int tr = l.tr();
-            String trStr = noTr ? "—" : (tr + (compact ? "" : " TR"));
-            ctx.drawString(font, trStr, pl + col(pw, 2, compact), y + 4, noTr ? TEXT_DIM : resolvedTierColor);
+            int nameX = pl + col(pw, 0, compact);
+            int tierX = pl + col(pw, 1, compact);
+            int trX = pl + col(pw, 2, compact);
+            int nameEnd = isGlobal ? pl + col(pw, 3, compact) : tierX;
+            String name = isGlobal ? "Global standings" : HqTiersFormatter.displayName(l.ladder());
+            ctx.drawString(font, HqTiersFormatter.icon(l.ladder()), nameX, textY, TEXT_WHITE);
+            ctx.drawString(font, font.plainSubstrByWidth(name, nameEnd - nameX - 15), nameX + 12, textY, isGlobal ? TEXT_TITLE : TEXT_WHITE);
+            if (!isGlobal) {
+                int color = unranked ? TEXT_DIM : 0xFF000000 | l.tierColorInt();
+                String tier = font.plainSubstrByWidth(unranked ? "Unranked" : rawTierLabel, trX - tierX - 6);
+                if (isBest) {
+                    int right = tierX + font.width(tier) + 2;
+                    ctx.fill(tierX - 3, textY - 2, right + 1, textY + font.lineHeight + 1, 0x44FFD86B);
+                    ctx.fill(tierX - 2, textY - 1, right, textY + font.lineHeight, 0xFF57421C);
+                }
+                ctx.drawString(font, tier, tierX, textY, isBest ? TEXT_TITLE : color);
+                String rating = unranked ? "—" : l.tr() + (compact ? "" : " TR");
+                ctx.drawString(font, rating, trX, textY, color);
+            }
 
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
             int rankCol = l.hasPosition() ? 0xFFFFD700 : TEXT_DIM;
-            ctx.drawString(font, rankStr, pl + col(pw, 3, compact), y + 4, rankCol);
+            ctx.drawString(font, rankStr, pl + col(pw, 3, compact), textY, rankCol);
 
             if (!compact) {
                 ctx.drawString(font, l.wins() + " / " + l.losses(),
-                        pl + col(pw, 4, false), y + 4, wlColor(l.wins(), l.losses()));
+                        pl + col(pw, 4, false), textY, wlColor(l.wins(), l.losses()));
                 ctx.drawString(font, l.wins() + l.losses() == 0 ? "—" : String.format(java.util.Locale.ROOT, "%.1f%%", 100.0 * l.wins() / (l.wins() + l.losses())),
-                        pl + col(pw, 5, false), y + 4, wlColor(l.wins(), l.losses()));
+                        pl + col(pw, 5, false), textY, wlColor(l.wins(), l.losses()));
             }
 
-            if (hovered) ctx.drawString(font, "→", pr - 14, y + 4, ACCENT_GOLD);
-
-            y += rh;
         }
 
-        int finalY = y;
-        stats.bestLadder().ifPresent(best -> {
-            int fy = Math.min(tb - 16, finalY + 6);
-            ctx.fill(pl + 2, fy - 4, pr - 2, fy - 3, ACCENT_DIM);
+        if (best != null) {
             String footer = "Best: " + HqTiersFormatter.displayName(best.ladder()) + "  " + best.tierLabel();
-            ctx.drawString(font, trim(footer, compact ? 30 : 60), pl + 10, fy, 0xFFFFD700);
-        });
+            ctx.drawString(font, font.plainSubstrByWidth(footer, pw - (compact ? 56 : 78) - 18), pl + 8, tb + 9, TEXT_TITLE);
+        }
     }
 
     private static int col(int pw, int col, boolean compact) {
@@ -389,7 +431,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             return;
         }
         if (historyPoints == null || historyPoints.isEmpty()) {
-            ctx.drawCenteredString(font, "No history data.", width / 2, gt + gh / 2 - 4, TEXT_DIM);
+            ctx.drawCenteredString(font, historyRange == HistoryRange.ALL_TIME ? "No history data." : "No matches in this period.", width / 2, gt + gh / 2 - 4, TEXT_DIM);
             return;
         }
 
@@ -548,7 +590,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
     private static String dateLabel(long ts) {
         if (ts <= 0) return "";
-        long ms = ts < 10_000_000_000L ? ts * 1000L : ts;
+        long ms = HistoryRange.epochMillis(ts);
         return GRAPH_DATE.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()));
     }
 

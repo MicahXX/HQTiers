@@ -88,6 +88,9 @@ public final class HqTiersLeaderboardScreen extends Screen {
             addRenderableWidget(tab);
         }
 
+        addRenderableWidget(Button.builder(Component.literal("Close"), button -> onClose())
+                .bounds(panelRight - 56, 2, 48, 15).build());
+
         int searchY = searchRowY();
         int searchAreaWidth = (panelRight - 8) - (panelLeft + 8);
         int buttonWidth = 54;
@@ -158,8 +161,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
         context.drawString(font, "Player", nameColX, top - 14, 0xFFFFE7A3);
         context.drawString(font, global ? "Modes" : "Tier", tierColX, top - 14, 0xFFFFE7A3);
         context.drawString(font, global ? "Points" : "TR", eloColX, top - 14, 0xFFFFE7A3);
-
-        context.drawString(font, "Click a player to view full stats", panelLeft + 8, legendY() + 1, 0xFF6B5D3A);
 
         if (resolvedSearchEntry != null) {
             context.drawString(font, "Found: " + resolvedSearchEntry.name(), panelLeft + 8, searchY + 23, 0xFF55FF55);
@@ -346,12 +347,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return (LADDERS.size() + columns - 1) / columns;
     }
 
-    private int legendY() {
-        return 20 + tabRows() * (TAB_HEIGHT + TAB_ROW_GAP);
-    }
-
     private int searchRowY() {
-        return legendY() + 12;
+        return 20 + tabRows() * (TAB_HEIGHT + TAB_ROW_GAP);
     }
 
     private int tableTop() {
