@@ -3,7 +3,7 @@
   "id": "hqtiers",
   "version": "${version}",
   "name": "HQTiers",
-  "description": "Tier Tagger built by a member of the server's staff team",
+  "description": "Display PvPHQ tiers on nametags, in the tab list and in chat",
   "authors": [
     "micahcode"
   ],
