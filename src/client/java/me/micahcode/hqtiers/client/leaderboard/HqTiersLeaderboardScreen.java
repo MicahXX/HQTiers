@@ -33,6 +33,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private static final int MIN_PANEL_WIDTH = 320;
     private static final int MAX_PANEL_WIDTH = 480;
     private static final int ROW_HEIGHT = 16;
+    private static final int CLOSE_WIDTH = 54;
 
     private static final long LEADERBOARD_REFRESH_INTERVAL_MS = 60_000;
 
@@ -88,9 +89,6 @@ public final class HqTiersLeaderboardScreen extends Screen {
             addRenderableWidget(tab);
         }
 
-        addRenderableWidget(Button.builder(Component.literal("Close"), button -> onClose())
-                .bounds(panelRight - 56, 2, 48, 15).build());
-
         int searchY = searchRowY();
         int searchAreaWidth = (panelRight - 8) - (panelLeft + 8);
         int buttonWidth = 54;
@@ -119,6 +117,9 @@ public final class HqTiersLeaderboardScreen extends Screen {
             leaderboardClient.refresh(ladder);
             lastLeaderboardRefreshAt.put(ladder, System.currentTimeMillis());
         }).bounds(panelRight - 8 - buttonWidth, searchY, buttonWidth, 18).build());
+
+        addRenderableWidget(Button.builder(Component.literal("Close"), button -> onClose())
+                .bounds(panelRight - CLOSE_WIDTH, height - 23, CLOSE_WIDTH, 18).build());
 
         if (firstInit) {
             firstInit = false;
@@ -161,6 +162,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         context.text(font, "Player", nameColX, top - 14, 0xFFFFE7A3, true);
         context.text(font, global ? "Modes" : "Tier", tierColX, top - 14, 0xFFFFE7A3, true);
         context.text(font, global ? "Points" : "TR", eloColX, top - 14, 0xFFFFE7A3, true);
+
+        context.text(font, "Click a player to view full stats", panelLeft + 8, legendY() + 1, 0xFF6B5D3A, true);
 
         if (resolvedSearchEntry != null) {
             context.text(font, "Found: " + resolvedSearchEntry.name(), panelLeft + 8, searchY + 23, 0xFF55FF55, true);
@@ -237,13 +240,17 @@ public final class HqTiersLeaderboardScreen extends Screen {
         }
         context.disableScissor();
 
+        String footer = entries.size() + " / " + state.total() + " players | page " + (state.page() + 1);
+        int footerColor = 0xFF7C8BA1;
         if (state.error() != null) {
-            context.centeredText(font, Component.literal(state.error()), width / 2, height - 18, 0xFFFF9999);
+            footer = state.error();
+            footerColor = 0xFFFF9999;
         } else if (state.loading()) {
-            context.centeredText(font, Component.literal("Loading more..."), width / 2, height - 18, 0xFFB99842);
-        } else {
-            context.text(font, entries.size() + " / " + state.total() + " players | page " + (state.page() + 1), panelLeft, height - 18, 0xFF7C8BA1, true);
+            footer = "Loading more...";
+            footerColor = 0xFFB99842;
         }
+        String status = font.plainSubstrByWidth(footer, panelRight - panelLeft - CLOSE_WIDTH - 8);
+        context.text(font, status, panelLeft, height - 18, footerColor, true);
     }
 
     private void maybeRefreshLeaderboard() {
@@ -346,8 +353,12 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return (LADDERS.size() + columns - 1) / columns;
     }
 
-    private int searchRowY() {
+    private int legendY() {
         return 20 + tabRows() * (TAB_HEIGHT + TAB_ROW_GAP);
+    }
+
+    private int searchRowY() {
+        return legendY() + 12;
     }
 
     private int tableTop() {
