@@ -100,6 +100,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     private int headerBottom() {
+        if (selectedLadder == null && displayedStats != null && displayedStats.ladders().containsKey("GLOBAL")) {
+            return headerTop() + 60;
+        }
         return compact() ? 46 : 56;
     }
 
@@ -207,7 +210,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
         for (int i = 0; i < visibleLadders.size(); i++) {
             String id = visibleLadders.get(i).ladder();
-            if (id.equals("GLOBAL")) continue;
             int top = rowBoundary(i);
             Button button = Button.builder(Component.literal(HqTiersFormatter.displayName(id)), b -> openLadder(id))
                     .bounds(panelLeft() + 2, top, panelWidth() - 4, rowBoundary(i + 1) - top).build();
@@ -280,8 +282,35 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (selectedLadder != null) {
             renderGraph(ctx, playerStats, pl, pr, tt, tb, mx, my);
         } else {
+            if (displayedStats != null) {
+                var global = displayedStats.ladders().get("GLOBAL");
+                if (global != null) renderGlobalStandings(ctx, global, pl, pr, hb);
+            }
             renderTable(ctx, playerStats, pl, pr, tt, tb, mx, my);
         }
+    }
+
+    private void renderGlobalStandings(GuiGraphicsExtractor ctx, HqTiersStats.LadderStats global,
+                                       int left, int right, int bottom) {
+        int width = right - left;
+        int top = bottom - 28;
+        int rankX = left + 10;
+        int recordX = left + width * 43 / 100;
+        int rateX = left + width * 76 / 100;
+        ctx.fill(left + 2, top, right - 2, bottom - 1, BG_PANEL);
+        ctx.fill(left + 2, top, left + 4, bottom - 1, ACCENT_GOLD);
+        ctx.fill(recordX - 6, top + 4, recordX - 5, bottom - 5, BORDER);
+        ctx.fill(rateX - 6, top + 4, rateX - 5, bottom - 5, BORDER);
+
+        String rank = global.hasPosition() ? "#" + global.position() : "Unranked";
+        String record = global.wins() + "W / " + global.losses() + "L";
+        ctx.text(font, "Global standings", rankX, top + 3, TEXT_HEADER, true);
+        ctx.text(font, HqTiersFormatter.icon("GLOBAL"), rankX, top + 15, TEXT_WHITE, true);
+        ctx.text(font, rank, rankX + 13, top + 15, TEXT_TITLE, true);
+        ctx.text(font, "Record", recordX, top + 3, TEXT_HEADER, true);
+        ctx.text(font, font.plainSubstrByWidth(record, rateX - recordX - 9), recordX, top + 15, TEXT_WHITE, true);
+        ctx.text(font, "Win rate", rateX, top + 3, TEXT_HEADER, true);
+        ctx.text(font, winRate(global), rateX, top + 15, wlColor(global.wins(), global.losses()), true);
     }
 
     private void renderTable(GuiGraphicsExtractor ctx, HqTiersStats stats,
@@ -312,21 +341,17 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         for (int i = 0; i < ladders.size(); i++) {
             HqTiersStats.LadderStats l = ladders.get(i);
-            boolean isGlobal = l.ladder().equals("GLOBAL");
             int y = rowBoundary(i);
             int bottom = rowBoundary(i + 1);
             int textY = (y + bottom - font.lineHeight) / 2;
             boolean isBest = l.equals(best);
-            boolean hovered = !isGlobal && mx >= pl + 2 && mx <= pr - 2
+            boolean hovered = mx >= pl + 2 && mx <= pr - 2
                     && my >= y && my < bottom;
 
             if (hovered) ctx.fill(pl + 2, y, pr - 2, bottom, BG_ROW_HOVER);
             else if (i % 2 == 0) ctx.fill(pl + 2, y, pr - 2, bottom, BG_ROW_ALT);
 
-            if (isGlobal) {
-                ctx.fill(pl + 2, y, pr - 2, bottom, BG_HEADER);
-                ctx.fill(pl + 2, bottom - 1, pr - 2, bottom, ACCENT_DIM);
-            } else if (isBest) {
+            if (isBest) {
                 ctx.fill(pl + 2, y, pr - 2, bottom, 0x25FFD86B);
                 ctx.fill(pl + 2, y, pl + 4, bottom, ACCENT_GOLD);
             }
@@ -337,22 +362,19 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             int nameX = pl + col(pw, 0, compact);
             int tierX = pl + col(pw, 1, compact);
             int trX = pl + col(pw, 2, compact);
-            int nameEnd = isGlobal ? pl + col(pw, 3, compact) : tierX;
-            String name = isGlobal ? "Global standings" : HqTiersFormatter.displayName(l.ladder());
+            String name = HqTiersFormatter.displayName(l.ladder());
             ctx.text(font, HqTiersFormatter.icon(l.ladder()), nameX, textY, TEXT_WHITE, true);
-            ctx.text(font, font.plainSubstrByWidth(name, nameEnd - nameX - 15), nameX + 12, textY, isGlobal ? TEXT_TITLE : TEXT_WHITE, true);
-            if (!isGlobal) {
-                int color = unranked ? TEXT_DIM : 0xFF000000 | l.tierColorInt();
-                String tier = font.plainSubstrByWidth(unranked ? "Unranked" : rawTierLabel, trX - tierX - 6);
-                if (isBest) {
-                    int right = tierX + font.width(tier) + 2;
-                    ctx.fill(tierX - 3, textY - 2, right + 1, textY + font.lineHeight + 1, 0x44FFD86B);
-                    ctx.fill(tierX - 2, textY - 1, right, textY + font.lineHeight, 0xFF57421C);
-                }
-                ctx.text(font, tier, tierX, textY, isBest ? TEXT_TITLE : color, true);
-                String rating = unranked ? "—" : l.tr() + (compact ? "" : " TR");
-                ctx.text(font, rating, trX, textY, color, true);
+            ctx.text(font, font.plainSubstrByWidth(name, tierX - nameX - 15), nameX + 12, textY, TEXT_WHITE, true);
+            int color = unranked ? TEXT_DIM : 0xFF000000 | l.tierColorInt();
+            String tier = font.plainSubstrByWidth(unranked ? "Unranked" : rawTierLabel, trX - tierX - 6);
+            if (isBest) {
+                int right = tierX + font.width(tier) + 2;
+                ctx.fill(tierX - 3, textY - 2, right + 1, textY + font.lineHeight + 1, 0x44FFD86B);
+                ctx.fill(tierX - 2, textY - 1, right, textY + font.lineHeight, 0xFF57421C);
             }
+            ctx.text(font, tier, tierX, textY, isBest ? TEXT_TITLE : color, true);
+            String rating = unranked ? "—" : l.tr() + (compact ? "" : " TR");
+            ctx.text(font, rating, trX, textY, color, true);
 
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
             int rankCol = l.hasPosition() ? 0xFFFFD700 : TEXT_DIM;
@@ -360,15 +382,13 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
             if (!compact) {
                 ctx.text(font, l.wins() + " / " + l.losses(), pl + col(pw, 4, false), textY, wlColor(l.wins(), l.losses()), true);
-                ctx.text(font, l.wins() + l.losses() == 0 ? "—" : String.format(java.util.Locale.ROOT, "%.1f%%", 100.0 * l.wins() / (l.wins() + l.losses())), pl + col(pw, 5, false), textY, wlColor(l.wins(), l.losses()), true);
+                ctx.text(font, winRate(l), pl + col(pw, 5, false), textY, wlColor(l.wins(), l.losses()), true);
             }
 
         }
 
-        if (best != null) {
-            String footer = "Best: " + HqTiersFormatter.displayName(best.ladder()) + "  " + best.tierLabel();
-            ctx.text(font, font.plainSubstrByWidth(footer, pw - (compact ? 56 : 78) - 18), pl + 8, tb + 9, TEXT_TITLE, true);
-        }
+        String hint = compact ? "Select a ladder for history" : "Select a ladder to view its rating history";
+        ctx.text(font, font.plainSubstrByWidth(hint, pw - (compact ? 56 : 78) - 18), pl + 8, tb + 9, TEXT_HEADER, true);
     }
 
     private static int col(int pw, int col, boolean compact) {
@@ -562,10 +582,14 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         }
 
         return ladders.values().stream()
-                .sorted(Comparator
-                        .comparingInt((HqTiersStats.LadderStats l) -> l.ladder().equals("GLOBAL") ? 0 : 1)
-                        .thenComparing(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating).reversed()))
+                .filter(ladder -> !ladder.ladder().equals("GLOBAL"))
+                .sorted(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating).reversed())
                 .toList();
+    }
+
+    private static String winRate(HqTiersStats.LadderStats ladder) {
+        long matches = (long) ladder.wins() + ladder.losses();
+        return matches == 0 ? "—" : String.format(java.util.Locale.ROOT, "%.1f%%", 100.0 * ladder.wins() / matches);
     }
 
     private static int wlColor(int w, int l) {
