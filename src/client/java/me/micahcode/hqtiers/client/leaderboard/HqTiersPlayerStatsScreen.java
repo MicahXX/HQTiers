@@ -297,8 +297,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int rankX = left + 10;
         int recordX = left + width * 43 / 100;
         int rateX = left + width * 76 / 100;
-        ctx.fill(left + 2, top, right - 2, bottom - 1, BG_PANEL);
-        ctx.fill(left + 2, top, left + 4, bottom - 1, ACCENT_GOLD);
+        ctx.fill(left, top, right, bottom - 1, BG_PANEL);
+        ctx.fill(left, top, left + 2, bottom - 1, ACCENT_GOLD);
         ctx.fill(recordX - 6, top + 4, recordX - 5, bottom - 5, BORDER);
         ctx.fill(rateX - 6, top + 4, rateX - 5, bottom - 5, BORDER);
 
