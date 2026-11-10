@@ -18,7 +18,6 @@ import net.minecraft.network.chat.Component;
 
 public final class HqTiersPlayerStatsScreen extends Screen {
     private static final DateTimeFormatter HOVER_DATE = DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm");
-    private static final DateTimeFormatter GRAPH_DATE = DateTimeFormatter.ofPattern("MMM d");
 
     private static final int BG_BASE = 0xF0100C05;
     private static final int BG_PANEL = 0xCC1A1408;
@@ -62,7 +61,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private int historyRequest;
     private boolean historyRequested;
     private List<RatingHistoryClient.Point> plottedSource;
-    private List<RatingHistoryClient.Point> plotted = List.of();
+    private MatchPlot plot;
     private int plotWidth;
     private int minRating;
     private int maxRating;
@@ -464,11 +463,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (plottedSource != historyPoints || plotWidth != gw) {
             plotWidth = gw;
             plottedSource = historyPoints;
-            plotted = RatingHistoryClient.plotPoints(historyPoints, Math.max(1, gw));
-            minRating = plotted.stream().mapToInt(RatingHistoryClient.Point::elo).min().orElse(0);
-            maxRating = plotted.stream().mapToInt(RatingHistoryClient.Point::elo).max().orElse(1);
+            plot = MatchPlot.of(historyPoints, gw);
+            minRating = historyPoints.stream().mapToInt(RatingHistoryClient.Point::elo).min().orElse(0);
+            maxRating = historyPoints.stream().mapToInt(RatingHistoryClient.Point::elo).max().orElse(1);
         }
-        int n = plotted.size();
+        int n = plot.indices().length;
         int minElo = minRating;
         int maxElo = maxRating;
         int pad = Math.max(15, (maxElo - minElo) / 8);
@@ -490,11 +489,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             graphXPositions = new int[n];
             graphYPositions = new int[n];
         }
-        long start = plotted.getFirst().timestamp();
-        long span = plotted.getLast().timestamp() - start;
         for (int i = 0; i < n; i++) {
-            graphXPositions[i] = gl + (span <= 0 ? gw / 2 : (int) ((plotted.get(i).timestamp() - start) * (double) gw / span));
-            graphYPositions[i] = gbt - (plotted.get(i).elo() - minElo) * gh / eloRange;
+            graphXPositions[i] = gl + plot.x(i, gw);
+            graphYPositions[i] = gbt - (historyPoints.get(plot.indices()[i]).elo() - minElo) * gh / eloRange;
         }
 
         int tierRaw = ladder != null ? ladder.tierColorInt() : 0x3B82F6;
@@ -509,36 +506,43 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         for (int i = 1; i < n; i++) {
             int x1 = graphXPositions[i - 1], y1 = graphYPositions[i - 1];
             int x2 = graphXPositions[i], y2 = graphYPositions[i];
-            drawThickLine(ctx, x1, y1, x2, y2, 0xFF000000 | plotted.get(i).color());
+            drawThickLine(ctx, x1, y1, x2, y2, 0xFF000000 | historyPoints.get(plot.indices()[i]).color());
         }
 
-        for (int i = 0; i < n; i++) {
-            int x = graphXPositions[i], y = graphYPositions[i];
-            int dotCol = 0xFF000000 | plotted.get(i).color();
-            ctx.fill(x - 2, y - 2, x + 3, y + 3, 0xFF000000);
-            ctx.fill(x - 1, y - 1, x + 2, y + 2, dotCol);
-        }
-
-        ctx.text(font, dateLabel(plotted.getFirst().timestamp()), gl, gbt + 4, TEXT_DIM, true);
-        String lastDate = dateLabel(plotted.get(n - 1).timestamp());
-        ctx.text(font, lastDate, gr - font.width(lastDate), gbt + 4, TEXT_DIM, true);
-
-        if (graphXPositions != null && my >= gt && my <= gbt) {
-            int closest = -1, bestDist = 10;
+        if (n == 1 || gw / (n - 1) >= 7) {
             for (int i = 0; i < n; i++) {
-                int d = Math.max(Math.abs(mx - graphXPositions[i]), Math.abs(my - graphYPositions[i]));
-                if (d < bestDist) {
-                    bestDist = d;
+                int x = graphXPositions[i], y = graphYPositions[i];
+                int dotCol = 0xFF000000 | historyPoints.get(plot.indices()[i]).color();
+                ctx.fill(x - 2, y - 2, x + 3, y + 3, 0xFF000000);
+                ctx.fill(x - 1, y - 1, x + 2, y + 2, dotCol);
+            }
+        }
+
+        String label = "Match 1";
+        int x = n == 1 ? gl + (gw - font.width(label)) / 2 : gl;
+        ctx.text(font, label, x, gbt + 4, TEXT_DIM, true);
+        if (n > 1) {
+            label = "Match " + plot.matchCount();
+            x = gr - font.width(label);
+            ctx.text(font, label, x, gbt + 4, TEXT_DIM, true);
+        }
+        if (mx >= gl && mx <= gr && my >= gt && my <= gbt) {
+            int closest = 0;
+            for (int i = 1; i < n; i++) {
+                int dx = Math.abs(mx - graphXPositions[i]);
+                int bestDx = Math.abs(mx - graphXPositions[closest]);
+                if (dx < bestDx || (dx == bestDx && Math.abs(my - graphYPositions[i]) < Math.abs(my - graphYPositions[closest]))) {
                     closest = i;
                 }
             }
-            if (closest >= 0) renderTooltip(ctx, closest, gl, gr, gt, gbt);
+            renderTooltip(ctx, closest, gl, gr, gt, gbt);
         }
     }
 
     private void renderTooltip(GuiGraphicsExtractor ctx, int idx, int gl, int gr, int gt, int gbt) {
-        var point = plotted.get(idx);
-        String date = HOVER_DATE.format(Instant.ofEpochMilli(HistoryRange.epochMillis(point.timestamp())).atZone(ZoneId.systemDefault()));
+        int match = plot.indices()[idx];
+        var point = historyPoints.get(match);
+        String date = "#" + (match + 1) + "  " + HOVER_DATE.format(Instant.ofEpochMilli(HistoryRange.epochMillis(point.timestamp())).atZone(ZoneId.systemDefault()));
         String rating = "Rating " + point.elo();
         if (point.delta() != null) rating += " (" + signed(point.delta()) + ")";
         String tier = point.tier() == null ? "" : point.tier() + "  " + point.progressText();
@@ -619,12 +623,6 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
     private static String trim(String value, int max) {
         return value.length() <= max ? value : value.substring(0, Math.max(1, max - 1)) + "…";
-    }
-
-    private static String dateLabel(long ts) {
-        if (ts <= 0) return "";
-        long ms = HistoryRange.epochMillis(ts);
-        return GRAPH_DATE.format(Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault()));
     }
 
     @Override
