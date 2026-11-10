@@ -12,6 +12,7 @@ import java.util.function.LongSupplier;
 
 import me.micahcode.hqtiers.Hqtiers;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
+import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 
 public class HqTiersCache {
     private static final long CACHE_TTL = 300_000;
@@ -51,6 +52,12 @@ public class HqTiersCache {
         return result;
     }
 
+    public synchronized CompletableFuture<HqTiersStats> fetchVisible(UUID uuid) {
+        var result = fetch(uuid);
+        requests.prioritize(entries.get(uuid).queued);
+        return result;
+    }
+
     public synchronized Status status(UUID uuid) {
         Entry entry = entries.get(uuid);
         if (entry == null) return Status.LOADING;
@@ -60,9 +67,10 @@ public class HqTiersCache {
     }
 
     private void request(UUID uuid, Entry entry, CompletableFuture<HqTiersStats> result, int attempt, long delay) {
-        requests.submit(() -> attempt == 1 ? apiClient.fetchRanked(uuid)
-                        : apiClient.fetchRanked(uuid, Duration.ofSeconds(8)), delay)
-                .whenComplete((stats, failure) -> complete(uuid, entry, result, attempt, stats, failure));
+        var queued = requests.submit(() -> attempt == 1 ? apiClient.fetchRanked(uuid)
+                        : apiClient.fetchRanked(uuid, Duration.ofSeconds(8)), delay);
+        entry.queued = queued;
+        queued.whenComplete((stats, failure) -> complete(uuid, entry, result, attempt, stats, failure));
     }
 
     private void complete(UUID uuid, Entry entry, CompletableFuture<HqTiersStats> result,
@@ -76,6 +84,13 @@ public class HqTiersCache {
                 entry.failures = 0;
                 entry.refreshAt = clock.getAsLong() + (ranked ? CACHE_TTL : EMPTY_TTL);
                 revision++;
+                if (stats != null && entry.stats == stats && stats.ladders().values().stream()
+                        .anyMatch(ladder -> HqTiersRankSystem.usesPercent(ladder.tierName()))) {
+                    var queued = requests.submit(() -> apiClient.fetchProgress(stats), 0);
+                    entry.queued = queued;
+                    queued.whenComplete((updated, error) -> finishProgress(entry, result, updated, error));
+                    return;
+                }
             } else {
                 entry.failures++;
                 boolean retryable = failure instanceof java.io.IOException
@@ -92,6 +107,24 @@ public class HqTiersCache {
             }
             available = entry.stats;
             entry.inFlight = null;
+            entry.queued = null;
+        }
+        result.complete(available);
+    }
+
+    private void finishProgress(Entry entry, CompletableFuture<HqTiersStats> result, HqTiersStats updated, Throwable error) {
+        HqTiersStats available;
+        synchronized (this) {
+            if (error == null) {
+                entry.stats = updated;
+                revision++;
+            } else {
+                Hqtiers.logger.debug("Could not load tier percentages", error);
+                entry.refreshAt = clock.getAsLong() + EMPTY_TTL;
+            }
+            available = entry.stats;
+            entry.inFlight = null;
+            entry.queued = null;
         }
         result.complete(available);
     }
@@ -133,5 +166,6 @@ public class HqTiersCache {
         private int failures;
         private int emptyResults;
         private CompletableFuture<HqTiersStats> inFlight;
+        private CompletableFuture<?> queued;
     }
 }
