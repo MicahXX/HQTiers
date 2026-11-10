@@ -45,21 +45,72 @@ public final class ChatMessageDecorator {
         var stats = statsFor.apply(sender);
         // if there are no stats (tiers)
         if (stats.isEmpty()) return message;
-        Component prefix = HqTiersFormatter.compact(stats.get());
-        if (prefix.getString().isEmpty()) return message;
-        var parts = new NametagParts(prefix, Component.empty());
-        return parts.surrounds(message) ? message : parts.around(message);
+        boolean alwaysLeft = HqTiersClientConfig.chatAlwaysLeft;
+        NametagParts parts = HqTiersFormatter.parts(stats.get(), alwaysLeft);
+        if (parts.isEmpty() || parts.surrounds(message)) return message;
+        return alwaysLeft ? parts.around(message) : decorateHeader(message, parts);
+    }
+
+    private static Component decorateHeader(Component message, NametagParts parts) {
+        if (message.getContents() instanceof TranslatableContents translated) {
+            int index = senderIndex(translated.getKey());
+            Object[] args = translated.getArgs().clone();
+            if (index >= 0 && index < args.length) {
+                Component name = args[index] instanceof Component component
+                        ? component : Component.literal(String.valueOf(args[index]));
+                if (parts.surrounds(name)) return message;
+                args[index] = parts.around(name);
+                var result = Component.translatableWithFallback(translated.getKey(), translated.getFallback(), args)
+                        .setStyle(message.getStyle());
+                message.getSiblings().forEach(result::append);
+                return result;
+            }
+        }
+        if (message.getContents().equals(Component.empty().getContents())) {
+            var children = message.getSiblings();
+            for (int i = 0; i < children.size(); i++) {
+                Component child = children.get(i);
+                if (child.getString().isBlank()) continue;
+                if (child.getContents() instanceof TranslatableContents
+                        || child.getContents().equals(Component.empty().getContents())) {
+                    var decorated = decorateHeader(child, parts);
+                    if (decorated != child) {
+                        var result = message.copy();
+                        result.getSiblings().set(i, decorated);
+                        return result;
+                    }
+                }
+                break;
+            }
+        }
+        var header = CHAT_HEADER.matcher(message.getString());
+        if (!header.find() || header.end() == 0) return message;
+        var name = Component.empty();
+        var body = Component.empty();
+        int[] remaining = {header.end()};
+        message.visit((style, text) -> {
+            int split = Math.min(remaining[0], text.length());
+            if (split > 0) name.append(Component.literal(text.substring(0, split)).setStyle(style));
+            if (split < text.length()) body.append(Component.literal(text.substring(split)).setStyle(style));
+            remaining[0] -= split;
+            return Optional.empty();
+        }, Style.EMPTY);
+        return parts.surrounds(name) ? message : parts.around(name).copy().append(body);
+    }
+
+    private static int senderIndex(String key) {
+        return switch (key) {
+            case "chat.type.text", "chat.type.announcement", "commands.message.display.incoming",
+                    "commands.message.display.outgoing", "chat.type.emote" -> 0;
+            case "chat.type.team.text", "chat.type.team.sent" -> 1;
+            default -> -1;
+        };
     }
 
     private static UUID findSender(Component message, Map<String, UUID> players) {
         if (message.getContents() instanceof TranslatableContents translated) {
             // this looks for what type the message is so it knows if we apply a tier (the stats or not)
-            int senderIndex = switch (translated.getKey()) {
-                case "chat.type.text", "chat.type.announcement", "commands.message.display.incoming",
-                        "commands.message.display.outgoing", "chat.type.emote" -> 0;
-                case "chat.type.team.text", "chat.type.team.sent" -> 1;
-                default -> -1;
-            };
+            int senderIndex = senderIndex(translated.getKey());
             Object[] args = translated.getArgs();
             if (senderIndex >= 0) {
                 if (senderIndex >= args.length) return null;

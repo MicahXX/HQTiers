@@ -13,7 +13,6 @@ import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -32,10 +31,14 @@ public final class HqTiersFormatter {
     private static final Map<HqTiersStats, CompactCacheEntry> COMPACT_CACHE =
             Collections.synchronizedMap(new WeakHashMap<>());
 
+    private static final Map<HqTiersStats, CompactCacheEntry> LEFT_CACHE =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
     // this just checks if its global and if not just do the ladder
-    private static NametagParts parts(HqTiersStats stats) {
+    public static NametagParts parts(HqTiersStats stats, boolean alwaysLeft) {
+        var cache = alwaysLeft ? LEFT_CACHE : COMPACT_CACHE;
         int version = HqTiersClientConfig.configVersion();
-        CompactCacheEntry cached = COMPACT_CACHE.get(stats);
+        CompactCacheEntry cached = cache.get(stats);
         if (cached != null && cached.configVersion() == version) {
             return cached.parts();
         }
@@ -48,22 +51,22 @@ public final class HqTiersFormatter {
         } else if (ladder == null) {
             Component label = HqTiersClientConfig.showUnranked
                     ? Component.literal("Unranked").withStyle(ChatFormatting.GRAY) : Component.empty();
-            parts = HqTiersClientConfig.side(HqTiersClientConfig.NametagComponent.TIER, -1)
+            parts = alwaysLeft || HqTiersClientConfig.side(HqTiersClientConfig.NametagComponent.TIER, -1)
                     == HqTiersClientConfig.NametagAlignment.LEFT
                     ? new NametagParts(label, Component.empty()) : new NametagParts(Component.empty(), label);
         } else {
-            parts = NametagComposer.compose(ladder);
+            parts = NametagComposer.compose(ladder, alwaysLeft);
         }
-        COMPACT_CACHE.put(stats, new CompactCacheEntry(version, parts));
+        cache.put(stats, new CompactCacheEntry(version, parts));
         return parts;
     }
 
     public static Component compact(HqTiersStats stats) {
-        return parts(stats).combined();
+        return parts(stats, false).combined();
     }
 
     public static Component decorateName(HqTiersStats stats, Component name) {
-        NametagParts parts = parts(stats);
+        NametagParts parts = parts(stats, false);
         return parts.surrounds(name) ? name : parts.around(name);
     }
 
@@ -87,7 +90,7 @@ public final class HqTiersFormatter {
         stats.ladders().values().stream()
                 .filter(HqTiersStats.LadderStats::hasPlayedRanked)
                 .filter(ladder -> !ladder.ladder().equals("GLOBAL"))
-                .sorted(Comparator.comparingInt(HqTiersStats.LadderStats::tr).reversed())
+                .sorted(HqTiersStats.LadderStats.STANDINGS_ORDER)
                 .forEach(ladder -> lines.add(ladderDetailLine(ladder)));
         return lines;
     }
@@ -98,9 +101,9 @@ public final class HqTiersFormatter {
                 .append(Component.literal(" "))
                 .append(Component.literal(displayName(ladder.ladder())).withStyle(ChatFormatting.AQUA))
                 .append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(ladder.tierLabel()).withStyle(ChatFormatting.GOLD))
+                .append(Component.literal(ladder.tierLabel()).withColor(ladder.tierColorInt()))
                 .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(ratingText(ladder.tr())).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())))
+                .append(Component.literal(ladder.progressText(true)).setStyle(Style.EMPTY.withColor(ladder.tierColorInt())))
                 .append(Component.literal(" | ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(ladder.wins() + "W/" + ladder.losses() + "L").withStyle(ChatFormatting.WHITE))
                 .append(positionDetails(ladder));
@@ -171,8 +174,6 @@ public final class HqTiersFormatter {
                 .filter(ladder -> !ladder.ladder().equals("GLOBAL"))
                 .filter(ladder -> !ladder.unranked())
                 .filter(ladder -> ladder.placementGames() >= ladder.placementTarget())
-                .max(Comparator.comparingInt((HqTiersStats.LadderStats ladder) ->
-                        ladder.tier() == null ? -1 : ladder.tier().ordinal())
-                        .thenComparingInt(HqTiersStats.LadderStats::totalRating));
+                .min(HqTiersStats.LadderStats.STANDINGS_ORDER);
     }
 }

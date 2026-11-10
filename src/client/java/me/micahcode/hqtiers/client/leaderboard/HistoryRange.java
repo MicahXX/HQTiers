@@ -14,7 +14,11 @@ enum HistoryRange {
         this.durationMillis = Duration.ofDays(days).toMillis();
     }
 
-    List<HqTiersLeaderboardClient.HistoryPoint> filter(List<HqTiersLeaderboardClient.HistoryPoint> points, long now) {
+    long cutoff(long now) {
+        return this == ALL_TIME ? Long.MIN_VALUE : now - durationMillis;
+    }
+
+    List<RatingHistoryClient.Point> filter(List<RatingHistoryClient.Point> points, long now) {
         if (this == ALL_TIME) return points;
         long cutoff = now - durationMillis;
         return points.stream().filter(point -> {

@@ -4,6 +4,8 @@ import java.util.Arrays;
 
 import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.model.HqTiersLadder;
+import me.micahcode.hqtiers.client.model.HqTiersRanks;
+import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
@@ -55,10 +57,20 @@ public final class HqTiersConfigScreen {
                 .setDefaultValue(true)
                 .setSaveConsumer(value -> HqTiersClientConfig.tabListEnabled = value)
                 .build());
+        overlay.addEntry(entries.startBooleanToggle(Component.literal("Always place tab list stats on the left"), HqTiersClientConfig.tabListAlwaysLeft)
+                .setDefaultValue(true)
+                .setTooltip(Component.literal("Turn off to follow the sides in your nametag layout."))
+                .setSaveConsumer(value -> HqTiersClientConfig.tabListAlwaysLeft = value)
+                .build());
         overlay.addEntry(entries.startBooleanToggle(Component.literal("Show chat stats"), HqTiersClientConfig.chatEnabled)
                 .setDefaultValue(true)
                 .setTooltip(Component.literal("Show the configured nametag layout beside chat sender names. Toggle with U by default."))
                 .setSaveConsumer(value -> HqTiersClientConfig.chatEnabled = value)
+                .build());
+        overlay.addEntry(entries.startBooleanToggle(Component.literal("Always place chat stats on the left"), HqTiersClientConfig.chatAlwaysLeft)
+                .setDefaultValue(true)
+                .setTooltip(Component.literal("Turn off to follow the sides in your nametag layout."))
+                .setSaveConsumer(value -> HqTiersClientConfig.chatAlwaysLeft = value)
                 .build());
         overlay.addEntry(entries.startBooleanToggle(Component.literal("Colored tier in nametag"), HqTiersClientConfig.coloredTier)
                 .setDefaultValue(true)
@@ -79,6 +91,24 @@ public final class HqTiersConfigScreen {
                 .setSaveConsumer(value -> HqTiersClientConfig.showUnranked = value)
                 .build());
 
+        ConfigCategory colors = builder.getOrCreateCategory(Component.literal("Tier colors"));
+        colors.addEntry(entries.startBooleanToggle(Component.literal("Use custom tier colors"), HqTiersClientConfig.customTierColors)
+                .setDefaultValue(false)
+                .setTooltip(Component.literal("Off uses PvPHQ colors. Turn on to apply your color overrides."))
+                .setSaveConsumer(value -> HqTiersClientConfig.customTierColors = value)
+                .build());
+        for (HqTiersRanks tier : HqTiersRanks.values()) {
+            int defaultColor = HqTiersRankSystem.tierColor(tier);
+            colors.addEntry(entries.startColorField(Component.literal(tier.name()),
+                            HqTiersClientConfig.tierColors.getOrDefault(tier, defaultColor))
+                    .setDefaultValue(defaultColor)
+                    .setTooltip(Component.literal("Reset to use the color supplied by PvPHQ."))
+                    .setSaveConsumer(value -> {
+                        int rgb = value & 0xFFFFFF;
+                        if (rgb == defaultColor) HqTiersClientConfig.tierColors.remove(tier);
+                        else HqTiersClientConfig.tierColors.put(tier, rgb);
+                    }).build());
+        }
         builder.setSavingRunnable(HqTiersClientConfig::save);
         return builder.build();
     }

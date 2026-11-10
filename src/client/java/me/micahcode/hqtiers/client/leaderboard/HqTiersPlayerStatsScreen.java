@@ -3,7 +3,6 @@ package me.micahcode.hqtiers.client.leaderboard;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +17,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public final class HqTiersPlayerStatsScreen extends Screen {
+    private static final DateTimeFormatter HOVER_DATE = DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm");
     private static final DateTimeFormatter GRAPH_DATE = DateTimeFormatter.ofPattern("MMM d");
 
     private static final int BG_BASE = 0xF0100C05;
@@ -55,12 +55,17 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private int tablePage;
     private List<HqTiersStats.LadderStats> visibleLadders = List.of();
     private String selectedLadder;
-    private HistoryRange historyRange = HistoryRange.ALL_TIME;
-    private List<HqTiersLeaderboardClient.HistoryPoint> fullHistory = List.of();
-    private List<HqTiersLeaderboardClient.HistoryPoint> historyPoints = null;
+    private HistoryRange historyRange = HistoryRange.MONTH;
+    private boolean historyFailed;
+    private List<RatingHistoryClient.Point> historyPoints = null;
     private boolean historyLoading = false;
     private int historyRequest;
     private boolean historyRequested;
+    private List<RatingHistoryClient.Point> plottedSource;
+    private List<RatingHistoryClient.Point> plotted = List.of();
+    private int plotWidth;
+    private int minRating;
+    private int maxRating;
     private int[] graphXPositions = null;
     private int[] graphYPositions = null;
 
@@ -140,10 +145,17 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             }
         }).bounds(panelRight() - backWidth - 4, height - FOOTER_HEIGHT + 4, backWidth, 18).build());
 
+        HqTiersClientState.cache().fetchVisible(uuid);
         displayedStats = HqTiersClientState.cache().get(uuid).orElse(null);
         if (selectedLadder == null && displayedStats != null) addLadderButtons(displayedStats);
 
         if (selectedLadder != null) addRangeButtons(backWidth);
+        if (selectedLadder != null && historyFailed) {
+            addRenderableWidget(Button.builder(Component.literal("Retry history"), button -> {
+                loadHistory();
+                init();
+            }).bounds(width / 2 - 42, (tableTop() + tableBottom()) / 2 + 14, 84, 18).build());
+        }
         if (selectedLadder != null && historyPoints == null && !historyRequested) {
             loadHistory();
         }
@@ -164,12 +176,14 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         historyLoading = true;
         int request = ++historyRequest;
         String ladder = selectedLadder;
-        HqTiersClientState.leaderboardClient().fetchHistory(uuid.toString(), ladder)
-                .thenAccept(points -> minecraft.execute(() -> {
+        historyFailed = false;
+        HqTiersClientState.leaderboardClient().history().load(uuid, ladder, historyRange)
+                .whenComplete((points, error) -> minecraft.execute(() -> {
                     if (request != historyRequest || !ladder.equals(selectedLadder)) return;
-                    fullHistory = points;
-                    applyHistoryRange();
                     historyLoading = false;
+                    historyFailed = error != null;
+                    historyPoints = historyFailed ? List.of() : points;
+                    if (historyFailed) init();
                 }));
     }
 
@@ -184,16 +198,12 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                     : left + available * (i + 1) / (ranges.length + 1);
             Button button = Button.builder(Component.literal(range.label), b -> {
                 historyRange = range;
-                applyHistoryRange();
+                loadHistory();
                 init();
             }).bounds(x, height - FOOTER_HEIGHT + 4, right - x - 1, 18).build();
             button.active = range != historyRange;
             addRenderableWidget(button);
         }
-    }
-
-    private void applyHistoryRange() {
-        historyPoints = historyRange.filter(fullHistory, System.currentTimeMillis());
     }
 
     private void addLadderButtons(HqTiersStats stats) {
@@ -227,8 +237,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     private void openLadder(String id) {
-        historyRange = HistoryRange.ALL_TIME;
-        fullHistory = List.of();
+        historyRange = HistoryRange.MONTH;
+        historyFailed = false;
         selectedLadder = id.toLowerCase(java.util.Locale.ROOT);
         historyRequest++;
         historyRequested = false;
@@ -327,7 +337,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         ctx.drawString(font, "LADDER", pl + col(pw, 0, compact), hy + 4, TEXT_HEADER);
         ctx.drawString(font, "TIER", pl + col(pw, 1, compact), hy + 4, TEXT_HEADER);
-        ctx.drawString(font, "TR", pl + col(pw, 2, compact), hy + 4, TEXT_HEADER);
+        ctx.drawString(font, "TR / %", pl + col(pw, 2, compact), hy + 4, TEXT_HEADER);
         ctx.drawString(font, "RANK", pl + col(pw, 3, compact), hy + 4, TEXT_HEADER);
         if (!compact) {
             ctx.drawString(font, "W / L", pl + col(pw, 4, false), hy + 4, TEXT_HEADER);
@@ -373,7 +383,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                 ctx.fill(tierX - 2, textY - 1, right, textY + font.lineHeight, 0xFF57421C);
             }
             ctx.drawString(font, tier, tierX, textY, isBest ? TEXT_TITLE : color);
-            String rating = unranked ? "—" : l.tr() + (compact ? "" : " TR");
+            String rating = unranked ? "—" : l.progressText(!compact);
             ctx.drawString(font, rating, trX, textY, color);
 
             String rankStr = l.hasPosition() ? "#" + l.position() : "—";
@@ -430,7 +440,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             int tierCol = unranked ? TEXT_DIM : (0xFF000000 | ladder.tierColorInt());
 
             String summary = tierText
-                    + "   " + (unranked ? "—" : ladder.tr() + " TR")
+                    + "   " + (unranked ? "—" : ladder.progressText(true))
                     + "   " + ladder.wins() + "W / " + ladder.losses() + "L";
             ctx.drawCenteredString(font, summary, width / 2, tt + 17, tierCol);
         }
@@ -451,14 +461,20 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             return;
         }
         if (historyPoints == null || historyPoints.isEmpty()) {
-            ctx.drawCenteredString(font, historyRange == HistoryRange.ALL_TIME ? "No history data." : "No matches in this period.", width / 2, gt + gh / 2 - 4, TEXT_DIM);
+            ctx.drawCenteredString(font, historyFailed ? "Could not load history." : historyRange == HistoryRange.ALL_TIME ? "No history data." : "No matches in this period.", width / 2, gt + gh / 2 - 4, TEXT_DIM);
             return;
         }
 
-        int n = historyPoints.size();
-
-        int minElo = historyPoints.stream().mapToInt(HqTiersLeaderboardClient.HistoryPoint::elo).min().orElse(0);
-        int maxElo = historyPoints.stream().mapToInt(HqTiersLeaderboardClient.HistoryPoint::elo).max().orElse(1);
+        if (plottedSource != historyPoints || plotWidth != gw) {
+            plotWidth = gw;
+            plottedSource = historyPoints;
+            plotted = RatingHistoryClient.plotPoints(historyPoints, Math.max(1, gw));
+            minRating = plotted.stream().mapToInt(RatingHistoryClient.Point::elo).min().orElse(0);
+            maxRating = plotted.stream().mapToInt(RatingHistoryClient.Point::elo).max().orElse(1);
+        }
+        int n = plotted.size();
+        int minElo = minRating;
+        int maxElo = maxRating;
         int pad = Math.max(15, (maxElo - minElo) / 8);
         minElo -= pad;
         maxElo += pad;
@@ -479,9 +495,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             graphXPositions = new int[n];
             graphYPositions = new int[n];
         }
+        long start = plotted.getFirst().timestamp();
+        long span = plotted.getLast().timestamp() - start;
         for (int i = 0; i < n; i++) {
-            graphXPositions[i] = gl + (n == 1 ? gw / 2 : i * gw / (n - 1));
-            graphYPositions[i] = gbt - (historyPoints.get(i).elo() - minElo) * gh / eloRange;
+            graphXPositions[i] = gl + (span <= 0 ? gw / 2 : (int) ((plotted.get(i).timestamp() - start) * (double) gw / span));
+            graphYPositions[i] = gbt - (plotted.get(i).elo() - minElo) * gh / eloRange;
         }
 
         int tierRaw = ladder != null ? ladder.tierColorInt() : 0x3B82F6;
@@ -496,21 +514,19 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         for (int i = 1; i < n; i++) {
             int x1 = graphXPositions[i - 1], y1 = graphYPositions[i - 1];
             int x2 = graphXPositions[i], y2 = graphYPositions[i];
-            boolean up = historyPoints.get(i).elo() >= historyPoints.get(i - 1).elo();
-            drawThickLine(ctx, x1, y1, x2, y2, up ? 0xCC4ADE80 : 0xCCF87171);
+            drawThickLine(ctx, x1, y1, x2, y2, 0xFF000000 | plotted.get(i).color());
         }
 
         for (int i = 0; i < n; i++) {
             int x = graphXPositions[i], y = graphYPositions[i];
-            boolean up = i == 0 || historyPoints.get(i).elo() >= historyPoints.get(i - 1).elo();
-            int dotCol = up ? 0xFF4ADE80 : 0xFFF87171;
+            int dotCol = 0xFF000000 | plotted.get(i).color();
             ctx.fill(x - 2, y - 2, x + 3, y + 3, 0xFF000000);
             ctx.fill(x - 1, y - 1, x + 2, y + 2, dotCol);
         }
 
-        ctx.drawString(font, dateLabel(historyPoints.getFirst().timestamp()),
+        ctx.drawString(font, dateLabel(plotted.getFirst().timestamp()),
                 gl, gbt + 4, TEXT_DIM);
-        String lastDate = dateLabel(historyPoints.get(n - 1).timestamp());
+        String lastDate = dateLabel(plotted.get(n - 1).timestamp());
         ctx.drawString(font, lastDate,
                 gr - font.width(lastDate), gbt + 4, TEXT_DIM);
 
@@ -523,24 +539,21 @@ public final class HqTiersPlayerStatsScreen extends Screen {
                     closest = i;
                 }
             }
-            if (closest >= 0) renderTooltip(ctx, closest, gl, gr, gt, gbt, tierRaw);
+            if (closest >= 0) renderTooltip(ctx, closest, gl, gr, gt, gbt);
         }
     }
 
-    private void renderTooltip(GuiGraphics ctx, int idx, int gl, int gr, int gt, int gbt, int tierColorRaw) {
-        int elo = historyPoints.get(idx).elo();
-        int prev = idx > 0 ? historyPoints.get(idx - 1).elo() : elo;
-        int delta = elo - prev;
-        String deltaStr = idx == 0 ? "start" : (delta >= 0 ? "+" + delta : Integer.toString(delta));
-        String date = dateLabel(historyPoints.get(idx).timestamp());
-        int deltaColor = idx == 0 ? TEXT_DIM : (delta >= 0 ? 0xFF4ADE80 : 0xFFF87171);
-        int eloTextColor = 0xFF000000 | (tierColorRaw & 0xFFFFFF);
-
-        ctx.fill(graphXPositions[idx], gt, graphXPositions[idx] + 1, gbt, 0x553B82F6);
-
-        int lines = date.isEmpty() ? 2 : 3;
-        int tw = Math.max(68, font.width(date) + 12);
-        int th = 8 + lines * 10;
+    private void renderTooltip(GuiGraphics ctx, int idx, int gl, int gr, int gt, int gbt) {
+        var point = plotted.get(idx);
+        String date = HOVER_DATE.format(Instant.ofEpochMilli(HistoryRange.epochMillis(point.timestamp())).atZone(ZoneId.systemDefault()));
+        String rating = "Rating " + point.elo();
+        if (point.delta() != null) rating += " (" + signed(point.delta()) + ")";
+        String tier = point.tier() == null ? "" : point.tier() + "  " + point.progressText();
+        if (point.trDelta() != null && !tier.isEmpty()) tier += " (" + signed(point.trDelta()) + ")";
+        int lines = tier.isEmpty() ? 2 : 3;
+        int tw = Math.max(font.width(date), Math.max(font.width(rating), font.width(tier))) + 10;
+        int th = 6 + lines * 10;
+        ctx.fill(graphXPositions[idx], gt, graphXPositions[idx] + 1, gbt, ACCENT_DIM);
         int tx = Math.min(graphXPositions[idx] + 6, gr - tw - 2);
         tx = Math.max(gl + 2, tx);
         int ty = Math.max(gt + 2, graphYPositions[idx] - th - 6);
@@ -549,15 +562,18 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(tx - 2, ty - 2, tx + tw + 2, ty - 1, ACCENT_GOLD);
         ctx.fill(tx - 2, ty - 2, tx - 1, ty + th + 2, ACCENT_DIM);
 
-        ctx.drawString(font, elo + " rating", tx + 2, ty + 2, eloTextColor);
-        ctx.drawString(font, deltaStr, tx + 2, ty + 12, deltaColor);
-        if (!date.isEmpty())
-            ctx.drawString(font, date, tx + 2, ty + 22, TEXT_HEADER);
+        ctx.drawString(font, date, tx + 2, ty + 2, TEXT_HEADER);
+        ctx.drawString(font, rating, tx + 2, ty + 12, TEXT_WHITE);
+        if (!tier.isEmpty()) ctx.drawString(font, tier, tx + 2, ty + 22, 0xFF000000 | point.color());
 
         ctx.fill(graphXPositions[idx] - 3, graphYPositions[idx] - 3,
                 graphXPositions[idx] + 4, graphYPositions[idx] + 4, 0xFFFFFFFF);
         ctx.fill(graphXPositions[idx] - 2, graphYPositions[idx] - 2,
                 graphXPositions[idx] + 3, graphYPositions[idx] + 3, ACCENT_GOLD);
+    }
+
+    private static String signed(int value) {
+        return value >= 0 ? "+" + value : Integer.toString(value);
     }
 
     private static void drawThickLine(GuiGraphics ctx, int x1, int y1, int x2, int y2, int color) {
@@ -590,7 +606,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         return ladders.values().stream()
                 .filter(ladder -> !ladder.ladder().equals("GLOBAL"))
-                .sorted(Comparator.comparingInt(HqTiersStats.LadderStats::totalRating).reversed())
+                .sorted(HqTiersStats.LadderStats.STANDINGS_ORDER)
                 .toList();
     }
 

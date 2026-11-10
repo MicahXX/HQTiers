@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,9 +39,18 @@ public final class HqTiersLeaderboardClient {
         return states.computeIfAbsent(ladder, ignored -> new PageState());
     }
 
+    UUID knownUuid(String name) {
+        for (PageState state : states.values()) {
+            for (Entry entry : state.entries()) {
+                if (entry.name().equalsIgnoreCase(name)) return UUID.fromString(entry.uuid());
+            }
+        }
+        return null;
+    }
+
     public void load(String ladder) {
         PageState state = state(ladder);
-        if (!state.entries().isEmpty() || state.loading()) {
+        if (System.currentTimeMillis() < state.nextRefresh || state.loading()) {
             return;
         }
 
@@ -54,7 +63,7 @@ public final class HqTiersLeaderboardClient {
 
     public void loadMore(String ladder) {
         PageState state = state(ladder);
-        if (state.loading() || !state.hasMore()) {
+        if (state.loading() || state.entries().isEmpty() || !state.hasMore()) {
             return;
         }
 
@@ -68,6 +77,7 @@ public final class HqTiersLeaderboardClient {
     private void loadPage(String ladder, int page, boolean replace) {
         PageState state = state(ladder);
         state.loading = true;
+        if (replace) state.nextRefresh = System.currentTimeMillis() + 60_000;
         state.error = null;
         CompletableFuture.supplyAsync(() -> fetchPage(ladder, page)).whenComplete((result, throwable) -> Minecraft.getInstance().execute(() -> {
             state.loading = false;
@@ -96,7 +106,7 @@ public final class HqTiersLeaderboardClient {
             default -> ladder.toLowerCase(Locale.ROOT);
         };
         try {
-            URI uri = BASE_URI.resolve("v1/leaderboard/ranked/" + gametype + "?page=" + page + "&size=50");
+            URI uri = BASE_URI.resolve("v1/leaderboard/ranked/" + gametype + "?page=" + page + "&size=25");
             HttpRequest request = HttpRequest.newBuilder(uri).timeout(TIMEOUT)
                     .header("Accept", "application/json").header("User-Agent", Hqtiers.USER_AGENT).GET().build();
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -128,7 +138,8 @@ public final class HqTiersLeaderboardClient {
             String uuid = string(object, "uuid", "");
             if (uuid.isBlank()) continue;
             entries.add(new Entry(intValue(object, "rank", 0), uuid, string(object, "name", "Unknown"),
-                    intValue(object, "tr", 0), string(object, "tier", null), string(object, "tierColor", null),
+                    HqTiersRankSystem.progressText(intValue(object, "tr", 0),
+                            "percent".equals(string(object, "trUnit", "")), false), string(object, "tier", null), string(object, "tierColor", null),
                     intValue(object, "points", 0), tiers.size()));
         }
         JsonObject page = root.getAsJsonObject("page");
@@ -149,7 +160,7 @@ public final class HqTiersLeaderboardClient {
         return value == null || value.isJsonNull() ? fallback : value.getAsInt();
     }
 
-    public record Entry(int position, String uuid, String name, int elo, String tierName, String tierColorHex, int points, int gamemodes) {
+    public record Entry(int position, String uuid, String name, String progressText, String tierName, String tierColorHex, int points, int gamemodes) {
         public String tierLabel() {
             if (tierName != null && !tierName.isBlank() && !tierName.equalsIgnoreCase("Unranked")) {
                 return tierName;
@@ -158,15 +169,13 @@ public final class HqTiersLeaderboardClient {
         }
 
         public int tierColorInt() {
-            if (tierColorHex != null && !tierColorHex.isBlank()) {
-                return HqTiersRankSystem.hexToColor(tierColorHex);
-            }
-            return HqTiersRankSystem.tierColor(HqTiersRankSystem.normalizeRank(tierName));
+            return HqTiersRankSystem.displayColor(HqTiersRankSystem.normalizeRank(tierName), tierColorHex);
         }
     }
 
     public static final class PageState {
         private final List<Entry> entries = new ArrayList<>();
+        private long nextRefresh;
         private int page;
         private boolean loading;
         private boolean hasMore = true;
@@ -198,74 +207,9 @@ public final class HqTiersLeaderboardClient {
         }
     }
 
-    public record HistoryPoint(int elo, long timestamp) {
-    }
+    private final RatingHistoryClient history = new RatingHistoryClient(httpClient, BASE_URI);
 
-    public CompletableFuture<List<HistoryPoint>> fetchHistory(String playerUuid, String ladder) {
-        Optional<String> apiLadder = HqTiersClientConfig.toApiLadder(ladder);
-
-        if (apiLadder.isEmpty()) {
-            return CompletableFuture.completedFuture(List.of());
-        }
-
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                URI uri = BASE_URI.resolve(
-                        "ranked-history?playerId=" + playerUuid
-                                + "&ladder=" + apiLadder.get().toUpperCase()
-                );
-
-                HttpRequest request = HttpRequest.newBuilder(uri)
-                        .timeout(TIMEOUT)
-                        .header("Accept", "application/json")
-                        .header("User-Agent", Hqtiers.USER_AGENT)
-                        .GET()
-                        .build();
-
-                HttpResponse<String> response =
-                        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-                if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                    Hqtiers.logger.warn(
-                            "History API failed: {} {}",
-                            response.statusCode(),
-                            response.body()
-                    );
-                    return List.of();
-                }
-
-                JsonArray array = GSON.fromJson(response.body(), JsonArray.class);
-
-                List<HistoryPoint> points = new ArrayList<>();
-
-                if (array == null) {
-                    return points;
-                }
-
-                for (JsonElement el : array) {
-                    if (!el.isJsonObject())
-                        continue;
-
-                    JsonObject obj = el.getAsJsonObject();
-
-                    points.add(new HistoryPoint(
-                            obj.get("rating").getAsInt(),
-                            obj.get("playedAt").getAsLong()
-                    ));
-                }
-
-                return points;
-
-            } catch (Exception e) {
-                Hqtiers.logger.warn(
-                        "Failed fetching rating history for {} {}",
-                        playerUuid,
-                        ladder,
-                        e
-                );
-
-                return List.of();
-            }
-        });
+    RatingHistoryClient history() {
+        return history;
     }
 }

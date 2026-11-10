@@ -85,7 +85,7 @@ public final class HqTiersCommands {
 
     private static int showUuid(FabricClientCommandSource source, HqTiersCache cache, UUID uuid) {
         source.sendFeedback(Component.literal("Fetching HQPvP stats...").withStyle(ChatFormatting.GRAY));
-        cache.fetch(uuid).thenAccept(stats -> Minecraft.getInstance().execute(() -> {
+        cache.fetchVisible(uuid).thenAccept(stats -> Minecraft.getInstance().execute(() -> {
             if (stats == null) {
                 String message = cache.status(uuid) == HqTiersCache.Status.MISSING
                         ? "No HQPvP ranked stats found." : "Could not load HQPvP stats. Please try again.";

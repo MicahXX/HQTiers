@@ -19,6 +19,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import me.micahcode.hqtiers.Hqtiers;
+import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import net.fabricmc.loader.api.FabricLoader;
 
 public final class HqTiersClientConfig {
@@ -28,7 +29,9 @@ public final class HqTiersClientConfig {
 
     public static boolean nametagEnabled = true;
     public static boolean tabListEnabled = false;
+    public static boolean tabListAlwaysLeft = true;
     public static boolean chatEnabled = true;
+    public static boolean chatAlwaysLeft = true;
     public static boolean versionCheckEnabled = true;
     public static String preferredLadder = "SWORD";
     public static DisplayMode displayMode = DisplayMode.HIGHEST_TIER;
@@ -47,6 +50,8 @@ public final class HqTiersClientConfig {
     public static boolean positionEnabled = false;
     public static boolean positionLabelEnabled = false;
     public static boolean suppressRankedDuplicates = false;
+    public static boolean customTierColors;
+    public static final Map<HqTiersRanks, Integer> tierColors = new EnumMap<>(HqTiersRanks.class);
     public static boolean coloredTier = true;
     public static boolean coloredPosition = true;
     public static List<NametagComponent> nametagOrder = defaultNametagOrder();
@@ -110,7 +115,9 @@ public final class HqTiersClientConfig {
 
             nametagEnabled = data.nametagEnabled;
             tabListEnabled = data.tabListEnabled;
+            tabListAlwaysLeft = data.tabListAlwaysLeft;
             chatEnabled = data.chatEnabled;
+            chatAlwaysLeft = data.chatAlwaysLeft;
             versionCheckEnabled = data.versionCheckEnabled == null || data.versionCheckEnabled;
             preferredLadder = normalizeLadder(data.preferredLadder == null ? "SWORD" : data.preferredLadder);
             displayMode = DisplayMode.fromName(data.displayMode);
@@ -122,6 +129,12 @@ public final class HqTiersClientConfig {
                 tierEnabled = false;
             }
             showUnranked = data.showUnranked;
+            customTierColors = data.customTierColors;
+            tierColors.clear();
+            if (data.tierColors != null) data.tierColors.forEach((name, rgb) -> {
+                var tier = HqTiersRanks.fromString(name);
+                if (tier != null && rgb != null && rgb >= 0 && rgb <= 0xFFFFFF) tierColors.put(tier, rgb);
+            });
             coloredTier = data.coloredTier;
             coloredPosition = data.coloredPosition;
             shortTierNames = data.shortTierNames;
@@ -304,7 +317,9 @@ public final class HqTiersClientConfig {
     private static final class Data {
         boolean nametagEnabled = true;
         boolean tabListEnabled = false;
+        boolean tabListAlwaysLeft = true;
         boolean chatEnabled = true;
+        boolean chatAlwaysLeft = true;
         Boolean versionCheckEnabled = true;
         String preferredLadder = "SWORD";
         String displayMode = DisplayMode.HIGHEST_TIER.name();
@@ -325,6 +340,8 @@ public final class HqTiersClientConfig {
         List<String> nametagOrder = null;
         List<Boolean> nametagSeparatorStates = null;
         boolean suppressRankedDuplicates = false;
+        boolean customTierColors;
+        Map<String, Integer> tierColors;
         boolean coloredTier = true;
         boolean coloredPosition = true;
         boolean showUnranked = false;
@@ -333,7 +350,9 @@ public final class HqTiersClientConfig {
             Data data = new Data();
             data.nametagEnabled = HqTiersClientConfig.nametagEnabled;
             data.tabListEnabled = HqTiersClientConfig.tabListEnabled;
+            data.tabListAlwaysLeft = HqTiersClientConfig.tabListAlwaysLeft;
             data.chatEnabled = HqTiersClientConfig.chatEnabled;
+            data.chatAlwaysLeft = HqTiersClientConfig.chatAlwaysLeft;
             data.versionCheckEnabled = HqTiersClientConfig.versionCheckEnabled;
             data.preferredLadder = HqTiersClientConfig.preferredLadder;
             data.displayMode = HqTiersClientConfig.displayMode.name();
@@ -356,6 +375,9 @@ public final class HqTiersClientConfig {
                     .map(Enum::name).collect(Collectors.toList());
             data.nametagSeparatorStates = new ArrayList<>(HqTiersClientConfig.nametagSeparatorStates);
             data.suppressRankedDuplicates = HqTiersClientConfig.suppressRankedDuplicates;
+            data.customTierColors = HqTiersClientConfig.customTierColors;
+            data.tierColors = new java.util.HashMap<>();
+            HqTiersClientConfig.tierColors.forEach((tier, color) -> data.tierColors.put(tier.name(), color));
             data.coloredTier = HqTiersClientConfig.coloredTier;
             data.coloredPosition = HqTiersClientConfig.coloredPosition;
             data.showUnranked = HqTiersClientConfig.showUnranked;
