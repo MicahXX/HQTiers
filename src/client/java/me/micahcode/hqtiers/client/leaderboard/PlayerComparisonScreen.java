@@ -12,6 +12,8 @@ import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 final class PlayerComparisonScreen extends Screen {
@@ -19,6 +21,8 @@ final class PlayerComparisonScreen extends Screen {
     private final Column first;
     private final Column second = new Column("");
     private final List<String> rows = new ArrayList<>();
+    private static final int TABLE_TOP = 96;
+    private ComparisonView view = ComparisonView.STANDINGS;
     private int scroll;
     private Button compare;
 
@@ -36,6 +40,18 @@ final class PlayerComparisonScreen extends Screen {
         int half = panelWidth() / 2;
         field(first, "First player", left, half - 2);
         field(second, "Second player", left + half + 2, half - 2);
+        int tabWidth = Math.min(78, (panelWidth() - 8) / ComparisonView.values().length);
+        for (var tab : ComparisonView.values()) {
+            var button = addRenderableWidget(Button.builder(Component.literal(tab.label), b -> {
+                view = tab;
+                scroll = 0;
+                first.update(first.stats, view);
+                second.update(second.stats, view);
+                clearWidgets();
+                init();
+            }).bounds(left + tab.ordinal() * (tabWidth + 3), 46, tabWidth, 17).build());
+            button.active = tab != view;
+        }
         compare = addRenderableWidget(Button.builder(Component.literal("Compare"), b -> {
             scroll = 0;
             lookup(first);
@@ -54,7 +70,7 @@ final class PlayerComparisonScreen extends Screen {
         input.setResponder(value -> {
             column.name = value.trim();
             column.request++;
-            column.stats = null;
+            column.update(null, view);
             column.status = "";
             updateButton();
         });
@@ -73,7 +89,7 @@ final class PlayerComparisonScreen extends Screen {
     private void lookup(Column column) {
         int request = ++column.request;
         column.status = "Loading…";
-        column.stats = null;
+        column.update(null, view);
         var known = HqTiersClientState.leaderboardClient().knownUuid(column.name);
         if (known != null) {
             loadStats(column, request, known);
@@ -90,10 +106,10 @@ final class PlayerComparisonScreen extends Screen {
     private void loadStats(Column column, int request, UUID uuid) {
         var cache = HqTiersClientState.cache();
         var future = cache.fetchVisible(uuid);
-        column.stats = cache.get(uuid).orElse(null);
+        column.update(cache.get(uuid).orElse(null), view);
         future.whenComplete((stats, error) -> minecraft.execute(() -> {
             if (column.request != request) return;
-            column.stats = stats;
+            column.update(stats, view);
             column.status = stats != null ? "" : cache.status(uuid) == HqTiersCache.Status.MISSING
                     ? "No ranked stats" : "Stats unavailable";
         }));
@@ -110,16 +126,16 @@ final class PlayerComparisonScreen extends Screen {
         super.render(ctx, mx, my, delta);
         int x1 = left + labelWidth;
         int x2 = x1 + columnWidth;
-        draw(ctx, "Ladder", left + 2, 49, 0xFFFFE7A3);
-        draw(ctx, first.name, x1, 49, 0xFFFFE7A3);
-        draw(ctx, second.name, x2, 49, 0xFFFFE7A3);
-        draw(ctx, first.status, x1, 60, 0xFFE6C888);
-        draw(ctx, second.status, x2, 60, 0xFFE6C888);
+        draw(ctx, "Ladder", left + 2, 68, 0xFFFFE7A3);
+        draw(ctx, font.plainSubstrByWidth(first.name, columnWidth - 3), x1, 68, 0xFFFFE7A3);
+        draw(ctx, font.plainSubstrByWidth(second.name, columnWidth - 3), x2, 68, 0xFFFFE7A3);
+        draw(ctx, first.status, x1, 80, 0xFFE6C888);
+        draw(ctx, second.status, x2, 80, 0xFFE6C888);
         if (first.stats == null && second.stats == null) return;
         scroll = Math.clamp(scroll, 0, Math.max(0, rows.size() - capacity()));
         for (int index = scroll; index < Math.min(rows.size(), scroll + capacity()); index++) {
-            int y = 74 + (index - scroll) * 15;
-            if ((index & 1) == 0) ctx.fill(left, y - 2, right, y + 12, 0x332F2611);
+            int y = TABLE_TOP + (index - scroll) * view.rowHeight;
+            if ((index & 1) == 0) ctx.fill(left, y - 2, right, y + view.rowHeight - 3, 0x332F2611);
             String ladder = rows.get(index);
             draw(ctx, font.plainSubstrByWidth(HqTiersFormatter.displayName(ladder), labelWidth - 4),
                     left + 2, y, 0xFFFFF8E8);
@@ -133,20 +149,15 @@ final class PlayerComparisonScreen extends Screen {
     }
 
     private void drawStats(GuiGraphics ctx, Column column, String ladder, int x, int y, int w) {
-        var stats = column.stats == null ? null : column.stats.ladder(ladder).orElse(null);
-        String value = "—";
-        int color = 0xFF96876A;
-        if (stats != null) {
-            String rank = stats.hasPosition() ? "#" + stats.position() : "—";
-            if (ladder.equals("GLOBAL")) {
-                value = rank + "  " + stats.wins() + "W / " + stats.losses() + "L";
-                color = 0xFFFFD86B;
-            } else if (stats.tier() != null && stats.placementGames() >= stats.placementTarget()) {
-                value = stats.tierName() + "  " + stats.progressText(true) + "  " + rank;
-                color = 0xFF000000 | stats.tierColorInt();
-            }
+        var cell = column.cells.get(ladder);
+        if (cell == null) {
+            draw(ctx, "—", x, y, 0xFF96876A);
+            return;
         }
-        draw(ctx, font.plainSubstrByWidth(value, w - 3), x, y, color);
+        draw(ctx, font.plainSubstrByWidth(cell.first(), w - 3), x, y, cell.color());
+        if (!cell.second().isEmpty()) {
+            draw(ctx, font.plainSubstrByWidth(cell.second(), w - 3), x, y + 11, 0xFFDACBAE);
+        }
     }
 
     private void draw(GuiGraphics ctx, String text, int x, int y, int color) {
@@ -160,7 +171,7 @@ final class PlayerComparisonScreen extends Screen {
     }
 
     private int capacity() {
-        return Math.max(1, (height - 101) / 15);
+        return Math.max(1, (height - 26 - TABLE_TOP) / view.rowHeight);
     }
 
     private int panelWidth() {
@@ -186,6 +197,16 @@ final class PlayerComparisonScreen extends Screen {
         String status = "";
         int request;
         HqTiersStats stats;
+        final Map<String, ComparisonView.Cell> cells = new HashMap<>();
+
+        void update(HqTiersStats value, ComparisonView view) {
+            stats = value;
+            cells.clear();
+            if (value == null) return;
+            for (var ladder : value.ladders().values()) {
+                if (ladder.hasPlayedRanked()) cells.put(ladder.ladder(), view.cell(ladder));
+            }
+        }
 
         Column(String name) {
             this.name = name;
