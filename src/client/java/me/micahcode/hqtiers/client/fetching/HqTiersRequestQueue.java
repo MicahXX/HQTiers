@@ -43,6 +43,15 @@ public class HqTiersRequestQueue implements AutoCloseable {
         return result;
     }
 
+    synchronized void prioritize(CompletableFuture<?> result) {
+        for (int i = 1; i < pending.size(); i++) {
+            if (pending.get(i).result() == result) {
+                pending.addFirst(pending.remove(i));
+                break;
+            }
+        }
+    }
+
     private synchronized void scheduleDispatch() {
         if (dispatchTask != null) dispatchTask.cancel(false);
         dispatchTask = null;

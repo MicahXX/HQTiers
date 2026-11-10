@@ -19,7 +19,6 @@ import java.util.Map;
 import java.util.UUID;
 
 public class HqTiersApiClient {
-    // there is also V1 endpoints or smth, but Moose will cook me if I use that
     private static final URI BASE_URI = URI.create("https://pvphq.com/api/ranked/");
     private static final Duration TIMEOUT = Duration.ofSeconds(4);
     private static final Gson GSON = new Gson();
@@ -42,7 +41,39 @@ public class HqTiersApiClient {
     }
 
     HqTiersStats fetchRanked(UUID uuid, Duration timeout) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(baseUri.resolve(uuid.toString()))
+        String body = fetchJson(baseUri.resolve(uuid.toString()), timeout);
+        if (body == null) return null;
+        try {
+            return parseRanked(uuid, body);
+        } catch (JsonParseException | IllegalStateException exception) {
+            throw new IOException("PvPHQ API returned invalid ranked stats", exception);
+        }
+    }
+
+    HqTiersStats fetchProgress(HqTiersStats stats) throws IOException, InterruptedException {
+        String body = fetchJson(baseUri.resolve("../v1/players/" + stats.uuid()), TIMEOUT);
+        if (body == null) return stats;
+        return applyProgress(stats, GSON.fromJson(body, JsonObject.class));
+    }
+
+    static HqTiersStats applyProgress(HqTiersStats stats, JsonObject profile) {
+        var ladders = new HashMap<>(stats.ladders());
+        for (JsonElement element : profile.getAsJsonArray("ranked")) {
+            JsonObject mode = element.getAsJsonObject();
+            String key = string(mode, "gametype");
+            if (key == null || !"percent".equals(string(mode, "trUnit"))
+                    || !mode.has("tierProgress") || mode.get("tierProgress").isJsonNull()) continue;
+            key = canonicalLadder(key);
+            var ladder = ladders.get(key);
+            if (ladder != null && ladder.tierName() != null && ladder.tierName().equalsIgnoreCase(string(mode, "tier"))) {
+                ladders.put(key, ladder.withTierProgress(mode.get("tierProgress").getAsInt()));
+            }
+        }
+        return new HqTiersStats(stats.uuid(), stats.name(), Map.copyOf(ladders), stats.lastUpdated());
+    }
+
+    private String fetchJson(URI uri, Duration timeout) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(uri)
                 .timeout(timeout)
                 .header("Accept", "application/json")
                 .header("User-Agent", Hqtiers.USER_AGENT)
@@ -61,11 +92,7 @@ public class HqTiersApiClient {
 
         if (response.body() == null || response.body().isBlank()) throw new IOException("PvPHQ API returned an empty response");
 
-        try {
-            return parseRanked(uuid, response.body());
-        } catch (JsonParseException | IllegalStateException exception) {
-            throw new IOException("PvPHQ API returned invalid ranked stats", exception);
-        }
+        return response.body();
     }
 
     static HqTiersStats parseRanked(UUID uuid, String json) {
@@ -128,7 +155,7 @@ public class HqTiersApiClient {
                     winRate,
                     tier,
                     string(entry, "tierColor"),
-                    0,
+                    null,
                     tier == null,
                     false,
                     placementGames,

@@ -12,20 +12,25 @@ public final class NametagComposer {
     private NametagComposer() {}
 
     public static NametagParts compose(HqTiersStats.LadderStats ladder) {
+        return compose(ladder, false);
+    }
+
+    public static NametagParts compose(HqTiersStats.LadderStats ladder, boolean alwaysLeft) {
         if (ladder.ladder().equals("GLOBAL") && (!ladder.hasPlayedRanked() || !ladder.hasPosition() || ladder.position() == 100000)) {
             return NametagParts.empty();
         }
-        return new NametagParts(side(ladder, NametagAlignment.LEFT), side(ladder, NametagAlignment.RIGHT));
+        return new NametagParts(side(ladder, NametagAlignment.LEFT, alwaysLeft),
+                alwaysLeft ? Component.empty() : side(ladder, NametagAlignment.RIGHT, false));
     }
 
-    private static Component side(HqTiersStats.LadderStats ladder, NametagAlignment side) {
+    private static Component side(HqTiersStats.LadderStats ladder, NametagAlignment side, boolean alwaysLeft) {
         MutableComponent result = Component.empty();
         NametagComponent previous = null;
         boolean pendingSeparator = false;
         int separator = -1;
         for (NametagComponent component : HqTiersClientConfig.nametagOrder) {
             if (component == NametagComponent.SEPARATOR) separator++;
-            if (HqTiersClientConfig.side(component, separator) != side) continue;
+            if (!alwaysLeft && HqTiersClientConfig.side(component, separator) != side) continue;
             if (component == NametagComponent.SEPARATOR) {
                 pendingSeparator |= previous != null && HqTiersClientConfig.isSeparatorEnabled(separator);
                 continue;
@@ -57,7 +62,7 @@ public final class NametagComposer {
                     : Component.literal(HqTiersFormatter.tierLabel(ladder))
                             .withColor(HqTiersClientConfig.coloredTier ? ladder.tierColorInt() : 0xFFFFFF);
             case ELO -> !HqTiersClientConfig.eloEnabled || global ? Component.empty()
-                    : Component.literal(ladder.tr() + (HqTiersClientConfig.eloLabelEnabled ? " TR" : ""))
+                    : Component.literal(ladder.progressText(HqTiersClientConfig.eloLabelEnabled))
                             .withColor(HqTiersClientConfig.coloredElo ? ladder.tierColorInt() : 0xFFFFFF);
             case POSITION -> !HqTiersClientConfig.positionEnabled || !ladder.hasPosition()
                     || (global && HqTiersClientConfig.tierEnabled) ? Component.empty()

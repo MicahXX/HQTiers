@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 public class Hqtiers implements ModInitializer {
     public static final String MOD_ID = "assets";
 
-    public static final String USER_AGENT = "HQTiers/4.4 (micahcode)";
+    public static final String USER_AGENT = "HQTiers/5.0 (micahcode)";
 
     public static final Logger logger = LoggerFactory.getLogger(MOD_ID);
 
