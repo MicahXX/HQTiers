@@ -129,8 +129,8 @@ public class HqTiersApiClient {
 
             int wins = intValue(entry, "wins", 0);
             int losses = intValue(entry, "losses", 0);
-            int rating = intValue(entry, "rating", 1000);
-            int tr = intValue(entry, "tr", rating);
+            int rating = intValue(entry, "rating", 0);
+            int tr = intValue(entry, "tr", intValue(entry, "rating", 1000));
             int placementGames = intValue(entry, "placementGames", 0);
             int placementTarget = intValue(entry, "placementTarget", 10);
             int leaderboardPosition = resolvePosition(intValue(entry, "leaderboardPosition", -1));
@@ -146,7 +146,7 @@ public class HqTiersApiClient {
             ladders.put(key, new HqTiersStats.LadderStats(
                     key,
                     rating,
-                    intValue(entry, "peakRating", 1000),
+                    intValue(entry, "peakRating", 0),
                     tr,
                     350,
                     wins,
