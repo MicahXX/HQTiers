@@ -67,25 +67,6 @@ final class RatingHistoryClient {
         }).exceptionallyCompose(error -> fetch(archive, false)).thenApply(points -> range.filter(points, now));
     }
 
-    static List<Point> plotPoints(List<Point> points, int columns) {
-        if (points.size() <= columns * 2) return points;
-        var result = new ArrayList<Point>(columns * 2 + 2);
-        result.add(points.getFirst());
-        for (int column = 0; column < columns; column++) {
-            int start = 1 + (int) ((long) column * (points.size() - 2) / columns);
-            int end = 1 + (int) ((long) (column + 1) * (points.size() - 2) / columns);
-            int min = start, max = start;
-            for (int i = start + 1; i < end; i++) {
-                if (points.get(i).elo() < points.get(min).elo()) min = i;
-                if (points.get(i).elo() > points.get(max).elo()) max = i;
-            }
-            result.add(points.get(Math.min(min, max)));
-            if (min != max) result.add(points.get(Math.max(min, max)));
-        }
-        result.add(points.getLast());
-        return result;
-    }
-
     private static boolean covers(List<Point> points, int limit, long cutoff) {
         return points.size() < limit || HistoryRange.epochMillis(points.getFirst().timestamp()) <= cutoff;
     }
