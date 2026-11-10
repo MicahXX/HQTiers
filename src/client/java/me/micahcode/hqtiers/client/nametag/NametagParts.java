@@ -11,6 +11,10 @@ public record NametagParts(Component left, Component right) {
         return new NametagParts(Component.empty(), Component.empty());
     }
 
+    public boolean isEmpty() {
+        return left.getString().isEmpty() && right.getString().isEmpty();
+    }
+
     public Component combined() {
         MutableComponent result = left.copy();
         if (!left.getString().isEmpty() && !right.getString().isEmpty()) result.append(" ");

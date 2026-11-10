@@ -1,5 +1,7 @@
 package me.micahcode.hqtiers.client.model;
 
+import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
+
 public final class HqTiersRankSystem {
     public static final String RATING_LABEL = "TR";
 
@@ -13,6 +15,8 @@ public final class HqTiersRankSystem {
             return null;
         }
 
+        HqTiersRanks exact = HqTiersRanks.fromString(rank);
+        if (exact != null) return exact;
         String compact = rank.trim()
                 .toUpperCase()
                 .replace('-', '_')
@@ -28,8 +32,31 @@ public final class HqTiersRankSystem {
         return HqTiersRanks.fromString(compact);
     }
 
+    public static boolean usesPercent(String tierName) {
+        HqTiersRanks rank = normalizeRank(tierName);
+        return rank != null && rank.compareTo(HqTiersRanks.LT2) >= 0;
+    }
+
+    public static String progressText(Integer value, boolean percent, boolean label) {
+        if (value == null) return "—";
+        return value + (percent ? "%" : label ? " TR" : "");
+    }
+
     public static int tierColor(HqTiersRanks tier) {
         return tier != null ? hexToColor(tier.getHexColor()) : DEFAULT_COLOR;
+    }
+
+    public static int displayColor(HqTiersRanks tier, String apiColor) {
+        int baseColor = apiColor == null || apiColor.isBlank() ? tierColor(tier) : hexToColor(apiColor);
+        return displayColor(tier, baseColor);
+    }
+
+    public static int displayColor(HqTiersRanks tier, int baseColor) {
+        if (tier != null && HqTiersClientConfig.customTierColors) {
+            Integer custom = HqTiersClientConfig.tierColors.get(tier);
+            if (custom != null) return custom;
+        }
+        return baseColor;
     }
 
     public static int hexToColor(String hex) {
