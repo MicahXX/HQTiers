@@ -34,7 +34,6 @@ public final class HqTiersClientConfig {
     public static boolean chatAlwaysLeft = true;
     public static boolean versionCheckEnabled = true;
     public static boolean leaderboardHeads = true;
-    public static boolean compactLeaderboardRows = false;
     public static String preferredLadder = "SWORD";
     public static DisplayMode displayMode = DisplayMode.HIGHEST_TIER;
     public static boolean rankSectionEnabled = true;
@@ -123,7 +122,6 @@ public final class HqTiersClientConfig {
             chatEnabled = data.chatEnabled;
             chatAlwaysLeft = data.chatAlwaysLeft;
             leaderboardHeads = data.leaderboardHeads;
-            compactLeaderboardRows = data.compactLeaderboardRows;
             versionCheckEnabled = data.versionCheckEnabled == null || data.versionCheckEnabled;
             preferredLadder = normalizeLadder(data.preferredLadder == null ? "SWORD" : data.preferredLadder);
             displayMode = DisplayMode.fromName(data.displayMode);
@@ -324,7 +322,6 @@ public final class HqTiersClientConfig {
 
     private static final class Data {
         boolean leaderboardHeads = true;
-        boolean compactLeaderboardRows = false;
         boolean nametagEnabled = true;
         boolean tabListEnabled = false;
         boolean tabListAlwaysLeft = true;
@@ -367,7 +364,6 @@ public final class HqTiersClientConfig {
             data.chatAlwaysLeft = HqTiersClientConfig.chatAlwaysLeft;
             data.versionCheckEnabled = HqTiersClientConfig.versionCheckEnabled;
             data.leaderboardHeads = HqTiersClientConfig.leaderboardHeads;
-            data.compactLeaderboardRows = HqTiersClientConfig.compactLeaderboardRows;
             data.preferredLadder = HqTiersClientConfig.preferredLadder;
             data.displayMode = HqTiersClientConfig.displayMode.name();
             data.rankSectionEnabled = HqTiersClientConfig.gamemodeIconEnabled || HqTiersClientConfig.tierEnabled;

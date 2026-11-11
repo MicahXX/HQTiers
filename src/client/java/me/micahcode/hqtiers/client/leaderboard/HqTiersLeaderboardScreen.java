@@ -29,8 +29,11 @@ public final class HqTiersLeaderboardScreen extends Screen {
     private static final int TAB_HEIGHT = 15;
     private static final int TAB_GAP = 3;
     private static final int TAB_ROW_GAP = 3;
-    private static final int MIN_TAB_WIDTH = 52;
+    private static final int MIN_TAB_WIDTH = 58;
     private static final int MAX_TAB_COLUMNS = 6;
+    private static final int MIN_PANEL_WIDTH = 320;
+    private static final int MAX_PANEL_WIDTH = 480;
+    private static final int ROW_HEIGHT = 16;
     private final List<HqTiersLeaderboardClient.Entry> compareSelection = new ArrayList<>();
     private boolean selectingPlayers;
     private static final int CLOSE_WIDTH = 54;
@@ -72,15 +75,16 @@ public final class HqTiersLeaderboardScreen extends Screen {
             int row = i / columns;
             int col = i % columns;
             int x = startX + col * (tabWidth + TAB_GAP);
-            int y = topInset() + 8 + row * (TAB_HEIGHT + TAB_ROW_GAP);
-            Button tab = LeaderboardButton.create(tabButtonLabel(tabLadder), x, y, tabWidth, TAB_HEIGHT, tabLadderName.equals(ladder), () -> {
+            int y = 20 + row * (TAB_HEIGHT + TAB_ROW_GAP);
+            String prefix = tabLadderName.equals(ladder) ? "> " : "";
+            Button tab = Button.builder(Component.literal(prefix + tabButtonLabel(tabLadder)), button -> {
                 ladder = tabLadderName;
                 scrollOffset = 0;
                 resolvedSearchEntry = null;
                 pendingResolveName = "";
                 init();
                 resolveSearchIfNeeded(searchQuery);
-            });
+            }).bounds(x, y, tabWidth, TAB_HEIGHT).build();
             tab.active = !tabLadderName.equals(ladder);
             addRenderableWidget(tab);
         }
@@ -104,16 +108,17 @@ public final class HqTiersLeaderboardScreen extends Screen {
             searchDue = System.nanoTime() + 250_000_000L;
         });
         addRenderableWidget(searchField);
-        addRenderableWidget(LeaderboardButton.create("Search", panelLeft + 8 + searchWidth + gap,
-                searchY, buttonWidth, 18, false, this::searchPlayer));
+        addRenderableWidget(Button.builder(Component.literal("Search"), button -> searchPlayer())
+                .bounds(panelLeft + 8 + searchWidth + gap, searchY, buttonWidth, 18)
+                .build());
 
-        addRenderableWidget(LeaderboardButton.create("Refresh", panelLeft + 8 + searchWidth + 2 * gap + buttonWidth, searchY, buttonWidth, 18, false, () -> {
+        addRenderableWidget(Button.builder(Component.literal("Refresh"), button -> {
             scrollOffset = 0;
             leaderboardClient.refresh(ladder);
-        }));
+        }).bounds(panelRight - 8 - buttonWidth, searchY, buttonWidth, 18).build());
 
         addRenderableWidget(LeaderboardButton.create(selectingPlayers ? "Compare " + compareSelection.size() + "/2" : "Compare",
-                panelRight - CLOSE_WIDTH - 94, panelBottom() - 23, 90, 18, false, () -> {
+                panelRight - CLOSE_WIDTH - 94, height - 23, 90, 18, false, () -> {
             if (selectingPlayers) openComparison();
             else {
                 selectingPlayers = true;
@@ -122,7 +127,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
             }
         })).setTooltip(Tooltip.create(Component.literal("Select two rows to compare. Click again to enter names manually. Escape cancels selection.")));
         addRenderableWidget(LeaderboardButton.create(selectingPlayers ? "Cancel" : "Close", panelRight - CLOSE_WIDTH,
-                panelBottom() - 23, CLOSE_WIDTH, 18, false, this::onClose));
+                height - 23, CLOSE_WIDTH, 18, false, this::onClose));
 
         leaderboardClient.load(ladder);
     }
@@ -131,8 +136,7 @@ public final class HqTiersLeaderboardScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta) {
         if (scrollOffset == 0 && searchText().isBlank()) leaderboardClient.load(ladder);
 
-        RankedScreenStyle.frame(context, font, width, height, panelLeft(), panelRight(),
-                HqTiersFormatter.displayName(ladder) + " leaderboard");
+        context.fill(0, 0, width, height, 0xF0100C05);
         super.extractRenderState(context, mouseX, mouseY, delta);
 
         HqTiersLeaderboardClient.PageState state = leaderboardClient.state(ladder);
@@ -141,9 +145,12 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int panelLeft = panelLeft();
         int panelRight = panelRight();
         int top = tableTop();
-        int bottom = panelBottom() - 28;
-        int rowHeight = rowHeight();
+        int bottom = height - 28;
+        int rowHeight = ROW_HEIGHT;
+        int searchY = searchRowY();
+
         int tierColX = tierColX(panelLeft, panelRight);
+        int eloColX = eloColX(panelRight);
         int nameColX = panelLeft + (HqTiersClientConfig.leaderboardHeads ? 60 : 46);
         boolean global = ladder.equals("GLOBAL");
 
@@ -152,11 +159,18 @@ public final class HqTiersLeaderboardScreen extends Screen {
         context.fill(panelLeft, top - 18, panelRight, top - 2, 0xEE33260F);
         context.fill(panelLeft, top - 3, panelRight, top - 2, 0xFFD4AF37);
 
-        context.text(font, "Rank", panelLeft + 8, top - 14, 0xFFCABD9F, true);
+        context.text(font, "#", panelLeft + 10, top - 14, 0xFFFFE7A3, true);
         context.text(font, "Player", nameColX, top - 14, 0xFFFFE7A3, true);
         context.text(font, global ? "Modes" : "Tier", tierColX, top - 14, 0xFFFFE7A3, true);
-        String scoreHeader = global ? "Points" : "Progress";
-        context.text(font, scoreHeader, panelRight - 12 - font.width(scoreHeader), top - 14, 0xFFFFE7A3, true);
+        context.text(font, global ? "Points" : "Progress", eloColX, top - 14, 0xFFFFE7A3, true);
+
+        context.text(font, "Click a player to view full stats", panelLeft + 8, legendY() + 1, 0xFF6B5D3A, true);
+
+        if (resolvedSearchEntry != null) {
+            context.text(font, "Found: " + resolvedSearchEntry.name(), panelLeft + 8, searchY + 23, 0xFF55FF55, true);
+        } else if (searchStatus != null && !searchStatus.isBlank()) {
+            context.text(font, searchStatus, panelLeft + 8, searchY + 23, 0xFF7C8BA1, true);
+        }
 
         if (visibleEntries.isEmpty()) {
             String message;
@@ -177,16 +191,14 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 color = 0xFFAAAAAA;
             }
 
-            if (!searchStatus.isBlank()) message = searchStatus;
-
-            context.centeredText(font, Component.literal(font.plainSubstrByWidth(message, panelRight - panelLeft - 16)), width / 2, top + 28, color);
+            context.centeredText(font, Component.literal(message), width / 2, top + 28, color);
             return;
         }
 
         int maxScroll = Math.max(0, visibleEntries.size() * rowHeight - (bottom - top));
         scrollOffset = Math.min(scrollOffset, maxScroll);
 
-        int nameMaxWidth = tierColX - nameColX - 12;
+        int nameMaxChars = Math.max(6, (tierColX - nameColX - 6) / 6);
 
         context.enableScissor(panelLeft, top, panelRight, bottom);
         int firstRow = scrollOffset / rowHeight;
@@ -196,24 +208,25 @@ public final class HqTiersLeaderboardScreen extends Screen {
             HqTiersLeaderboardClient.Entry entry = visibleEntries.get(i);
             int y = top + i * rowHeight - scrollOffset;
 
-            boolean hovered = mouseX >= panelLeft && mouseX <= panelRight && mouseY >= Math.max(top, y) && mouseY < Math.min(bottom, y + rowHeight);
+            boolean hovered = mouseX >= panelLeft && mouseX <= panelRight && mouseY >= y && mouseY < y + rowHeight;
+            hovered = hovered && mouseY >= top && mouseY < bottom;
             if (hovered) hoveredPlayer = entry.uuid();
-            int textY = y + (rowHeight - 8) / 2;
             int rank = entry.position();
             boolean isPodium = rank >= 1 && rank <= 3;
 
             if (isPodium) {
                 int accent = podiumColor(rank);
-                context.fill(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1, withAlpha(accent, hovered ? 0x38 : 0x18));
-                context.text(font, Integer.toString(rank), panelLeft + 10, textY, accent, true);
+                context.fill(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1, withAlpha(accent, hovered ? 0x50 : 0x30));
+                context.fill(panelLeft + 2, y - 1, panelLeft + 4, y + rowHeight - 1, withAlpha(accent, 0xFF));
+                context.text(font, String.valueOf(rank), panelLeft + 10, y + 3, accent, true);
             } else if (hovered) {
                 context.fill(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1, 0x55D4AF37);
-                context.text(font, rank > 0 ? Integer.toString(rank) : "-", panelLeft + 10, textY, rankColor(rank), true);
+                context.text(font, rank > 0 ? Integer.toString(rank) : "-", panelLeft + 10, y + 3, rankColor(rank), true);
             } else {
                 if (i % 2 == 0) {
                     context.fill(panelLeft + 2, y - 1, panelRight - 2, y + rowHeight - 1, 0x22000000);
                 }
-                context.text(font, rank > 0 ? Integer.toString(rank) : "-", panelLeft + 10, textY, rankColor(rank), true);
+                context.text(font, rank > 0 ? Integer.toString(rank) : "-", panelLeft + 10, y + 3, rankColor(rank), true);
             }
 
             if (compareSelection.stream().anyMatch(selected -> selected.uuid().equals(entry.uuid()))) {
@@ -224,30 +237,21 @@ public final class HqTiersLeaderboardScreen extends Screen {
                 LeaderboardHeads.draw(context, entry.uuid(), nameColX - 14, y + (rowHeight - 10) / 2, 10);
             }
             int nameColor = isPodium ? podiumColor(rank) : nameColor(rank);
-            context.text(font, font.plainSubstrByWidth(entry.name(), nameMaxWidth), nameColX, textY, nameColor, true);
+            context.text(font, trim(entry.name(), nameMaxChars), nameColX, y + 3, nameColor, true);
 
             String rawTierLabel = entry.tierLabel();
             boolean unranked = rawTierLabel.isEmpty();
             String tierText = global ? Integer.toString(entry.gamemodes()) : trim(unranked ? "Unranked" : rawTierLabel, 12);
             int tierColor = global ? 0xFFFFD86B : unranked ? 0xFF5C5138 : (0xFF000000 | entry.tierColorInt());
-            context.text(font, tierText, tierColX, textY, tierColor, true);
+            context.text(font, tierText, tierColX, y + 3, tierColor, true);
 
             String score = global ? (entry.points() < 0 ? "—" : Integer.toString(entry.points())) : entry.progressText();
-            context.text(font, score, panelRight - 12 - font.width(score), textY, tierColor, true);
-            context.fill(panelLeft + 6, y + rowHeight - 2, panelRight - 8, y + rowHeight - 1, 0x225C503A);
+            context.text(font, score, eloColX, y + 3, tierColor, true);
         }
         context.disableScissor();
         warmHoveredPlayer(hoveredPlayer);
-        if (maxScroll > 0) {
-            int track = bottom - top;
-            int thumb = Math.max(12, track * track / (visibleEntries.size() * rowHeight));
-            int thumbY = top + scrollOffset * (track - thumb) / maxScroll;
-            context.fill(panelRight - 3, top, panelRight - 1, bottom, 0xFF30291B);
-            context.fill(panelRight - 3, thumbY, panelRight - 1, thumbY + thumb, 0xFFBDA367);
-        }
 
-        String footer = (firstRow + 1) + "–" + Math.min(visibleEntries.size(), (scrollOffset + bottom - top + rowHeight - 1) / rowHeight)
-                + " of " + state.total() + " · Scroll for more";
+        String footer = entries.size() + " / " + state.total() + " players | page " + (state.page() + 1);
         int footerColor = 0xFF7C8BA1;
         if (state.error() != null) {
             footer = state.error();
@@ -257,10 +261,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
             footerColor = 0xFFB99842;
         }
         if (selectingPlayers) footer = "Select two players · " + compareSelection.size() + "/2";
-        else if (!searchStatus.isBlank()) footer = searchStatus;
-        else if (resolvedSearchEntry != null) footer = "Found: " + resolvedSearchEntry.name();
         String status = font.plainSubstrByWidth(footer, panelRight - panelLeft - CLOSE_WIDTH - 102);
-        context.text(font, status, panelLeft, panelBottom() - 18, footerColor, true);
+        context.text(font, status, panelLeft, height - 18, footerColor, true);
     }
 
     @Override
@@ -268,8 +270,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         scrollOffset -= (int) (verticalAmount * 18);
         scrollOffset = Math.max(0, scrollOffset);
         HqTiersLeaderboardClient.PageState state = leaderboardClient.state(ladder);
-        int visibleRows = Math.max(1, (panelBottom() - tableTop() - 40) / rowHeight());
-        if (searchText().isBlank() && scrollOffset > Math.max(0, state.entries().size() - visibleRows - 4) * rowHeight()) {
+        int visibleRows = Math.max(1, (height - tableTop() - 40) / ROW_HEIGHT);
+        if (searchText().isBlank() && scrollOffset > Math.max(0, state.entries().size() - visibleRows - 4) * ROW_HEIGHT) {
             leaderboardClient.loadMore(ladder);
         }
         return true;
@@ -323,8 +325,8 @@ public final class HqTiersLeaderboardScreen extends Screen {
         int panelLeft = panelLeft();
         int panelRight = panelRight();
         int top = tableTop();
-        int bottom = panelBottom() - 28;
-        int rowHeight = rowHeight();
+        int bottom = height - 28;
+        int rowHeight = ROW_HEIGHT;
         if (mouseX < panelLeft || mouseX > panelRight || mouseY < top || mouseY > bottom) {
             return null;
         }
@@ -342,20 +344,9 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return width / 2 + panelWidth() / 2;
     }
 
-    private int rowHeight() {
-        return HqTiersClientConfig.compactLeaderboardRows ? 16 : 21;
-    }
-
-    private int topInset() {
-        return RankedScreenStyle.top(height);
-    }
-
-    private int panelBottom() {
-        return RankedScreenStyle.bottom(height);
-    }
-
     private int panelWidth() {
-        return RankedScreenStyle.panelWidth(width);
+        int target = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, (int) (width * 0.6)));
+        return Math.min(target, width - 16);
     }
 
     private int tabColumns(int availableWidth) {
@@ -369,6 +360,10 @@ public final class HqTiersLeaderboardScreen extends Screen {
         return panelRight - fromRight;
     }
 
+    private int eloColX(int panelRight) {
+        return panelRight - 54;
+    }
+
     private int tabRows() {
         int panelLeft = panelLeft();
         int panelRight = panelRight();
@@ -378,15 +373,15 @@ public final class HqTiersLeaderboardScreen extends Screen {
     }
 
     private int legendY() {
-        return topInset() + 8 + tabRows() * (TAB_HEIGHT + TAB_ROW_GAP);
+        return 20 + tabRows() * (TAB_HEIGHT + TAB_ROW_GAP);
     }
 
     private int searchRowY() {
-        return legendY() + 4;
+        return legendY() + 12;
     }
 
     private int tableTop() {
-        return searchRowY() + 40;
+        return searchRowY() + TAB_HEIGHT + 34;
     }
 
     private static int podiumColor(int rank) {
