@@ -19,6 +19,7 @@ import net.minecraft.network.chat.Component;
 public final class HqTiersPlayerStatsScreen extends Screen {
     private static final DateTimeFormatter HOVER_DATE = DateTimeFormatter.ofPattern("MMM d, yyyy HH:mm");
 
+    private static final int BG_BASE = 0xF0100C05;
     private static final int BG_PANEL = 0xCC1A1408;
     private static final int BG_HEADER = 0xDD2A1E0C;
     private static final int BG_ROW_ALT = 0x18FFF4CC;
@@ -36,11 +37,14 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private static final int TEXT_WHITE = 0xFFFFF8E8;
 
     private static final int AXIS_LINE = 0x33FFE7A3;
+    private static final int MIN_PANEL_WIDTH = 260;
+    private static final int MAX_PANEL_WIDTH = 540;
+    private static final int SIDE_MARGIN = 16;
     private static final int COMPACT_WIDTH = 360;
 
     private static final int FOOTER_HEIGHT = 26;
     private static final int COLUMN_HEADER_HEIGHT = 16;
-    private static final int MIN_ROW_HEIGHT = 16;
+    private static final int MIN_ROW_HEIGHT = 11;
 
     private final Screen parent;
     private final UUID uuid;
@@ -78,16 +82,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         this(parent, uuid, fallbackName, null);
     }
 
-    private int topInset() {
-        return RankedScreenStyle.top(height);
-    }
-
-    private int panelBottom() {
-        return RankedScreenStyle.bottom(height);
-    }
-
     private int panelWidth() {
-        return RankedScreenStyle.panelWidth(width);
+        int target = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, (int) (width * 0.72)));
+        return Math.min(target, Math.max(1, width - SIDE_MARGIN * 2));
     }
 
     private boolean compact() {
@@ -103,14 +100,14 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     private int headerTop() {
-        return topInset() + 4;
+        return 8;
     }
 
     private int headerBottom() {
         if (selectedLadder == null && displayedStats != null && displayedStats.ladders().containsKey("GLOBAL")) {
-            return headerTop() + 43;
+            return headerTop() + 60;
         }
-        return headerTop() + 18;
+        return compact() ? 46 : 56;
     }
 
     private int tableTop() {
@@ -118,7 +115,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     private int tableBottom() {
-        return panelBottom() - FOOTER_HEIGHT;
+        return height - FOOTER_HEIGHT;
     }
 
     private int rowBoundary(int index) {
@@ -131,8 +128,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         clearWidgets();
 
         int backWidth = compact() ? 56 : 78;
-        addRenderableWidget(LeaderboardButton.create("Back", panelRight() - backWidth - 4,
-                panelBottom() - FOOTER_HEIGHT + 4, backWidth, 18, false, this::onClose));
+        addRenderableWidget(Button.builder(Component.literal("Back"), btn -> onClose())
+                .bounds(panelRight() - backWidth - 4, height - FOOTER_HEIGHT + 4, backWidth, 18).build());
 
         HqTiersClientState.cache().fetchVisible(uuid);
         displayedStats = HqTiersClientState.cache().get(uuid).orElse(null);
@@ -140,10 +137,10 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
         if (selectedLadder != null) addRangeButtons(backWidth);
         if (selectedLadder != null && historyFailed) {
-            addRenderableWidget(LeaderboardButton.create("Retry history", width / 2 - 42, (tableTop() + tableBottom()) / 2 + 14, 84, 18, false, () -> {
+            addRenderableWidget(Button.builder(Component.literal("Retry history"), button -> {
                 loadHistory();
                 init();
-            }));
+            }).bounds(width / 2 - 42, (tableTop() + tableBottom()) / 2 + 14, 84, 18).build());
         }
         if (selectedLadder != null && historyPoints == null && !historyRequested) {
             loadHistory();
@@ -185,11 +182,11 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             int x = left + available * i / (ranges.length + 1);
             int right = range == HistoryRange.ALL_TIME ? left + available
                     : left + available * (i + 1) / (ranges.length + 1);
-            Button button = LeaderboardButton.create(range.label, x, panelBottom() - FOOTER_HEIGHT + 4, right - x - 2, 18, range == historyRange, () -> {
+            Button button = Button.builder(Component.literal(range.label), b -> {
                 historyRange = range;
                 loadHistory();
                 init();
-            });
+            }).bounds(x, height - FOOTER_HEIGHT + 4, right - x - 1, 18).build();
             button.active = range != historyRange;
             addRenderableWidget(button);
         }
@@ -217,10 +214,10 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     }
 
     private void addPageButton(String label, int x, int step, boolean enabled) {
-        Button button = LeaderboardButton.create(label, x, headerTop() + 1, 20, 16, false, () -> {
+        Button button = Button.builder(Component.literal(label), b -> {
             tablePage += step;
             init();
-        });
+        }).bounds(x, headerTop() + 6, 20, 16).build();
         button.active = enabled;
         addRenderableWidget(button);
     }
@@ -243,16 +240,23 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int ht = headerTop(), hb = headerBottom();
         int tt = tableTop(), tb = tableBottom();
 
-        RankedScreenStyle.frame(ctx, font, width, height, pl, pr, "");
-        ctx.fill(pl, ht, pr, hb, BG_HEADER);
-        ctx.fill(pl, ht, pr, ht + 1, ACCENT_GOLD);
-        ctx.fill(pl, hb - 1, pr, hb, ACCENT_DIM);
-        ctx.fill(pl, tt, pr, panelBottom(), BG_PANEL);
+        ctx.fill(0, 0, width, height, BG_BASE);
+        ctx.fill(0, 0, width / 4, height, 0x08FFFFFF);
+
+        ctx.fill(pl - 3, ht - 2, pr + 3, tb + 3, 0x552A1E0C);
+
+        ctx.fill(pl, tt, pr, height, BG_PANEL);
         ctx.fill(pl, tt, pr, tt + 1, BORDER);
         ctx.fill(pl, tb - 1, pr, tb, BORDER);
-        ctx.fill(pl, tt, pl + 1, panelBottom(), BORDER);
-        ctx.fill(pr - 1, tt, pr, panelBottom(), BORDER);
-        ctx.centeredText(font, Component.literal(fallbackName), width / 2, ht + 3, TEXT_WHITE);
+        ctx.fill(pl, tt, pl + 1, height, BORDER);
+        ctx.fill(pr - 1, tt, pr, height, BORDER);
+
+        ctx.fill(pl, ht, pr, hb, 0xEE33260F);
+        ctx.fill(pl, hb - 1, pr, hb, ACCENT_DIM);
+        ctx.fill(pl, ht, pr, ht + 1, ACCENT_GOLD);
+
+        ctx.centeredText(font, Component.literal("HQTIERS  STATS"), width / 2, ht + 6, TEXT_TITLE);
+        ctx.centeredText(font, Component.literal(trim(fallbackName, compact() ? 20 : 40)), width / 2, ht + (compact() ? 17 : 20), TEXT_WHITE);
 
         super.extractRenderState(ctx, mx, my, delta);
 
@@ -290,6 +294,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         int recordX = left + width * 43 / 100;
         int rateX = left + width * 76 / 100;
         ctx.fill(left, top, right, bottom - 1, BG_PANEL);
+        ctx.fill(left, top, left + 2, bottom - 1, ACCENT_GOLD);
         ctx.fill(recordX - 6, top + 4, recordX - 5, bottom - 5, BORDER);
         ctx.fill(rateX - 6, top + 4, rateX - 5, bottom - 5, BORDER);
 
@@ -316,13 +321,13 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         ctx.fill(pl + 2, hy, pr - 2, hy + COLUMN_HEADER_HEIGHT - 2, BG_HEADER);
         ctx.fill(pl + 2, hy + COLUMN_HEADER_HEIGHT - 2, pr - 2, hy + COLUMN_HEADER_HEIGHT - 1, ACCENT_DIM);
 
-        ctx.text(font, "Ladder", pl + col(pw, 0, compact), hy + 4, TEXT_HEADER, true);
-        ctx.text(font, "Tier", pl + col(pw, 1, compact), hy + 4, TEXT_HEADER, true);
-        ctx.text(font, compact ? "TR / %" : "Progress", pl + col(pw, 2, compact), hy + 4, TEXT_HEADER, true);
-        ctx.text(font, "Rank", pl + col(pw, 3, compact), hy + 4, TEXT_HEADER, true);
+        ctx.text(font, "LADDER", pl + col(pw, 0, compact), hy + 4, TEXT_HEADER, true);
+        ctx.text(font, "TIER", pl + col(pw, 1, compact), hy + 4, TEXT_HEADER, true);
+        ctx.text(font, "TR / %", pl + col(pw, 2, compact), hy + 4, TEXT_HEADER, true);
+        ctx.text(font, "RANK", pl + col(pw, 3, compact), hy + 4, TEXT_HEADER, true);
         if (!compact) {
             ctx.text(font, "W / L", pl + col(pw, 4, false), hy + 4, TEXT_HEADER, true);
-            ctx.text(font, "Win %", pl + col(pw, 5, false), hy + 4, TEXT_HEADER, true);
+            ctx.text(font, "WIN %", pl + col(pw, 5, false), hy + 4, TEXT_HEADER, true);
         }
 
         if (ladders.isEmpty()) {
@@ -357,7 +362,7 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             ctx.text(font, HqTiersFormatter.icon(l.ladder()), nameX, textY, TEXT_WHITE, true);
             ctx.text(font, font.plainSubstrByWidth(name, tierX - nameX - 15), nameX + 12, textY, TEXT_WHITE, true);
             int color = unranked ? TEXT_DIM : 0xFF000000 | l.tierColorInt();
-            String tier = font.plainSubstrByWidth(unranked ? "—" : rawTierLabel, trX - tierX - 6);
+            String tier = font.plainSubstrByWidth(unranked ? "Unranked" : rawTierLabel, trX - tierX - 6);
             if (isBest) {
                 int right = tierX + font.width(tier) + 2;
                 ctx.fill(tierX - 3, textY - 2, right + 1, textY + font.lineHeight + 1, 0x44FFD86B);
@@ -394,9 +399,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         return switch (col) {
             case 1 -> pw * 26 / 100;
             case 2 -> pw * 40 / 100;
-            case 3 -> pw * 56 / 100;
-            case 4 -> pw * 70 / 100;
-            case 5 -> pw * 86 / 100;
+            case 3 -> pw * 52 / 100;
+            case 4 -> pw * 66 / 100;
+            case 5 -> pw * 84 / 100;
             default -> 10;
         };
     }
@@ -537,8 +542,8 @@ public final class HqTiersPlayerStatsScreen extends Screen {
         if (tx + tw > width - 6) tx = graphXPositions[idx] - tw - 10;
         tx = Math.clamp(tx, 6, Math.max(6, width - tw - 6));
         boolean fitsGraph = gbt - gt >= th + 4;
-        int minY = fitsGraph ? gt + 2 : topInset() + 2;
-        int maxY = fitsGraph ? gbt - th - 2 : Math.max(minY, panelBottom() - th - 6);
+        int minY = fitsGraph ? gt + 2 : headerTop() + 2;
+        int maxY = fitsGraph ? gbt - th - 2 : Math.max(minY, height - th - 6);
         int ty = Math.clamp(graphYPositions[idx] - th - 8, minY, maxY);
         ctx.fill(graphXPositions[idx], gt, graphXPositions[idx] + 1, gbt, ACCENT_DIM);
         ctx.fill(tx - 1, ty - 1, tx + tw + 1, ty + th + 1, 0xFF6B5520);
