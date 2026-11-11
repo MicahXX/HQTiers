@@ -45,8 +45,7 @@ final class PlayerComparisonScreen extends Screen {
             var button = addRenderableWidget(Button.builder(Component.literal(tab.label), b -> {
                 view = tab;
                 scroll = 0;
-                first.update(first.stats, view);
-                second.update(second.stats, view);
+                refreshCells();
                 clearWidgets();
                 init();
             }).bounds(left + tab.ordinal() * (tabWidth + 3), 46, tabWidth, 17).build());
@@ -70,11 +69,21 @@ final class PlayerComparisonScreen extends Screen {
         input.setResponder(value -> {
             column.name = value.trim();
             column.request++;
-            column.update(null, view);
+            update(column, null);
             column.status = "";
             updateButton();
         });
         addRenderableWidget(input);
+    }
+
+    private void update(Column column, HqTiersStats stats) {
+        column.stats = stats;
+        refreshCells();
+    }
+
+    private void refreshCells() {
+        first.update(first.stats, view, second.stats);
+        second.update(second.stats, view, first.stats);
     }
 
     private void updateButton() {
@@ -89,7 +98,7 @@ final class PlayerComparisonScreen extends Screen {
     private void lookup(Column column) {
         int request = ++column.request;
         column.status = "Loading…";
-        column.update(null, view);
+        update(column, null);
         var known = HqTiersClientState.leaderboardClient().knownUuid(column.name);
         if (known != null) {
             loadStats(column, request, known);
@@ -106,10 +115,10 @@ final class PlayerComparisonScreen extends Screen {
     private void loadStats(Column column, int request, UUID uuid) {
         var cache = HqTiersClientState.cache();
         var future = cache.fetchVisible(uuid);
-        column.update(cache.get(uuid).orElse(null), view);
+        update(column, cache.get(uuid).orElse(null));
         future.whenComplete((stats, error) -> minecraft.execute(() -> {
             if (column.request != request) return;
-            column.update(stats, view);
+            update(column, stats);
             column.status = stats != null ? "" : cache.status(uuid) == HqTiersCache.Status.MISSING
                     ? "No ranked stats" : "Stats unavailable";
         }));
@@ -131,6 +140,9 @@ final class PlayerComparisonScreen extends Screen {
         draw(ctx, font.plainSubstrByWidth(second.name, columnWidth - 3), x2, 68, 0xFFFFE7A3);
         draw(ctx, first.status, x1, 80, 0xFFE6C888);
         draw(ctx, second.status, x2, 80, 0xFFE6C888);
+        if (first.stats != null && second.stats != null && first.status.isEmpty() && second.status.isEmpty()) {
+            draw(ctx, "Green: ahead   Red: behind   Gray: tied / unavailable", left + 2, 80, 0xFFB9AA8B);
+        }
         if (first.stats == null && second.stats == null) return;
         scroll = Math.clamp(scroll, 0, Math.max(0, rows.size() - capacity()));
         for (int index = scroll; index < Math.min(rows.size(), scroll + capacity()); index++) {
@@ -154,10 +166,14 @@ final class PlayerComparisonScreen extends Screen {
             draw(ctx, "—", x, y, 0xFF96876A);
             return;
         }
-        draw(ctx, font.plainSubstrByWidth(cell.first(), w - 3), x, y, cell.color());
-        if (!cell.second().isEmpty()) {
-            draw(ctx, font.plainSubstrByWidth(cell.second(), w - 3), x, y + 11, 0xFFDACBAE);
-        }
+        drawCell(ctx, cell.first(), x, y, w);
+        if (!cell.second().getString().isEmpty()) drawCell(ctx, cell.second(), x, y + 11, w);
+    }
+
+    private void drawCell(GuiGraphics ctx, Component text, int x, int y, int w) {
+        ctx.enableScissor(x, y - 1, x + w - 3, y + 10);
+        ctx.drawString(font, text, x, y, 0xFFFFFFFF);
+        ctx.disableScissor();
     }
 
     private void draw(GuiGraphics ctx, String text, int x, int y, int color) {
@@ -200,11 +216,15 @@ final class PlayerComparisonScreen extends Screen {
         final Map<String, ComparisonView.Cell> cells = new HashMap<>();
 
         void update(HqTiersStats value, ComparisonView view) {
+            update(value, view, null);
+        }
+
+        void update(HqTiersStats value, ComparisonView view, HqTiersStats opponent) {
             stats = value;
             cells.clear();
             if (value == null) return;
             for (var ladder : value.ladders().values()) {
-                if (ladder.hasPlayedRanked()) cells.put(ladder.ladder(), view.cell(ladder));
+                if (ladder.hasPlayedRanked()) cells.put(ladder.ladder(), view.cell(ladder, opponent == null ? null : opponent.ladder(ladder.ladder()).orElse(null)));
             }
         }
 

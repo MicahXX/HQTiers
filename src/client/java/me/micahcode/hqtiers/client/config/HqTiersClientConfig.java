@@ -49,6 +49,8 @@ public final class HqTiersClientConfig {
     public static boolean eloLabelEnabled = false;
     public static boolean positionEnabled = false;
     public static boolean positionLabelEnabled = false;
+    public static boolean globalRankEnabled = false;
+    public static boolean globalRankLabelEnabled = true;
     public static boolean suppressRankedDuplicates = false;
     public static boolean customTierColors;
     public static final Map<HqTiersRanks, Integer> tierColors = new EnumMap<>(HqTiersRanks.class);
@@ -91,7 +93,7 @@ public final class HqTiersClientConfig {
     public static List<NametagComponent> defaultNametagOrder() {
         return new ArrayList<>(List.of(
                 NametagComponent.GAMEMODE_ICON, NametagComponent.TIER, NametagComponent.SEPARATOR,
-                NametagComponent.ELO, NametagComponent.SEPARATOR, NametagComponent.POSITION
+                NametagComponent.ELO, NametagComponent.SEPARATOR, NametagComponent.POSITION, NametagComponent.GLOBAL_RANK
         ));
     }
 
@@ -143,6 +145,8 @@ public final class HqTiersClientConfig {
             coloredElo = data.coloredElo;
             positionEnabled = data.positionEnabled;
             positionLabelEnabled = data.positionLabelEnabled;
+            globalRankEnabled = data.globalRankEnabled;
+            globalRankLabelEnabled = data.globalRankLabelEnabled;
             nametagAlignment = data.nametagAlignment == null ? NametagAlignment.LEFT :
                     parseSide(data.nametagAlignment);
             componentSides.clear();
@@ -215,7 +219,7 @@ public final class HqTiersClientConfig {
     }
 
     public enum NametagComponent {
-        GAMEMODE_ICON, TIER, SEPARATOR, ELO, POSITION
+        GAMEMODE_ICON, TIER, SEPARATOR, ELO, POSITION, GLOBAL_RANK
     }
 
     public static void normalizeNametagOrder() {
@@ -332,6 +336,8 @@ public final class HqTiersClientConfig {
         boolean coloredElo = true;
         boolean positionEnabled = false;
         boolean positionLabelEnabled = false;
+        boolean globalRankEnabled = false;
+        boolean globalRankLabelEnabled = true;
         String nametagAlignment = NametagAlignment.LEFT.name();
         Map<String, String> componentSides;
         List<String> separatorSides;
@@ -365,6 +371,8 @@ public final class HqTiersClientConfig {
             data.coloredElo = HqTiersClientConfig.coloredElo;
             data.positionEnabled = HqTiersClientConfig.positionEnabled;
             data.positionLabelEnabled = HqTiersClientConfig.positionLabelEnabled;
+            data.globalRankEnabled = HqTiersClientConfig.globalRankEnabled;
+            data.globalRankLabelEnabled = HqTiersClientConfig.globalRankLabelEnabled;
             data.nametagAlignment = HqTiersClientConfig.nametagAlignment.name();
             data.componentSides = new java.util.HashMap<>();
             HqTiersClientConfig.componentSides.forEach((key, value) -> data.componentSides.put(key.name(), value.name()));
