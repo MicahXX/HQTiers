@@ -21,7 +21,7 @@ final class PlayerComparisonScreen extends Screen {
     private final Column first;
     private final Column second = new Column("");
     private final List<String> rows = new ArrayList<>();
-    private int tableTop() { return topInset() + 88; }
+    private static final int TABLE_TOP = 96;
     private boolean initialLookup;
     private ComparisonView view = ComparisonView.STANDINGS;
     private int scroll;
@@ -49,21 +49,22 @@ final class PlayerComparisonScreen extends Screen {
         field(second, "Second player", left + half + 2, half - 2);
         int tabWidth = Math.min(78, (panelWidth() - 8) / ComparisonView.values().length);
         for (var tab : ComparisonView.values()) {
-            var button = addRenderableWidget(LeaderboardButton.create(tab.label, left + tab.ordinal() * (tabWidth + 3), topInset() + 30, tabWidth, 17, tab == view, () -> {
+            var button = addRenderableWidget(Button.builder(Component.literal(tab.label), b -> {
                 view = tab;
                 scroll = 0;
                 refreshCells();
                 clearWidgets();
                 init();
-            }));
+            }).bounds(left + tab.ordinal() * (tabWidth + 3), 46, tabWidth, 17).build());
             button.active = tab != view;
         }
-        compare = addRenderableWidget(LeaderboardButton.create("Compare", rightEdge() - 116, panelBottom() - 23, 58, 18, false, () -> {
+        compare = addRenderableWidget(Button.builder(Component.literal("Compare"), b -> {
             scroll = 0;
             lookup(first);
             lookup(second);
-        }));
-        addRenderableWidget(LeaderboardButton.create("Back", rightEdge() - 54, panelBottom() - 23, 54, 18, false, this::onClose));
+        }).bounds(width / 2 - 58, height - 23, 58, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Back"), b -> onClose())
+                .bounds(width / 2 + 4, height - 23, 54, 18).build());
         updateButton();
         if (initialLookup) {
             initialLookup = false;
@@ -72,12 +73,8 @@ final class PlayerComparisonScreen extends Screen {
         }
     }
 
-    private int rightEdge() {
-        return left() + panelWidth();
-    }
-
     private void field(Column column, String label, int x, int w) {
-        var input = new EditBox(font, x, topInset() + 8, w, 18, Component.literal(label));
+        var input = new EditBox(font, x, 24, w, 18, Component.literal(label));
         input.setHint(Component.literal(label));
         input.setMaxLength(16);
         input.setValue(column.name);
@@ -145,28 +142,24 @@ final class PlayerComparisonScreen extends Screen {
         int right = left + panelWidth();
         int labelWidth = Math.min(90, panelWidth() / 4);
         int columnWidth = (panelWidth() - labelWidth) / 2;
-        RankedScreenStyle.frame(ctx, font, width, height, left, right, "Compare players");
-        ctx.fill(left, topInset() + 52, right, panelBottom() - 28, 0xCC1A1408);
-        ctx.fill(left, topInset() + 52, right, topInset() + 68, 0xDD2A1E0C);
-        ctx.fill(left, topInset() + 67, right, topInset() + 68, RankedScreenStyle.GOLD);
+        ctx.fill(0, 0, width, height, 0xF0100C05);
+        draw(ctx, "Compare players", left, 9, 0xFFFFD86B);
         super.extractRenderState(ctx, mx, my, delta);
         int x1 = left + labelWidth;
         int x2 = x1 + columnWidth;
-        draw(ctx, "Ladder", left + 2, topInset() + 56, 0xFFFFE7A3);
-        draw(ctx, font.plainSubstrByWidth(first.name, columnWidth - 3), x1, topInset() + 56, 0xFFFFE7A3);
-        draw(ctx, font.plainSubstrByWidth(second.name, columnWidth - 3), x2, topInset() + 56, 0xFFFFE7A3);
-        draw(ctx, first.status, x1, topInset() + 73, 0xFFE6C888);
-        draw(ctx, second.status, x2, topInset() + 73, 0xFFE6C888);
+        draw(ctx, "Ladder", left + 2, 68, 0xFFFFE7A3);
+        draw(ctx, font.plainSubstrByWidth(first.name, columnWidth - 3), x1, 68, 0xFFFFE7A3);
+        draw(ctx, font.plainSubstrByWidth(second.name, columnWidth - 3), x2, 68, 0xFFFFE7A3);
+        draw(ctx, first.status, x1, 80, 0xFFE6C888);
+        draw(ctx, second.status, x2, 80, 0xFFE6C888);
         if (first.stats != null && second.stats != null && first.status.isEmpty() && second.status.isEmpty()) {
-            draw(ctx, "Green: ahead   Red: behind   Gray: tied / N/A", left + 2, topInset() + 73, 0xFFB9AA8B);
+            draw(ctx, "Green: ahead   Red: behind   Gray: tied / unavailable", left + 2, 80, 0xFFB9AA8B);
         }
         if (first.stats == null && second.stats == null) return;
         scroll = Math.clamp(scroll, 0, Math.max(0, rows.size() - capacity()));
         for (int index = scroll; index < Math.min(rows.size(), scroll + capacity()); index++) {
-            int y = tableTop() + (index - scroll) * view.rowHeight;
+            int y = TABLE_TOP + (index - scroll) * view.rowHeight;
             if ((index & 1) == 0) ctx.fill(left, y - 2, right, y + view.rowHeight - 3, 0x332F2611);
-            ctx.fill(left + 6, y + view.rowHeight - 3, right - 6, y + view.rowHeight - 2, 0x225C503A);
-            ctx.fill(x2 - 5, y - 2, x2 - 4, y + view.rowHeight - 3, 0x225C503A);
             String ladder = rows.get(index);
             draw(ctx, font.plainSubstrByWidth(HqTiersFormatter.displayName(ladder), labelWidth - 4),
                     left + 2, y, 0xFFFFF8E8);
@@ -175,7 +168,7 @@ final class PlayerComparisonScreen extends Screen {
         }
         if (rows.size() > capacity()) {
             draw(ctx, (scroll + 1) + "–" + Math.min(rows.size(), scroll + capacity()) + " / " + rows.size(),
-                    left, panelBottom() - 18, 0xFFAA9875);
+                    left, height - 18, 0xFFAA9875);
         }
     }
 
@@ -206,19 +199,11 @@ final class PlayerComparisonScreen extends Screen {
     }
 
     private int capacity() {
-        return Math.max(1, (panelBottom() - 26 - tableTop()) / view.rowHeight);
-    }
-
-    private int topInset() {
-        return RankedScreenStyle.top(height);
-    }
-
-    private int panelBottom() {
-        return RankedScreenStyle.bottom(height);
+        return Math.max(1, (height - 26 - TABLE_TOP) / view.rowHeight);
     }
 
     private int panelWidth() {
-        return RankedScreenStyle.panelWidth(width);
+        return Math.min(560, width - 16);
     }
 
     private int left() {

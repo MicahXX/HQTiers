@@ -46,9 +46,6 @@ public final class HqTiersConfigScreen {
         leaderboard.addEntry(entries.startBooleanToggle(Component.literal("Player heads"), HqTiersClientConfig.leaderboardHeads)
                 .setDefaultValue(true).setTooltip(Component.literal("Load visible player heads in the background."))
                 .setSaveConsumer(value -> HqTiersClientConfig.leaderboardHeads = value).build());
-        leaderboard.addEntry(entries.startBooleanToggle(Component.literal("Compact rows"), HqTiersClientConfig.compactLeaderboardRows)
-                .setDefaultValue(false).setSaveConsumer(value -> HqTiersClientConfig.compactLeaderboardRows = value).build());
-
         ConfigCategory overlay = builder.getOrCreateCategory(Component.literal("Nametag & Tab"));
         overlay.addEntry(new NametagLayoutButtonEntry(parent));
         overlay.addEntry(entries.startBooleanToggle(Component.literal("Show nametag stats"), HqTiersClientConfig.nametagEnabled)
