@@ -56,11 +56,13 @@ public class NametagLayoutScreen extends Screen {
                 HqTiersClientConfig.setSide(component, separatorOccurrence(index),
                         side == NametagAlignment.LEFT ? NametagAlignment.RIGHT : NametagAlignment.LEFT);
             }).setTooltip(Tooltip.create(Component.literal("Side of the player name")));
-            if (component == NametagComponent.ELO || component == NametagComponent.POSITION) {
+            if (component == NametagComponent.ELO || component == NametagComponent.POSITION || component == NametagComponent.GLOBAL_RANK) {
                 boolean label = component == NametagComponent.ELO
-                        ? HqTiersClientConfig.eloLabelEnabled : HqTiersClientConfig.positionLabelEnabled;
+                        ? HqTiersClientConfig.eloLabelEnabled : component == NametagComponent.GLOBAL_RANK
+                        ? HqTiersClientConfig.globalRankLabelEnabled : HqTiersClientConfig.positionLabelEnabled;
                 button("Label " + (label ? "+" : "-"), right - 58, y, 58, () -> {
                     if (component == NametagComponent.ELO) HqTiersClientConfig.eloLabelEnabled = !label;
+                    else if (component == NametagComponent.GLOBAL_RANK) HqTiersClientConfig.globalRankLabelEnabled = !label;
                     else HqTiersClientConfig.positionLabelEnabled = !label;
                 }).setTooltip(Tooltip.create(Component.literal("Show TR or # beside the value")));
             }
@@ -144,6 +146,7 @@ public class NametagLayoutScreen extends Screen {
             case SEPARATOR -> HqTiersClientConfig.isSeparatorEnabled(separatorOccurrence(index));
             case ELO -> HqTiersClientConfig.eloEnabled;
             case POSITION -> HqTiersClientConfig.positionEnabled;
+            case GLOBAL_RANK -> HqTiersClientConfig.globalRankEnabled;
         };
     }
 
@@ -154,6 +157,7 @@ public class NametagLayoutScreen extends Screen {
             case SEPARATOR -> HqTiersClientConfig.setSeparatorEnabled(separatorOccurrence(index), !isEnabled(index));
             case ELO -> HqTiersClientConfig.eloEnabled = !HqTiersClientConfig.eloEnabled;
             case POSITION -> HqTiersClientConfig.positionEnabled = !HqTiersClientConfig.positionEnabled;
+            case GLOBAL_RANK -> HqTiersClientConfig.globalRankEnabled = !HqTiersClientConfig.globalRankEnabled;
         }
     }
 
@@ -163,7 +167,8 @@ public class NametagLayoutScreen extends Screen {
             case TIER -> HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL ? "Global rank" : "Tier";
             case SEPARATOR -> "Divider " + (separatorOccurrence(index) + 1);
             case ELO -> "TR";
-            case POSITION -> "Position";
+            case POSITION -> "Mode position";
+            case GLOBAL_RANK -> "Global rank";
         };
     }
 

@@ -16,14 +16,18 @@ public final class NametagComposer {
     }
 
     public static NametagParts compose(HqTiersStats.LadderStats ladder, boolean alwaysLeft) {
-        if (ladder.ladder().equals("GLOBAL") && (!ladder.hasPlayedRanked() || !ladder.hasPosition() || ladder.position() == 100000)) {
-            return NametagParts.empty();
-        }
-        return new NametagParts(side(ladder, NametagAlignment.LEFT, alwaysLeft),
-                alwaysLeft ? Component.empty() : side(ladder, NametagAlignment.RIGHT, false));
+        return compose(ladder, null, alwaysLeft);
     }
 
-    private static Component side(HqTiersStats.LadderStats ladder, NametagAlignment side, boolean alwaysLeft) {
+    public static NametagParts compose(HqTiersStats.LadderStats ladder, HqTiersStats.LadderStats globalRank, boolean alwaysLeft) {
+        if (ladder != null && ladder.ladder().equals("GLOBAL") && (!ladder.hasPlayedRanked() || !ladder.hasPosition() || ladder.position() == 100000)) {
+            return NametagParts.empty();
+        }
+        return new NametagParts(side(ladder, globalRank, NametagAlignment.LEFT, alwaysLeft),
+                alwaysLeft ? Component.empty() : side(ladder, globalRank, NametagAlignment.RIGHT, false));
+    }
+
+    private static Component side(HqTiersStats.LadderStats ladder, HqTiersStats.LadderStats globalRank, NametagAlignment side, boolean alwaysLeft) {
         MutableComponent result = Component.empty();
         NametagComponent previous = null;
         boolean pendingSeparator = false;
@@ -35,7 +39,7 @@ public final class NametagComposer {
                 pendingSeparator |= previous != null && HqTiersClientConfig.isSeparatorEnabled(separator);
                 continue;
             }
-            Component value = element(ladder, component);
+            Component value = element(ladder, globalRank, component);
             if (value.getString().isEmpty()) continue;
             if (previous != null) {
                 if (pendingSeparator) result.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY));
@@ -51,7 +55,15 @@ public final class NametagComposer {
         return result;
     }
 
-    private static Component element(HqTiersStats.LadderStats ladder, NametagComponent component) {
+    private static Component element(HqTiersStats.LadderStats ladder, HqTiersStats.LadderStats globalRank, NametagComponent component) {
+        if (component == NametagComponent.GLOBAL_RANK) {
+            if (!HqTiersClientConfig.globalRankEnabled || globalRank == null || !globalRank.hasPosition()
+                    || globalRank.position() == 100000 || !globalRank.hasPlayedRanked() || (ladder != null && ladder.ladder().equals("GLOBAL"))) return Component.empty();
+            return HqTiersFormatter.icon("GLOBAL").copy().append(" ")
+                    .append(position(globalRank, HqTiersClientConfig.globalRankLabelEnabled));
+        }
+        if (ladder == null) return component == NametagComponent.TIER && HqTiersClientConfig.showUnranked
+                ? Component.literal("Unranked").withStyle(ChatFormatting.GRAY) : Component.empty();
         boolean global = ladder.ladder().equals("GLOBAL");
         if (!global && !HqTiersClientConfig.showUnranked && ladder.tierLabel().isEmpty()) return Component.empty();
         return switch (component) {
@@ -67,7 +79,7 @@ public final class NametagComposer {
             case POSITION -> !HqTiersClientConfig.positionEnabled || !ladder.hasPosition()
                     || (global && HqTiersClientConfig.tierEnabled) ? Component.empty()
                     : position(ladder, global || HqTiersClientConfig.positionLabelEnabled);
-            case SEPARATOR -> Component.empty();
+            case SEPARATOR, GLOBAL_RANK -> Component.empty();
         };
     }
 
