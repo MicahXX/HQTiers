@@ -33,7 +33,7 @@ public final class HqTiersClientConfig {
     public static boolean chatEnabled = true;
     public static boolean chatAlwaysLeft = true;
     public static boolean versionCheckEnabled = true;
-    public static boolean leaderboardHeads = true;
+    public static boolean leaderboardHeads = false;
     public static String preferredLadder = "SWORD";
     public static DisplayMode displayMode = DisplayMode.HIGHEST_TIER;
     public static boolean rankSectionEnabled = true;
@@ -321,7 +321,7 @@ public final class HqTiersClientConfig {
     }
 
     private static final class Data {
-        boolean leaderboardHeads = true;
+        boolean leaderboardHeads = false;
         boolean nametagEnabled = true;
         boolean tabListEnabled = false;
         boolean tabListAlwaysLeft = true;
