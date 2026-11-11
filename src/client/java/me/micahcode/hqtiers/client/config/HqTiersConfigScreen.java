@@ -13,7 +13,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 public final class HqTiersConfigScreen {
-
     // all settings besides nametaglayout that are on modmenu
     private static final String[] LADDERS = Arrays.stream(HqTiersLadder.values())
             .map(Enum::name)
@@ -42,6 +41,13 @@ public final class HqTiersConfigScreen {
                 .setNameProvider(value -> Component.literal(HqTiersFormatter.displayName(value)))
                 .setSaveConsumer(value -> HqTiersClientConfig.preferredLadder = HqTiersClientConfig.normalizeLadder(value))
                 .build());
+
+        ConfigCategory leaderboard = builder.getOrCreateCategory(Component.literal("Leaderboard"));
+        leaderboard.addEntry(entries.startBooleanToggle(Component.literal("Player heads"), HqTiersClientConfig.leaderboardHeads)
+                .setDefaultValue(true).setTooltip(Component.literal("Load visible player heads in the background."))
+                .setSaveConsumer(value -> HqTiersClientConfig.leaderboardHeads = value).build());
+        leaderboard.addEntry(entries.startBooleanToggle(Component.literal("Compact rows"), HqTiersClientConfig.compactLeaderboardRows)
+                .setDefaultValue(false).setSaveConsumer(value -> HqTiersClientConfig.compactLeaderboardRows = value).build());
 
         ConfigCategory overlay = builder.getOrCreateCategory(Component.literal("Nametag & Tab"));
         overlay.addEntry(new NametagLayoutButtonEntry(parent));

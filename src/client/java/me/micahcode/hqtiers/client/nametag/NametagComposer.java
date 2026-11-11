@@ -59,7 +59,7 @@ public final class NametagComposer {
         if (component == NametagComponent.GLOBAL_RANK) {
             if (!HqTiersClientConfig.globalRankEnabled || globalRank == null || !globalRank.hasPosition()
                     || globalRank.position() == 100000 || !globalRank.hasPlayedRanked() || (ladder != null && ladder.ladder().equals("GLOBAL"))) return Component.empty();
-            return HqTiersFormatter.icon("GLOBAL").copy().append(" ")
+            return Component.empty().append(HqTiersFormatter.icon("GLOBAL")).append(" ")
                     .append(position(globalRank, HqTiersClientConfig.globalRankLabelEnabled));
         }
         if (ladder == null) return component == NametagComponent.TIER && HqTiersClientConfig.showUnranked
