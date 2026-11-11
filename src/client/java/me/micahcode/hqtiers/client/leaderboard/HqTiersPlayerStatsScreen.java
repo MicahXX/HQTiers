@@ -127,22 +127,9 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     protected void init() {
         clearWidgets();
 
-        String backLabel = selectedLadder != null ? "Back" : "Close";
         int backWidth = compact() ? 56 : 78;
-        addRenderableWidget(Button.builder(Component.literal(backLabel), btn -> {
-            if (selectedLadder != null) {
-                selectedLadder = null;
-                historyRequest++;
-                historyRequested = false;
-                historyLoading = false;
-                historyPoints = null;
-                graphXPositions = null;
-                graphYPositions = null;
-                init();
-            } else {
-                minecraft.gui.setScreen(parent);
-            }
-        }).bounds(panelRight() - backWidth - 4, height - FOOTER_HEIGHT + 4, backWidth, 18).build());
+        addRenderableWidget(Button.builder(Component.literal("Back"), btn -> onClose())
+                .bounds(panelRight() - backWidth - 4, height - FOOTER_HEIGHT + 4, backWidth, 18).build());
 
         HqTiersClientState.cache().fetchVisible(uuid);
         displayedStats = HqTiersClientState.cache().get(uuid).orElse(null);
@@ -434,15 +421,18 @@ public final class HqTiersPlayerStatsScreen extends Screen {
             String tierText = unranked ? "Unranked" : rawTierLabel;
             int tierCol = unranked ? TEXT_DIM : (0xFF000000 | ladder.tierColorInt());
 
-            String summary = tierText
+            String summary = "Current: " + tierText
                     + "   " + (unranked ? "—" : ladder.progressText(true))
                     + "   " + ladder.wins() + "W / " + ladder.losses() + "L";
             ctx.centeredText(font, Component.literal(summary), width / 2, tt + 17, tierCol);
         }
 
+        String rank = ladder != null && ladder.hasPosition() ? "Current rank #" + ladder.position() : "Current rank unavailable";
+        ctx.centeredText(font, Component.literal(rank), width / 2, tt + 29, TEXT_HEADER);
+
         int gl = pl + (compact ? 34 : 44);
         int gr = pr - (compact ? 10 : 14);
-        int gt = tt + 32;
+        int gt = tt + 45;
         int gbt = tb - 18;
         int gw = gr - gl;
         int gh = gbt - gt;
@@ -542,31 +532,44 @@ public final class HqTiersPlayerStatsScreen extends Screen {
     private void renderTooltip(GuiGraphicsExtractor ctx, int idx, int gl, int gr, int gt, int gbt) {
         int match = plot.indices()[idx];
         var point = historyPoints.get(match);
-        String date = "#" + (match + 1) + "  " + HOVER_DATE.format(Instant.ofEpochMilli(HistoryRange.epochMillis(point.timestamp())).atZone(ZoneId.systemDefault()));
-        String rating = "Rating " + point.elo();
-        if (point.delta() != null) rating += " (" + signed(point.delta()) + ")";
-        String tier = point.tier() == null ? "" : point.tier() + "  " + point.progressText();
-        if (point.trDelta() != null && !tier.isEmpty()) tier += " (" + signed(point.trDelta()) + ")";
-        int lines = tier.isEmpty() ? 2 : 3;
-        int tw = Math.max(font.width(date), Math.max(font.width(rating), font.width(tier))) + 10;
-        int th = 6 + lines * 10;
+        String date = HOVER_DATE.format(Instant.ofEpochMilli(point.timestamp()).atZone(ZoneId.systemDefault()));
+        String ratingDelta = point.delta() == null ? "" : signed(point.delta());
+        String progressDelta = point.trDelta() == null ? "" : signed(point.trDelta())
+                + (me.micahcode.hqtiers.client.model.HqTiersRankSystem.usesPercent(point.tier()) ? " pp" : "");
+        int ratingWidth = font.width("Rating") + font.width(Integer.toString(point.elo())) + font.width(ratingDelta) + 50;
+        int progressWidth = font.width("Progress") + font.width(point.progressText()) + font.width(progressDelta) + 50;
+        int tw = Math.min(width - 12, Math.max(184, Math.max(font.width(date) + 16, Math.max(ratingWidth, progressWidth))));
+        int th = point.tier() == null ? 50 : 78;
+        int tx = graphXPositions[idx] + 10;
+        if (tx + tw > width - 6) tx = graphXPositions[idx] - tw - 10;
+        tx = Math.clamp(tx, 6, Math.max(6, width - tw - 6));
+        int ty = Math.clamp(graphYPositions[idx] - th - 8, 6, Math.max(6, height - th - 6));
         ctx.fill(graphXPositions[idx], gt, graphXPositions[idx] + 1, gbt, ACCENT_DIM);
-        int tx = Math.min(graphXPositions[idx] + 6, gr - tw - 2);
-        tx = Math.max(gl + 2, tx);
-        int ty = Math.max(gt + 2, graphYPositions[idx] - th - 6);
-
-        ctx.fill(tx - 2, ty - 2, tx + tw + 2, ty + th + 2, 0xF0050810);
-        ctx.fill(tx - 2, ty - 2, tx + tw + 2, ty - 1, ACCENT_GOLD);
-        ctx.fill(tx - 2, ty - 2, tx - 1, ty + th + 2, ACCENT_DIM);
-
-        ctx.text(font, date, tx + 2, ty + 2, TEXT_HEADER, true);
-        ctx.text(font, rating, tx + 2, ty + 12, TEXT_WHITE, true);
-        if (!tier.isEmpty()) ctx.text(font, tier, tx + 2, ty + 22, 0xFF000000 | point.color(), true);
-
+        ctx.fill(tx - 1, ty - 1, tx + tw + 1, ty + th + 1, 0xFF6B5520);
+        ctx.fill(tx, ty, tx + tw, ty + th, 0xFF15120D);
+        ctx.fill(tx, ty, tx + tw, ty + 2, ACCENT_GOLD);
+        ctx.text(font, "Match " + (match + 1), tx + 8, ty + 7, TEXT_TITLE, true);
+        ctx.text(font, date, tx + 8, ty + 20, 0xFFB9AA8B, true);
+        ctx.fill(tx + 8, ty + 32, tx + tw - 8, ty + 33, BORDER);
+        tooltipRow(ctx, tx, ty + 37, tw, "Rating", Integer.toString(point.elo()), ratingDelta, point.delta(), TEXT_WHITE);
+        if (point.tier() != null) {
+            tooltipRow(ctx, tx, ty + 50, tw, "Recorded tier", point.tier(), "", null, 0xFF000000 | point.color());
+            tooltipRow(ctx, tx, ty + 63, tw, "Progress", point.progressText(), progressDelta, point.trDelta(), TEXT_WHITE);
+        }
         ctx.fill(graphXPositions[idx] - 3, graphYPositions[idx] - 3,
                 graphXPositions[idx] + 4, graphYPositions[idx] + 4, 0xFFFFFFFF);
         ctx.fill(graphXPositions[idx] - 2, graphYPositions[idx] - 2,
                 graphXPositions[idx] + 3, graphYPositions[idx] + 3, ACCENT_GOLD);
+    }
+
+    private void tooltipRow(GuiGraphicsExtractor ctx, int x, int y, int w, String label, String value, String delta, Integer change, int color) {
+        ctx.text(font, label, x + 8, y, 0xFFB9AA8B, true);
+        int right = x + w - 8;
+        int deltaWidth = font.width(delta);
+        int valueWidth = Math.max(1, right - deltaWidth - 8 - (x + 83));
+        ctx.text(font, font.plainSubstrByWidth(value, valueWidth), x + 83, y, color, true);
+        int deltaColor = change == null || change == 0 ? TEXT_WHITE : change > 0 ? 0xFF4ADE80 : 0xFFF87171;
+        ctx.text(font, delta, right - deltaWidth, y, deltaColor, true);
     }
 
     private static String signed(int value) {
@@ -623,6 +626,22 @@ public final class HqTiersPlayerStatsScreen extends Screen {
 
     private static String trim(String value, int max) {
         return value.length() <= max ? value : value.substring(0, Math.max(1, max - 1)) + "…";
+    }
+
+    @Override
+    public void onClose() {
+        if (selectedLadder != null) {
+            selectedLadder = null;
+            historyRequest++;
+            historyRequested = false;
+            historyLoading = false;
+            historyPoints = null;
+            graphXPositions = null;
+            graphYPositions = null;
+            init();
+        } else {
+            minecraft.gui.setScreen(parent);
+        }
     }
 
     @Override
