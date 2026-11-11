@@ -45,14 +45,8 @@ public final class HqTiersFormatter {
         if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL
                 && (ladder == null || !ladder.hasPlayedRanked() || !ladder.hasPosition())) {
             parts = NametagParts.empty();
-        } else if (ladder == null) {
-            Component label = HqTiersClientConfig.showUnranked
-                    ? Component.literal("Unranked").withStyle(ChatFormatting.GRAY) : Component.empty();
-            parts = alwaysLeft || HqTiersClientConfig.side(HqTiersClientConfig.NametagComponent.TIER, -1)
-                    == HqTiersClientConfig.NametagAlignment.LEFT
-                    ? new NametagParts(label, Component.empty()) : new NametagParts(Component.empty(), label);
         } else {
-            parts = NametagComposer.compose(ladder, alwaysLeft);
+            parts = NametagComposer.compose(ladder, stats.ladder("GLOBAL").orElse(null), alwaysLeft);
         }
         cache.put(stats, new CompactCacheEntry(version, parts));
         return parts;
@@ -71,7 +65,8 @@ public final class HqTiersFormatter {
         String ladder = HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL
                 ? "GLOBAL" : HqTiersClientConfig.preferredLadder;
         String username = net.minecraft.client.Minecraft.getInstance().getUser().getName();
-        return NametagComposer.compose(HqTiersStats.LadderStats.minimal(ladder, 125, 10, 5, 10, "MT4", 123))
+        return NametagComposer.compose(HqTiersStats.LadderStats.minimal(ladder, 125, 10, 5, 10, "MT4", 123),
+                        HqTiersStats.LadderStats.minimal("GLOBAL", 0, 10, 5, 10, null, 3299), false)
                 .around(Component.literal(username).withStyle(ChatFormatting.WHITE));
     }
 
