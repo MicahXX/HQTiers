@@ -41,6 +41,7 @@ final class TierColorOptions {
             LT1, MT1, HT1, LT2, MT2, HT2, LT3, MT3, HT3, LT4, MT4, HT4, LT5, MT5, HT5);
     private final EnumMap<HqTiersRanks, Option<Color>> colors = new EnumMap<>(HqTiersRanks.class);
     private final Option<Boolean> custom;
+    private HqTiersRanks selected;
     final Option<Boolean> tier = toggle("Tier labels", "Tint the tier beside a player name.", true,
             () -> HqTiersClientConfig.coloredTier, value -> HqTiersClientConfig.coloredTier = value);
     final Option<Boolean> rating = toggle("Tier rating", "Tint rating and progress values.", true,
@@ -87,7 +88,6 @@ final class TierColorOptions {
         private final YACLScreen screen;
         private final EnumMap<HqTiersRanks, Button> buttons = new EnumMap<>(HqTiersRanks.class);
         private final Button reset;
-        private HqTiersRanks selected;
         private ColorController.ColorControllerElement editor;
         private int left, top, width, cellHeight;
 
@@ -95,10 +95,19 @@ final class TierColorOptions {
             super(screen, category, area);
             this.screen = screen;
             for (var rank : RANKS) buttons.put(rank, new Swatch(rank));
-            selected = RANKS.stream().filter(rank -> !colors.get(rank).isPendingValueDefault()).findFirst().orElse(LT1);
-            reset = Button.builder(Component.literal("Reset " + selected.name()), button -> colors.get(selected).requestSetDefault()).build();
-            reset.setTooltip(Tooltip.create(Component.literal("Restore this tiers PvPHQ color in your custom palette.")));
-            reset.active = !colors.get(selected).isPendingValueDefault();
+            reset = Button.builder(Component.literal("Reset color"), button -> resetSelected()).build();
+            reset.setTooltip(Tooltip.create(Component.literal("Restore the selected tier's PvPHQ color.")));
+            updateReset();
+        }
+
+        private void resetSelected() {
+            if (selected != null) colors.get(selected).requestSetDefault();
+            updateReset();
+        }
+
+        private void updateReset() {
+            reset.setMessage(Component.literal(selected == null ? "Reset color" : "Reset " + selected.name()));
+            reset.active = selected != null && !colors.get(selected).isPendingValueDefault();
         }
 
         @Override public void visitChildren(Consumer<AbstractWidget> visitor) {
@@ -127,7 +136,7 @@ final class TierColorOptions {
 
         private void openPicker(HqTiersRanks rank) {
             selected = rank;
-            reset.setMessage(Component.literal("Reset " + rank.name()));
+            updateReset();
             int listWidth = screen.tabArea.width() * 2 / 3;
             int fieldWidth = Math.min(172, listWidth - 20);
             var anchor = Dimension.ofInt((listWidth - fieldWidth) / 2, screen.tabArea.bottom() - 24, fieldWidth, 17);
@@ -162,16 +171,18 @@ final class TierColorOptions {
                             if (event.button() == 0) {
                                 if (reset.isMouseOver(x, y)) {
                                     if (!reset.active) return true;
-                                    Minecraft.getInstance().gui.screen().onClose();
-                                    colors.get(rank).requestSetDefault();
+                                    screen.clearPopupControllerWidget();
+                                    resetSelected();
                                     reset.playDownSound(Minecraft.getInstance().getSoundManager());
                                     return true;
                                 }
                                 for (var next : RANKS) {
                                     if (buttons.get(next).isMouseOver(x, y)) {
                                         if (next != rank) {
-                                            Minecraft.getInstance().gui.screen().onClose();
-                                            openPicker(next);
+                                            screen.clearPopupControllerWidget();
+                                            if (screen.tabManager.getCurrentTab() instanceof PaletteTab tab) {
+                                                tab.openPicker(next);
+                                            }
                                         }
                                         return true;
                                     }
@@ -199,7 +210,7 @@ final class TierColorOptions {
             super.renderBackground(graphics);
             graphics.text(Minecraft.getInstance().font, "Choose a color", left, top, 0xFFFFFFFF);
             boolean editing = editor != null && editor.colorPickerVisible();
-            reset.active = !colors.get(selected).isPendingValueDefault();
+            reset.active = selected != null && !colors.get(selected).isPendingValueDefault();
             if (editing) {
                 editor.setDimension(editor.getDimension());
                 editor.extractRenderState(graphics, -1, -1, 0);
@@ -216,7 +227,8 @@ final class TierColorOptions {
             @Override protected void extractContents(GuiGraphicsExtractor g, int mx, int my, float delta) {
                 var color = new Color(previewRgb(rank));
                 int x = getX(), y = getY(), right = x + getWidth(), bottom = y + getHeight();
-                g.fill(x, y, right, bottom, isHoveredOrFocused() || rank == selected ? 0xFFFFFFFF : 0xFF697079);
+                int border = rank == selected ? 0xFFFFFFFF : isHoveredOrFocused() ? 0xFFACB4BD : 0xFF697079;
+                g.fill(x, y, right, bottom, border);
                 g.fill(x + 1, y + 1, right - 1, bottom - 1, color.getRGB());
                 if (isHovered()) g.requestCursor(CursorTypes.POINTING_HAND);
                 var font = Minecraft.getInstance().font;
