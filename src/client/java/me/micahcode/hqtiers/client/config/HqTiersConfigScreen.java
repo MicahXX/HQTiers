@@ -56,7 +56,7 @@ public final class HqTiersConfigScreen {
     }
 
     private static ConfigCategory display(Option<DisplayMode> mode, Option<HqTiersLadder> ladder) {
-        return ConfigCategory.createBuilder().name(Component.literal("Display"))
+        var display = ConfigCategory.createBuilder().name(Component.literal("Display"))
                 .group(OptionGroup.createBuilder().name(Component.literal("Player ranking"))
                         .option(mode).option(ladder)
                         .option(toggle("Show unranked", "Show an Unranked label for players without a tier.", false,
@@ -68,7 +68,7 @@ public final class HqTiersConfigScreen {
                         .option(toggle("Skip duplicate tiers", "Hide the HQTiers stats when a nametag already contains a tier such as HT3 or LT2.", false,
                                 () -> HqTiersClientConfig.suppressRankedDuplicates, value -> HqTiersClientConfig.suppressRankedDuplicates = value))
                         .build())
-                .group(OptionGroup.createBuilder().name(Component.literal("Tab list"))
+                .group(OptionGroup.createBuilder().name(Component.literal("Tablist"))
                         .option(toggle("Show tablist stats", "Add PvPHQ stats beside names in the tablist.", false,
                                 () -> HqTiersClientConfig.tabListEnabled, value -> HqTiersClientConfig.tabListEnabled = value))
                         .option(toggle("Keep tablist stats on the left", "Place all stats before the name. Turn off to follow your nametag layout.", true,
@@ -85,6 +85,7 @@ public final class HqTiersConfigScreen {
                                 () -> HqTiersClientConfig.leaderboardHeads, value -> HqTiersClientConfig.leaderboardHeads = value))
                         .build())
                 .build();
+        return new SettingsCategory(display, (screen, area) -> new SettingsCategory.AlignedTab(screen, display, area));
     }
 
     static Option<Boolean> toggle(String name, String help, boolean defaultValue, Supplier<Boolean> getter, Consumer<Boolean> setter) {

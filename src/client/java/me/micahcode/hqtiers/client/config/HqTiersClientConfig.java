@@ -53,7 +53,7 @@ public final class HqTiersClientConfig {
     public static boolean globalRankEnabled = false;
     public static boolean globalRankLabelEnabled = true;
     public static boolean suppressRankedDuplicates = false;
-    public static boolean customTierColors;
+    public static TierPalettes palettes = TierPalettes.DEFAULTS;
     public static final Map<HqTiersRanks, Integer> tierColors = new EnumMap<>(HqTiersRanks.class);
     public static boolean coloredTier = true;
     public static boolean coloredPosition = true;
@@ -133,7 +133,8 @@ public final class HqTiersClientConfig {
                 tierEnabled = false;
             }
             showUnranked = data.showUnranked;
-            customTierColors = data.customTierColors;
+            palettes = data.palettes;
+            if (palettes == null) palettes = data.customTierColors ? TierPalettes.DEFAULTS.selectCustom() : TierPalettes.DEFAULTS;
             tierColors.clear();
             if (data.tierColors != null) data.tierColors.forEach((name, rgb) -> {
                 var tier = HqTiersRanks.fromString(name);
@@ -352,7 +353,8 @@ public final class HqTiersClientConfig {
         List<String> nametagOrder = null;
         List<Boolean> nametagSeparatorStates = null;
         boolean suppressRankedDuplicates = false;
-        boolean customTierColors;
+        boolean customTierColors; // Compatibility with existing 5.3 configurations.
+        TierPalettes palettes;
         Map<String, Integer> tierColors;
         boolean coloredTier = true;
         boolean coloredPosition = true;
@@ -391,7 +393,8 @@ public final class HqTiersClientConfig {
                     .map(Enum::name).collect(Collectors.toList());
             data.nametagSeparatorStates = new ArrayList<>(HqTiersClientConfig.nametagSeparatorStates);
             data.suppressRankedDuplicates = HqTiersClientConfig.suppressRankedDuplicates;
-            data.customTierColors = HqTiersClientConfig.customTierColors;
+            data.palettes = HqTiersClientConfig.palettes;
+            data.customTierColors = data.palettes.isCustom();
             data.tierColors = new java.util.HashMap<>();
             HqTiersClientConfig.tierColors.forEach((tier, color) -> data.tierColors.put(tier.name(), color));
             data.coloredTier = HqTiersClientConfig.coloredTier;

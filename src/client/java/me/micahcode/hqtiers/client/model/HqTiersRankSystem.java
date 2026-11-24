@@ -52,11 +52,8 @@ public final class HqTiersRankSystem {
     }
 
     public static int displayColor(HqTiersRanks tier, int baseColor) {
-        if (tier != null && HqTiersClientConfig.customTierColors) {
-            Integer custom = HqTiersClientConfig.tierColors.get(tier);
-            if (custom != null) return custom;
-        }
-        return baseColor;
+        if (tier == null) return baseColor;
+        return HqTiersClientConfig.palettes.rgb(tier, baseColor, HqTiersClientConfig.tierColors.getOrDefault(tier, baseColor));
     }
 
     public static int hexToColor(String hex) {
