@@ -1,6 +1,7 @@
 package me.micahcode.hqtiers.client.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import me.micahcode.hqtiers.client.nametag.StatPosition;
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.nametag.NametagDuplicateDetector;
@@ -23,7 +24,7 @@ public class PlayerEntityMixin {
     @ModifyReturnValue(method = "getDisplayName", at = @At("RETURN"), require = 0)
     private Component hqtiers$appendNametagStats(Component original) {
         try {
-            if (!HqTiersClientConfig.nametagEnabled) return original;
+            if (!HqTiersClientConfig.nametagEnabled || HqTiersClientConfig.statPosition != StatPosition.INLINE) return original;
 
             Player player = (Player) (Object) this;
 

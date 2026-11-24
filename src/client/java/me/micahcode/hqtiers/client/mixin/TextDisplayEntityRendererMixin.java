@@ -1,5 +1,6 @@
 package me.micahcode.hqtiers.client.mixin;
 
+import me.micahcode.hqtiers.client.nametag.StatPosition;
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.nametag.NametagDuplicateDetector;
@@ -68,16 +69,19 @@ public class TextDisplayEntityRendererMixin {
                     return;
                 }
 
-                Component tier = HqTiersFormatter.compact(statsOpt.get());
+                StatPosition position = HqTiersClientConfig.statPosition;
+                Component tier = HqTiersFormatter.parts(statsOpt.get(), position != StatPosition.INLINE).combined();
                 if (tier.getString().isEmpty()) return;
 
-                Component merged = HqTiersFormatter.decorateName(statsOpt.get(), baseStyled);
+                Component merged = position == StatPosition.INLINE ? HqTiersFormatter.decorateName(statsOpt.get(), baseStyled) : tier;
 
                 FormattedCharSequence newContents = merged.getVisualOrderText();
                 int newWidth = Minecraft.getInstance().font.width(merged);
 
                 List<Display.TextDisplay.CachedLine> newLines = new ArrayList<>(lines);
-                newLines.set(i, new Display.TextDisplay.CachedLine(newContents, newWidth));
+                var statsLine = new Display.TextDisplay.CachedLine(newContents, newWidth);
+                if (position == StatPosition.INLINE) newLines.set(i, statsLine);
+                else newLines.add(position == StatPosition.ABOVE ? i : i + 1, statsLine);
 
                 int newMaxWidth = newLines.stream()
                         .mapToInt(Display.TextDisplay.CachedLine::width)
