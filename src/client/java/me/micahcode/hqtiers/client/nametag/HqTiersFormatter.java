@@ -64,15 +64,6 @@ public final class HqTiersFormatter {
         return parts.surrounds(name) ? name : parts.around(name);
     }
 
-    public static Component previewCompact() {
-        String ladder = HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.GLOBAL
-                ? "GLOBAL" : HqTiersClientConfig.preferredLadder;
-        String username = net.minecraft.client.Minecraft.getInstance().getUser().getName();
-        return NametagComposer.compose(HqTiersStats.LadderStats.minimal(ladder, 125, 10, 5, 10, "MT4", 123),
-                        HqTiersStats.LadderStats.minimal("GLOBAL", 0, 10, 5, 10, null, 3299), false)
-                .around(Component.literal(username).withStyle(ChatFormatting.WHITE));
-    }
-
     public static Component details(HqTiersStats stats) {
         return Component.literal("PvPHQ stats for ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(stats.name()).withStyle(ChatFormatting.WHITE))

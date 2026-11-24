@@ -26,20 +26,24 @@ public record NametagParts(Component left, Component right) {
         String prefix = left.getString();
         String suffix = right.getString();
         return (!prefix.isEmpty() || !suffix.isEmpty())
-                && (prefix.isEmpty() || plain.startsWith(prefix + boundary().getString()))
-                && (suffix.isEmpty() || plain.endsWith(boundary().getString() + suffix));
+                && (prefix.isEmpty() || plain.startsWith(prefix + boundary(HqTiersClientConfig.nameSeparator).getString()))
+                && (suffix.isEmpty() || plain.endsWith(boundary(HqTiersClientConfig.nameSeparator).getString() + suffix));
     }
 
     public Component around(Component name) {
+        return around(name, HqTiersClientConfig.nameSeparator);
+    }
+
+    public Component around(Component name, boolean nameDivider) {
         MutableComponent result = Component.empty();
-        if (!left.getString().isEmpty()) result.append(left).append(boundary());
+        if (!left.getString().isEmpty()) result.append(left).append(boundary(nameDivider));
         result.append(name);
-        if (!right.getString().isEmpty()) result.append(boundary()).append(right);
+        if (!right.getString().isEmpty()) result.append(boundary(nameDivider)).append(right);
         return result;
     }
 
-    private static Component boundary() {
-        return Component.literal(HqTiersClientConfig.nameSeparator ? " | " : " ")
+    private static Component boundary(boolean nameDivider) {
+        return Component.literal(nameDivider ? " | " : " ")
                 .withStyle(ChatFormatting.GRAY);
     }
 }

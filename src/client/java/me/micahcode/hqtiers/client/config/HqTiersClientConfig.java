@@ -163,19 +163,19 @@ public final class HqTiersClientConfig {
             iconSpacing = data.iconSpacing;
             nameSeparator = data.nameSeparator;
             suppressRankedDuplicates = data.suppressRankedDuplicates;
-            if (data.nametagOrder != null && !data.nametagOrder.isEmpty()) {
+            if (data.nametagOrder != null && (data.editableLayout || !data.nametagOrder.isEmpty())) {
                 nametagOrder = new ArrayList<>();
                 for (String s : data.nametagOrder) {
                     try { nametagOrder.add(NametagComponent.valueOf(s)); } catch (Exception ignored) {}
                 }
-                if (nametagOrder.isEmpty()) nametagOrder = defaultNametagOrder();
+                if (nametagOrder.isEmpty() && !data.editableLayout) nametagOrder = defaultNametagOrder();
             } else {
                 nametagOrder = defaultNametagOrder();
             }
             nametagSeparatorStates = data.nametagSeparatorStates != null
                     ? new ArrayList<>(data.nametagSeparatorStates)
                     : new ArrayList<>();
-            normalizeNametagOrder();
+            normalizeNametagOrder(data.editableLayout);
             configVersion.incrementAndGet();
         } catch (IOException | com.google.gson.JsonParseException | IllegalArgumentException exception) {
             Hqtiers.logger.warn("Failed to load HqTiers config.", exception);
@@ -224,7 +224,7 @@ public final class HqTiersClientConfig {
         GAMEMODE_ICON, TIER, SEPARATOR, ELO, POSITION, GLOBAL_RANK
     }
 
-    public static void normalizeNametagOrder() {
+    private static void normalizeNametagOrder(boolean editableLayout) {
         List<NametagComponent> normalized = new ArrayList<>();
         Set<NametagComponent> seen = java.util.EnumSet.noneOf(NametagComponent.class);
         int separators = 0;
@@ -232,15 +232,17 @@ public final class HqTiersClientConfig {
             for (NametagComponent component : nametagOrder) {
                 if (component == null) continue;
                 if (component == NametagComponent.SEPARATOR) {
-                    if (separators++ < 2) normalized.add(component);
+                    if (editableLayout || separators++ < 2) normalized.add(component);
                 } else if (seen.add(component)) normalized.add(component);
             }
         }
-        for (NametagComponent component : NametagComponent.values()) {
-            if (component != NametagComponent.SEPARATOR && seen.add(component)) normalized.add(component);
-        }
         nametagOrder = normalized;
-        ensureSeparatorComponents();
+        if (!editableLayout) {
+            for (NametagComponent component : NametagComponent.values()) {
+                if (component != NametagComponent.SEPARATOR && seen.add(component)) normalized.add(component);
+            }
+            ensureSeparatorComponents();
+        }
         ensureSeparatorStatesSize();
     }
 
@@ -346,6 +348,7 @@ public final class HqTiersClientConfig {
         List<String> separatorSides;
         boolean iconSpacing = true;
         boolean nameSeparator = true;
+        boolean editableLayout;
         List<String> nametagOrder = null;
         List<Boolean> nametagSeparatorStates = null;
         boolean suppressRankedDuplicates = false;
@@ -383,6 +386,7 @@ public final class HqTiersClientConfig {
             data.separatorSides = HqTiersClientConfig.separatorSides.stream().map(Enum::name).toList();
             data.iconSpacing = HqTiersClientConfig.iconSpacing;
             data.nameSeparator = HqTiersClientConfig.nameSeparator;
+            data.editableLayout = true;
             data.nametagOrder = HqTiersClientConfig.nametagOrder.stream()
                     .map(Enum::name).collect(Collectors.toList());
             data.nametagSeparatorStates = new ArrayList<>(HqTiersClientConfig.nametagSeparatorStates);
