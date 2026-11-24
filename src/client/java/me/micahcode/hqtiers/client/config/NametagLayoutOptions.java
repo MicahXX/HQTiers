@@ -1,5 +1,7 @@
 package me.micahcode.hqtiers.client.config;
 
+import me.micahcode.hqtiers.client.nametag.StatPosition;
+import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import dev.isxander.yacl3.api.ConfigCategory;
 import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.OptionDescription;
@@ -8,6 +10,7 @@ import dev.isxander.yacl3.gui.OptionListWidget;
 import dev.isxander.yacl3.gui.YACLScreen;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import java.util.function.Consumer;
@@ -19,7 +22,6 @@ import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.nametag.NametagComposer;
 import me.micahcode.hqtiers.client.nametag.NametagParts;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
@@ -53,6 +55,11 @@ final class NametagLayoutOptions {
     private final Option<HqTiersLadder> ladder;
     private final TierColorOptions colors;
     private final Option<List<Row>> order;
+    private final Option<StatPosition> statPosition = Option.<StatPosition>createBuilder().name(Component.literal("Stat position"))
+            .description(OptionDescription.of(Component.literal("Show stats beside the player name or on a separate line above or below it.")))
+            .binding(StatPosition.INLINE, () -> HqTiersClientConfig.statPosition, value -> HqTiersClientConfig.statPosition = value)
+            .controller(option -> EnumControllerBuilder.create(option).enumClass(StatPosition.class)
+                    .formatValue(value -> Component.literal(value.label))).build();
     private final Option<Boolean> spacing = toggle("Icon spacing", "Leave a space between a gamemode icon and the next stat.", true,
             () -> HqTiersClientConfig.iconSpacing, v -> HqTiersClientConfig.iconSpacing = v);
     private final Option<Boolean> divider = toggle("Divider beside name", "Put a vertical bar between your name and the stats on each side.", true,
@@ -79,20 +86,28 @@ final class NametagLayoutOptions {
     }
 
     ConfigCategory category() {
-        var bindings = ConfigCategory.createBuilder().name(Component.literal("Nametag layout")).option(order)
+        var visible = ConfigCategory.createBuilder().name(Component.literal("Nametag layout")).option(order)
                 .group(OptionGroup.createBuilder().name(Component.literal("Spacing and labels"))
                         .option(spacing).option(divider).option(trLabel).option(posLabel).option(globalLabel).build())
                 .build();
-        return new SettingsCategory(bindings, (screen, area) -> new LayoutTab(screen, bindings, area));
+        var bindings = ConfigCategory.createBuilder().name(visible.name()).groups(visible.groups())
+                .group(OptionGroup.createBuilder().name(statPosition.name()).option(statPosition).build()).build();
+        return new SettingsCategory(bindings, (screen, area) -> new LayoutTab(screen, visible, area));
     }
 
     private final class LayoutTab extends SettingsCategory.AlignedTab {
-        private final List<Option<?>> settings = List.of(order, spacing, divider, trLabel, posLabel, globalLabel);
+        private final List<Option<?>> settings = List.of(statPosition, order, spacing, divider, trLabel, posLabel, globalLabel);
+        private final CycleButton<StatPosition> position;
         private final Button reset;
+        private boolean controlsBelow;
         private ScreenRectangle panel;
 
         LayoutTab(YACLScreen screen, ConfigCategory category, ScreenRectangle area) {
             super(screen, category, area);
+            position = CycleButton.<StatPosition>builder(value -> Component.literal(value.label), statPosition.pendingValue())
+                    .withValues(StatPosition.values()).displayOnlyValue()
+                    .create(statPosition.name(), (button, value) -> statPosition.requestSet(value));
+            position.setTooltip(Tooltip.create(Component.literal("Show stats beside, above, or below the player name.")));
             reset = Button.builder(Component.literal("Reset layout"), button -> settings.forEach(Option::requestSetDefault))
                     .size(70, 18).build();
             reset.setTooltip(Tooltip.create(Component.literal("Restore the default order, placement, spacing and labels.")));
@@ -100,20 +115,25 @@ final class NametagLayoutOptions {
 
         @Override public void visitChildren(Consumer<AbstractWidget> visitor) {
             super.visitChildren(visitor);
+            visitor.accept(position);
             visitor.accept(reset);
         }
 
         @Override public void doLayout(ScreenRectangle area) {
             super.doLayout(area);
-            int height = Math.clamp(area.height() / 5, 32, 44);
             super.visitChildren(widget -> {
                 if (widget instanceof OptionListWidget list) {
+                    int controlWidth = 52;
+                    controlsBelow = list.getWidth() < controlWidth + reset.getWidth() + 100;
+                    int height = Math.clamp(area.height() / 5, 32, 44) + (controlsBelow ? 22 : 0);
                     panel = new ScreenRectangle(list.getX(), list.getY(), list.getWidth(), height);
                     list.setHeight(list.getHeight() - height);
                     list.setY(panel.bottom());
                     list.refreshScrollAmount();
-                    reset.setPosition(panel.right() - reset.getWidth() - 5,
-                            panel.top() + (panel.height() - reset.getHeight()) / 2);
+                    int y = controlsBelow ? panel.bottom() - reset.getHeight() - 3
+                            : panel.top() + (panel.height() - reset.getHeight()) / 2;
+                    reset.setPosition(panel.right() - reset.getWidth() - 5, y);
+                    position.setRectangle(controlWidth, reset.getHeight(), reset.getX() - controlWidth - 3, y);
                 }
             });
         }
@@ -123,16 +143,25 @@ final class NametagLayoutOptions {
             if (panel == null) return;
             var font = Minecraft.getInstance().font;
             graphics.fill(panel.left(), panel.top(), panel.right(), panel.bottom(), 0x80000000);
-            var sample = preview();
+            var lines = preview();
+            int lineHeight = font.lineHeight + 1;
+            int widest = lines.stream().mapToInt(font::width).max().orElse(1);
             int tagLeft = panel.left() + 6;
-            int tagRight = reset.getX() - 6;
-            float scale = Math.min(2.0f, (float) Math.max(1, tagRight - tagLeft) / Math.max(1, font.width(sample)));
+            int tagRight = (controlsBelow ? panel.right() : position.getX()) - 6;
+            int previewHeight = controlsBelow ? position.getY() - panel.top() : panel.height();
+            float scale = Math.min(2.0f, (float) Math.max(1, tagRight - tagLeft) / Math.max(1, widest));
+            scale = Math.min(scale, (float) (previewHeight - 4) / (lineHeight * lines.size()));
             var pose = graphics.pose();
             pose.pushMatrix();
-            pose.translate((tagLeft + tagRight) / 2f, panel.top() + panel.height() / 2f);
+            pose.translate((tagLeft + tagRight) / 2f, panel.top() + previewHeight / 2f);
             pose.scale(scale, scale);
-            graphics.centeredText(font, sample, 0, -font.lineHeight / 2, 0xFFFFFFFF);
+            int y = -(lines.size() * lineHeight - 1) / 2;
+            for (Component line : lines) {
+                graphics.centeredText(font, line, 0, y, 0xFFFFFFFF);
+                y += lineHeight;
+            }
             pose.popMatrix();
+            if (position.getValue() != statPosition.pendingValue()) position.setValue(statPosition.pendingValue());
             reset.active = settings.stream().anyMatch(setting -> !setting.isPendingValueDefault());
         }
     }
@@ -180,7 +209,7 @@ final class NametagLayoutOptions {
         }
     }
 
-    private Component preview() {
+    private List<Component> preview() {
         var rows = order.pendingValue();
         boolean global = mode.pendingValue() == DisplayMode.GLOBAL ||
                 (mode.pendingValue() == DisplayMode.PREFERRED_LADDER && ladder.pendingValue() == HqTiersLadder.GLOBAL);
@@ -191,7 +220,7 @@ final class NametagLayoutOptions {
         var right = new NametagComposer.Line(spacing.pendingValue());
         for (var row : rows) {
             if (!row.shown()) continue;
-            var line = row.side() == LEFT ? left : right;
+            var line = statPosition.pendingValue() != StatPosition.INLINE || row.side() == LEFT ? left : right;
             if (row.kind() == NametagComponent.SEPARATOR) {
                 line.divider();
                 continue;
@@ -209,7 +238,7 @@ final class NametagLayoutOptions {
             line.append(row.kind(), value);
         }
         var name = Component.literal(Minecraft.getInstance().getUser().getName());
-        return new NametagParts(left.text(), right.text()).around(name, divider.pendingValue()).copy().withStyle(ChatFormatting.WHITE);
+        return statPosition.pendingValue().lines(new NametagParts(left.text(), right.text()), name, divider.pendingValue());
     }
 
     private static Component sample(String value, Option<Boolean> colored, int rgb) {
