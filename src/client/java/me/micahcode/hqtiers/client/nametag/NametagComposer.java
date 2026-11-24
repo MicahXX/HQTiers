@@ -28,31 +28,50 @@ public final class NametagComposer {
     }
 
     private static Component side(HqTiersStats.LadderStats ladder, HqTiersStats.LadderStats globalRank, NametagAlignment side, boolean alwaysLeft) {
-        MutableComponent result = Component.empty();
-        NametagComponent previous = null;
-        boolean pendingSeparator = false;
+        Line line = new Line(HqTiersClientConfig.iconSpacing);
         int separator = -1;
         for (NametagComponent component : HqTiersClientConfig.nametagOrder) {
             if (component == NametagComponent.SEPARATOR) separator++;
             if (!alwaysLeft && HqTiersClientConfig.side(component, separator) != side) continue;
             if (component == NametagComponent.SEPARATOR) {
-                pendingSeparator |= previous != null && HqTiersClientConfig.isSeparatorEnabled(separator);
-                continue;
+                if (HqTiersClientConfig.isSeparatorEnabled(separator)) line.divider();
+            } else {
+                line.append(component, element(ladder, globalRank, component));
             }
-            Component value = element(ladder, globalRank, component);
-            if (value.getString().isEmpty()) continue;
+        }
+        return line.text();
+    }
+
+    public static final class Line {
+        private final MutableComponent text = Component.empty();
+        private final boolean iconSpacing;
+        private NametagComponent previous;
+        private boolean pendingDivider;
+
+        public Line(boolean iconSpacing) {
+            this.iconSpacing = iconSpacing;
+        }
+
+        public void divider() {
+            pendingDivider = previous != null;
+        }
+
+        public void append(NametagComponent kind, Component value) {
+            if (value.getString().isEmpty()) return;
             if (previous != null) {
-                if (pendingSeparator) result.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY));
-                else if (HqTiersClientConfig.iconSpacing
-                        || (previous != NametagComponent.GAMEMODE_ICON && component != NametagComponent.GAMEMODE_ICON)) {
-                    result.append(" ");
+                if (pendingDivider) text.append(Component.literal(" | ").withStyle(ChatFormatting.GRAY));
+                else if (iconSpacing || (previous != NametagComponent.GAMEMODE_ICON && kind != NametagComponent.GAMEMODE_ICON)) {
+                    text.append(" ");
                 }
             }
-            result.append(value);
-            previous = component;
-            pendingSeparator = false;
+            text.append(value);
+            pendingDivider = false;
+            previous = kind;
         }
-        return result;
+
+        public Component text() {
+            return text;
+        }
     }
 
     private static Component element(HqTiersStats.LadderStats ladder, HqTiersStats.LadderStats globalRank, NametagComponent component) {

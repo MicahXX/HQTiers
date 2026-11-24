@@ -35,7 +35,7 @@
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
     "minecraft": ">=26.3.0 <26.4.0",
-    "cloth-config": ">=26.3.159",
+    "yet_another_config_lib_v3": ">=3.9.7",
     "modmenu": ">=21.0.0"
   },
   "custom": {
