@@ -1,12 +1,14 @@
 package me.micahcode.hqtiers.client.config;
 
 import com.mojang.blaze3d.platform.cursor.CursorTypes;
+import dev.isxander.yacl3.api.Binding;
+import dev.isxander.yacl3.api.ButtonOption;
 import dev.isxander.yacl3.api.ConfigCategory;
 import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.OptionDescription;
 import dev.isxander.yacl3.api.OptionEventListener;
 import dev.isxander.yacl3.api.OptionGroup;
-import dev.isxander.yacl3.api.controller.BooleanControllerBuilder;
+import dev.isxander.yacl3.gui.controllers.cycling.ICyclingController;
 import dev.isxander.yacl3.api.controller.ColorControllerBuilder;
 import dev.isxander.yacl3.api.utils.Dimension;
 import dev.isxander.yacl3.gui.OptionDescriptionWidget;
@@ -15,6 +17,7 @@ import dev.isxander.yacl3.gui.SearchFieldWidget;
 import dev.isxander.yacl3.gui.YACLScreen;
 import dev.isxander.yacl3.gui.controllers.ColorController;
 import dev.isxander.yacl3.gui.controllers.ColorPickerWidget;
+import dev.isxander.yacl3.impl.SimpleStateManager;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import net.minecraft.client.Minecraft;
@@ -23,7 +26,9 @@ import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.network.chat.Component;
+import dev.isxander.yacl3.gui.utils.GuiUtils;
 
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.MouseButtonInfo;
@@ -40,7 +45,7 @@ final class TierColorOptions {
     private static final List<HqTiersRanks> RANKS = List.of(
             LT1, MT1, HT1, LT2, MT2, HT2, LT3, MT3, HT3, LT4, MT4, HT4, LT5, MT5, HT5);
     private final EnumMap<HqTiersRanks, Option<Color>> colors = new EnumMap<>(HqTiersRanks.class);
-    private final Option<Boolean> custom;
+    private final Option<TierPalettes> palettes;
     private HqTiersRanks selected;
     final Option<Boolean> tier = toggle("Tier labels", "Tint the tier beside a player name.", true,
             () -> HqTiersClientConfig.coloredTier, value -> HqTiersClientConfig.coloredTier = value);
@@ -50,16 +55,39 @@ final class TierColorOptions {
             () -> HqTiersClientConfig.coloredPosition, value -> HqTiersClientConfig.coloredPosition = value);
 
     TierColorOptions() {
-        custom = Option.<Boolean>createBuilder().name(Component.literal("Active palette"))
-                .description(OptionDescription.of(Component.literal("Switch back to PvPHQ at any time. Your custom colors are saved.")))
-                .binding(false, () -> HqTiersClientConfig.customTierColors, value -> HqTiersClientConfig.customTierColors = value)
-                .controller(o -> BooleanControllerBuilder.create(o).formatValue(v -> Component.literal(v ? "Custom" : "PvPHQ")))
-                .build();
+        var binding = Binding.generic(TierPalettes.DEFAULTS, () -> HqTiersClientConfig.palettes, value -> HqTiersClientConfig.palettes = value);
+        // Reset the selection independently of the user's saved presets.
+        var selection = new SimpleStateManager<TierPalettes>(binding) {
+            @Override public void resetToDefault(ResetAction action) { set(get().select(0)); }
+            @Override public boolean isDefault() { return get().active() == 0; }
+        };
+        palettes = Option.<TierPalettes>createBuilder().name(Component.literal("Active palette"))
+                .description(OptionDescription.of(Component.literal("Choose PvPHQ, a saved preset, or your own Custom colors.")))
+                .stateManager(selection)
+                .customController(PaletteController::new).build();
         for (var rank : RANKS) colors.put(rank, colorOption(rank));
     }
 
     ConfigCategory category() {
-        var builder = ConfigCategory.createBuilder().name(Component.literal("Colors")).option(custom)
+        var create = action("Save as preset", screen -> namePreset(screen, false));
+        var rename = action("Rename preset", screen -> namePreset(screen, true));
+        var delete = action("Delete preset", screen -> {
+            var current = palettes.pendingValue();
+            var dialog = new ConfirmScreen(confirmed -> {
+                if (confirmed) palettes.requestSet(current.delete());
+                GuiUtils.setScreen(screen);
+            }, Component.literal("Delete " + current.name() + "?"), Component.literal("The active palette will return to PvPHQ."),
+                    Component.literal("Delete"), Component.literal("Cancel"));
+            GuiUtils.setScreen(dialog);
+        });
+        palettes.addEventListener((opt, event) -> {
+            rename.setAvailable(opt.pendingValue().isPreset());
+            delete.setAvailable(opt.pendingValue().isPreset());
+        });
+        rename.setAvailable(palettes.pendingValue().isPreset());
+        delete.setAvailable(palettes.pendingValue().isPreset());
+        var builder = ConfigCategory.createBuilder().name(Component.literal("Colors")).option(palettes)
+                .group(OptionGroup.createBuilder().name(Component.literal("Presets")).option(create).option(rename).option(delete).build())
                 .group(OptionGroup.createBuilder().name(Component.literal("Apply rank colors to"))
                         .option(tier).option(rating).option(position).build());
         var visible = builder.build();
@@ -69,8 +97,44 @@ final class TierColorOptions {
         return new SettingsCategory(bindings, (screen, area) -> new PaletteTab(screen, visible, area));
     }
 
+    private record PaletteController(Option<TierPalettes> option) implements ICyclingController<TierPalettes> {
+        @Override public Component formatValue() { return Component.literal(option.pendingValue().name()); }
+        @Override public int getPendingValue() { return option.pendingValue().active(); }
+        @Override public int getCycleLength() { return option.pendingValue().presets().size() + 2; }
+        @Override public void setPendingValue(int index) { option.requestSet(option.pendingValue().select(index)); }
+    }
+
+    private static ButtonOption action(String label, Consumer<YACLScreen> callback) {
+        return ButtonOption.createBuilder().name(Component.literal(label)).text(Component.literal("…"))
+                .action((screen, option) -> callback.accept(screen)).build();
+    }
+
+    private void namePreset(YACLScreen screen, boolean rename) {
+        var current = palettes.pendingValue();
+        GuiUtils.setScreen(new PresetNameScreen(screen, rename, rename ? current.name() : "",
+                name -> current.nameAvailable(name, rename), name -> {
+                    if (rename) {
+                        palettes.requestSet(current.rename(name));
+                    } else {
+                        var snapshot = new EnumMap<HqTiersRanks, Integer>(HqTiersRanks.class);
+                        for (var rank : RANKS) snapshot.put(rank, previewRgb(rank));
+                        palettes.requestSet(current.add(name, snapshot));
+                    }
+                }));
+    }
+
     int previewRgb(HqTiersRanks rank) {
-        return custom.pendingValue() ? colors.get(rank).pendingValue().getRGB() & 0xFFFFFF : HqTiersRankSystem.tierColor(rank);
+        return palettes.pendingValue().rgb(rank, HqTiersRankSystem.tierColor(rank), colors.get(rank).pendingValue().getRGB() & 0xFFFFFF);
+    }
+
+    private void editColor(HqTiersRanks rank, Color color) {
+        var current = palettes.pendingValue();
+        if (current.isPreset()) {
+            palettes.requestSet(current.recolor(rank, color.getRGB() & 0xFFFFFF));
+        } else {
+            colors.get(rank).requestSet(color);
+            if (!current.isCustom()) palettes.requestSet(current.selectCustom());
+        }
     }
 
     private Option<Color> colorOption(HqTiersRanks rank) {
@@ -84,7 +148,7 @@ final class TierColorOptions {
                 .controller(ColorControllerBuilder::create).build();
     }
 
-    private final class PaletteTab extends YACLScreen.CategoryTab {
+    private final class PaletteTab extends SettingsCategory.AlignedTab {
         private final YACLScreen screen;
         private final EnumMap<HqTiersRanks, Button> buttons = new EnumMap<>(HqTiersRanks.class);
         private final Button reset;
@@ -96,18 +160,18 @@ final class TierColorOptions {
             this.screen = screen;
             for (var rank : RANKS) buttons.put(rank, new Swatch(rank));
             reset = Button.builder(Component.literal("Reset color"), button -> resetSelected()).build();
-            reset.setTooltip(Tooltip.create(Component.literal("Restore the selected tier's PvPHQ color.")));
+            reset.setTooltip(Tooltip.create(Component.literal("Restore the selected tier's PvPHQ color in the active palette.")));
             updateReset();
         }
 
         private void resetSelected() {
-            if (selected != null) colors.get(selected).requestSetDefault();
+            if (selected != null) editColor(selected, new Color(HqTiersRankSystem.tierColor(selected)));
             updateReset();
         }
 
         private void updateReset() {
             reset.setMessage(Component.literal(selected == null ? "Reset color" : "Reset " + selected.name()));
-            reset.active = selected != null && !colors.get(selected).isPendingValueDefault();
+            reset.active = selected != null && previewRgb(selected) != HqTiersRankSystem.tierColor(selected);
         }
 
         @Override public void visitChildren(Consumer<AbstractWidget> visitor) {
@@ -147,8 +211,7 @@ final class TierColorOptions {
                     .controller(ColorControllerBuilder::create)
                     .addListener((option, event) -> {
                         if (event == OptionEventListener.Event.STATE_CHANGE) {
-                            colors.get(rank).requestSet(option.pendingValue());
-                            custom.requestSet(true);
+                            editColor(rank, option.pendingValue());
                         }
                     }).build();
             var controller = new ColorController(draft);
@@ -210,7 +273,7 @@ final class TierColorOptions {
             super.renderBackground(graphics);
             graphics.text(Minecraft.getInstance().font, "Choose a color", left, top, 0xFFFFFFFF);
             boolean editing = editor != null && editor.colorPickerVisible();
-            reset.active = selected != null && !colors.get(selected).isPendingValueDefault();
+            reset.active = selected != null && previewRgb(selected) != HqTiersRankSystem.tierColor(selected);
             if (editing) {
                 editor.setDimension(editor.getDimension());
                 editor.extractRenderState(graphics, -1, -1, 0);

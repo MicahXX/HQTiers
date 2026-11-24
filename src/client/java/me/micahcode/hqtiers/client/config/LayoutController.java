@@ -36,22 +36,21 @@ record LayoutController(Option<List<Row>> option) implements Controller<List<Row
     }
 
     private enum Action {
-        UP("↑", "Move earlier"), DOWN("↓", "Move later"), LEFT_SIDE("Left", "Before the name"),
-        HIDE("Hidden", "Hide this stat"), RIGHT_SIDE("Right", "After the name"), REMOVE("×", "Remove from layout");
+        UP("Up", "Move up"), DOWN("Down", "Move down"), PLACEMENT("Placement", "Change placement"), REMOVE("×", "Remove from layout");
 
         final String label, help;
         Action(String label, String help) { this.label = label; this.help = help; }
     }
 
     private static final Action[] ACTIONS = Action.values();
-    private static final int ROW = 18;
-    private static final int HEADER = 15;
+    private static final int ROW = 20;
+    private static final int HEADER = 16;
 
     private final class Table extends AbstractWidget {
         private boolean focused;
         private int focusRow;
         private int draggedRow = -1;
-        private int focusColumn = Action.LEFT_SIDE.ordinal();
+        private int focusColumn = Action.PLACEMENT.ordinal();
 
         private final YACLScreen screen;
         private boolean adding;
@@ -102,7 +101,7 @@ record LayoutController(Option<List<Row>> option) implements Controller<List<Row
             } else {
                 rows.add(new Row(choices.get(rowIndex - rows.size() - 1), true, LEFT));
                 focusRow = rows.size() - 1;
-                focusColumn = Action.LEFT_SIDE.ordinal();
+                focusColumn = Action.PLACEMENT.ordinal();
                 option.requestSet(List.copyOf(rows));
             }
             playDownSound();
@@ -112,19 +111,17 @@ record LayoutController(Option<List<Row>> option) implements Controller<List<Row
         private boolean compact() { return getDimension().width() < 230; }
 
         private int width(int column) {
-            if (column < 2 || column == 5) return compact() ? 14 : 16;
-            if (!compact()) return Math.min(41, (getDimension().width() - 87) / 4);
-            return textRenderer.width(label(column)) + 6;
+            if (column < 2) return textRenderer.width(moveLabel(column)) + 9;
+            if (column == Action.PLACEMENT.ordinal()) return compact() ? 49 : 66;
+            return compact() ? 16 : 20;
         }
-        private String label(int column) {
-            return compact() && column == Action.HIDE.ordinal() ? "Off" : ACTIONS[column].label;
+        private String moveLabel(int column) {
+            return compact() ? ACTIONS[column].label : ACTIONS[column].help;
         }
+
         private int x(int column) {
             int x = getDimension().xLimit();
-            for (int i = ACTIONS.length - 1; i >= column; i--) {
-                x -= width(i);
-                if (i == 1 || i == 4) x -= 2;
-            }
+            for (int i = ACTIONS.length - 1; i >= column; i--) x -= width(i) + 1;
             return x;
         }
         private int top(int row) { return getDimension().y() + HEADER + row * ROW; }
@@ -138,18 +135,18 @@ record LayoutController(Option<List<Row>> option) implements Controller<List<Row
         public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
             var rows = option.pendingValue();
             int start = getDimension().x();
-            g.text(textRenderer, "Stat", start + 4, getDimension().y() + 4, 0xFFBCC5D0);
-            g.text(textRenderer, "Move", x(0) + 2, getDimension().y() + 4, 0xFFBCC5D0);
-            g.text(textRenderer, "Placement", x(2) + 3, getDimension().y() + 4, 0xFFBCC5D0);
+            g.text(textRenderer, "Stat", start + 4, getDimension().y() + 4, 0xFFCCCCCC);
+            g.text(textRenderer, "Move", x(0) + 2, getDimension().y() + 4, 0xFFCCCCCC);
+            g.text(textRenderer, "Placement", x(2) + 3, getDimension().y() + 4, 0xFFCCCCCC);
             int dividers = 0;
             for (int i = 0; i < rows.size(); i++) {
                 var row = rows.get(i);
                 int y = top(i);
-                g.fill(start, y, getDimension().xLimit(), y + ROW - 1, (i % 2 == 0) ? 0xCF202933 : 0xCF181F28);
+                g.fill(start, y, getDimension().xLimit(), y + ROW - 1, 0x70000000);
                 boolean grip = !compact();
                 int nameX = start + (grip ? 11 : 4);
                 if (grip) {
-                    for (int dot = 0; dot < 3; dot++) g.fill(start + 4, y + 4 + 3 * dot, start + 6, y + 6 + 3 * dot, 0xFFA4B3BD);
+                    for (int dot = 0; dot < 3; dot++) g.fill(start + 4, y + 4 + 3 * dot, start + 6, y + 6 + 3 * dot, 0xFFAAAAAA);
                 }
                 String fullName = row.kind() == NametagComponent.SEPARATOR ? "Divider " + (++dividers) : row.name();
                 int nameWidth = Math.max(1, x(0) - nameX - 3);
@@ -157,32 +154,31 @@ record LayoutController(Option<List<Row>> option) implements Controller<List<Row
                         : textRenderer.plainSubstrByWidth(fullName, Math.max(1, nameWidth - textRenderer.width("…"))) + "…";
                 if (!name.equals(fullName) && mx >= start && mx < x(0) && my >= y && my < y + ROW)
                     g.setTooltipForNextFrame(Component.literal(fullName), mx, my);
-                g.text(textRenderer, name, nameX, y + 6, row.shown() ? 0xFFFFFFFF : 0xFFBDC5CE);
+                g.text(textRenderer, name, nameX, y + 6, row.shown() ? 0xFFFFFFFF : 0xFFAAAAAA);
                 if (mx >= start && mx < x(0) && rowAt(my) == i) g.requestCursor(CursorTypes.POINTING_HAND);
-                int selected = !row.shown() ? 3 : row.side() == LEFT ? 2 : 4;
                 for (int col = 0; col < ACTIONS.length; col++) {
                     int left = x(col), right = left + width(col) - 1;
                     boolean hover = mx >= left && mx < right && my >= y + 1 && my < y + ROW - 1;
                     boolean active = enabled(i, col);
-                    boolean chosen = col == selected;
-                    int fill = chosen ? (row.shown() ? 0xFF21545B : 0xFF49515C) : 0xFF2C3540;
-                    g.fill(left, y + 1, right, y + ROW - 2, fill);
-                    if (chosen) g.fill(left, y + ROW - 4, right, y + ROW - 2, row.shown() ? 0xFF76E7DD : 0xFFD1D6DB);
-                    if ((hover && active) || (focused && i == focusRow && col == focusColumn)) {
-                        g.outline(left, y + 1, right - left, ROW - 3, 0xFFFFFFFF);
-                    }
-                    g.centeredText(textRenderer, label(col), (left + right) / 2, y + 5,
-                            !active ? 0xFF75808C : chosen ? 0xFFFFFFFF : 0xFFCAD3DC);
+                    boolean highlight = hover || focused && i == focusRow && col == focusColumn;
+                    drawButtonRect(g, left, y + 1, right, y + ROW - 2, highlight, active);
+                    String label = switch (ACTIONS[col]) {
+                        case UP, DOWN -> moveLabel(col);
+                        case PLACEMENT -> row.placement();
+                        case REMOVE -> ACTIONS[col].label;
+                    };
+                    g.centeredText(textRenderer, label, (left + right) / 2, y + 5,
+                            active ? 0xFFFFFFFF : inactiveColor);
                     if (hover && active) {
                         g.requestCursor(CursorTypes.POINTING_HAND);
-                        if (col < 2 || col == 5) g.setTooltipForNextFrame(Component.literal(ACTIONS[col].help + " (" + row.name() + ")"), mx, my);
+                        g.setTooltipForNextFrame(Component.literal(ACTIONS[col].help + " (" + row.name() + ")"), mx, my);
                     }
                 }
             }
             if (draggedRow >= 0 && isMouseOver(mx, my) && !rows.isEmpty()) {
                 int target = Math.clamp(rowAt(my), 0, rows.size() - 1);
                 int line = top(target) + (target > draggedRow ? ROW - 2 : 0);
-                g.fill(start, line, getDimension().xLimit(), line + 2, 0xFF76E7DD);
+                g.fill(start, line, getDimension().xLimit(), line + 2, 0xFFFFFFFF);
             }
             for (int idx = 0; idx <= (adding ? choices.size() : 0); idx++) {
                 int rowIndex = rows.size() + idx;
@@ -190,8 +186,7 @@ record LayoutController(Option<List<Row>> option) implements Controller<List<Row
                 boolean hover = isMouseOver(mx, my) && rowAt(my) == rowIndex;
                 String label = idx == 0 ? (adding ? "Close choices" : "+ Add stat") :
                         new Row(choices.get(idx - 1), true, LEFT).name();
-                g.fill(start, y, getDimension().xLimit(), y + ROW - 2, idx == 0 ? 0xFF243C40 : 0xFF29313B);
-                if (hover || focused && focusRow == rowIndex) g.outline(start, y, getDimension().width(), ROW - 2, -1);
+                drawButtonRect(g, start, y, getDimension().xLimit(), y + ROW - 2, hover || focused && focusRow == rowIndex, true);
                 g.centeredText(textRenderer, label, (start + getDimension().xLimit()) / 2, y + 5, -1);
                 if (hover) g.requestCursor(CursorTypes.POINTING_HAND);
             }
@@ -262,10 +257,12 @@ record LayoutController(Option<List<Row>> option) implements Controller<List<Row
                     Collections.swap(rows, focusRow, target);
                     focusRow = target;
                 }
-                case LEFT_SIDE -> rows.set(focusRow, new Row(row.kind(), true, LEFT));
-                case RIGHT_SIDE -> rows.set(focusRow, new Row(row.kind(), true, RIGHT));
+                case PLACEMENT -> {
+                    if (!row.shown()) rows.set(focusRow, new Row(row.kind(), true, LEFT));
+                    else if (row.side() == LEFT) rows.set(focusRow, new Row(row.kind(), true, RIGHT));
+                    else rows.set(focusRow, new Row(row.kind(), false, RIGHT));
+                }
                 case REMOVE -> rows.remove(focusRow);
-                case HIDE -> rows.set(focusRow, new Row(row.kind(), false, row.side()));
             }
             option.requestSet(List.copyOf(rows));
             playDownSound();

@@ -71,7 +71,8 @@ final class NametagLayoutOptions {
         var defaults = HqTiersClientConfig.defaultNametagOrder().stream()
                 .map(kind -> new Row(kind, kind == NametagComponent.GAMEMODE_ICON || kind == NametagComponent.TIER, LEFT)).toList();
         order = Option.<List<Row>>createBuilder().name(Component.literal("Stat placement"))
-                .description(OptionDescription.of(Component.literal("Drag a stat name or use the arrows to reorder. Choose Left, Right or Hidden to change its placement.")))
+                .description(OptionDescription.of(Component.literal("Drag a stat name or use Move up and Move down to reorder." +
+                        " Click the placement button to cycle through Left, Right and Hidden.")))
                 .binding(defaults, NametagLayoutOptions::loadRows, NametagLayoutOptions::saveRows)
                 .customController(LayoutController::new)
                 .build();
@@ -85,7 +86,7 @@ final class NametagLayoutOptions {
         return new SettingsCategory(bindings, (screen, area) -> new LayoutTab(screen, bindings, area));
     }
 
-    private final class LayoutTab extends YACLScreen.CategoryTab {
+    private final class LayoutTab extends SettingsCategory.AlignedTab {
         private final List<Option<?>> settings = List.of(order, spacing, divider, trLabel, posLabel, globalLabel);
         private final Button reset;
         private ScreenRectangle panel;
@@ -93,7 +94,7 @@ final class NametagLayoutOptions {
         LayoutTab(YACLScreen screen, ConfigCategory category, ScreenRectangle area) {
             super(screen, category, area);
             reset = Button.builder(Component.literal("Reset layout"), button -> settings.forEach(Option::requestSetDefault))
-                    .size(67, 14).build();
+                    .size(70, 18).build();
             reset.setTooltip(Tooltip.create(Component.literal("Restore the default order, placement, spacing and labels.")));
         }
 
@@ -104,14 +105,15 @@ final class NametagLayoutOptions {
 
         @Override public void doLayout(ScreenRectangle area) {
             super.doLayout(area);
-            int height = Math.min(57, Math.max(43, area.height() / 4));
+            int height = Math.clamp(area.height() / 5, 32, 44);
             super.visitChildren(widget -> {
                 if (widget instanceof OptionListWidget list) {
-                    panel = new ScreenRectangle(list.getX() + 5, area.top() + 3, list.getWidth() - 10, height - 5);
-                    list.setY(area.top() + height);
-                    list.setHeight(area.height() - height);
+                    panel = new ScreenRectangle(list.getX(), list.getY(), list.getWidth(), height);
+                    list.setHeight(list.getHeight() - height);
+                    list.setY(panel.bottom());
                     list.refreshScrollAmount();
-                    reset.setPosition(panel.right() - reset.getWidth() - 3, panel.top() + 2);
+                    reset.setPosition(panel.right() - reset.getWidth() - 5,
+                            panel.top() + (panel.height() - reset.getHeight()) / 2);
                 }
             });
         }
@@ -120,15 +122,14 @@ final class NametagLayoutOptions {
             super.renderBackground(graphics);
             if (panel == null) return;
             var font = Minecraft.getInstance().font;
-            graphics.fill(panel.left(), panel.top(), panel.right(), panel.bottom(), 0xFF101820);
-            graphics.fill(panel.left(), panel.bottom() - 1, panel.right(), panel.bottom(), 0xFF46616A);
-            graphics.text(font, "Nametag preview", panel.left() + 6, panel.top() + 5, 0xFFC2D5DD);
+            graphics.fill(panel.left(), panel.top(), panel.right(), panel.bottom(), 0x80000000);
             var sample = preview();
-            float scale = Math.min(2.0f, (float)(panel.width() - 14) / Math.max(1, font.width(sample)));
-            int centerY = (panel.top() + 16 + panel.bottom()) / 2;
+            int tagLeft = panel.left() + 6;
+            int tagRight = reset.getX() - 6;
+            float scale = Math.min(2.0f, (float) Math.max(1, tagRight - tagLeft) / Math.max(1, font.width(sample)));
             var pose = graphics.pose();
             pose.pushMatrix();
-            pose.translate(panel.left() + panel.width() / 2f, centerY);
+            pose.translate((tagLeft + tagRight) / 2f, panel.top() + panel.height() / 2f);
             pose.scale(scale, scale);
             graphics.centeredText(font, sample, 0, -font.lineHeight / 2, 0xFFFFFFFF);
             pose.popMatrix();
