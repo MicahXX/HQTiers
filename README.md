@@ -8,7 +8,7 @@ A client-side Fabric mod that brings [PvPHQ](https://pvphq.com/) stats directly 
 - Global, Highest Tier and per-ladder display modes
 - Choose which stats appear, their order and whether each element sits left or right of your name
 - Customize labels, colors, icon spacing and separators
-- Live preview of your nametag (**Mod Menu → HQTiers → Nametag & Tab → Edit Nametag Layout**)
+- Live preview of your nametag (**Mod Menu → HQTiers → Nametag layout**)
 
 ### Leaderboards & Profiles
 - Global leaderboard with placements, points, and ranked gamemode counts
@@ -35,7 +35,7 @@ All keybinds can be customized under **Options → Controls → HQTiers**. By de
 ## Requirements
 
 - [Fabric API](https://modrinth.com/mod/fabric-api)
-- [Cloth Config](https://modrinth.com/mod/cloth-config)
+- [YACL](https://modrinth.com/mod/yacl)
 - [Mod Menu](https://modrinth.com/mod/modmenu)
 
 ## Links & Credits
