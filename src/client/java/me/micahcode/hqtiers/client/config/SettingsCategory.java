@@ -13,6 +13,17 @@ import java.util.function.BiFunction;
 
 record SettingsCategory(ConfigCategory options, BiFunction<YACLScreen, ScreenRectangle, Tab> factory)
         implements ConfigCategory, CustomTabProvider {
+    static class AlignedTab extends YACLScreen.CategoryTab {
+        AlignedTab(YACLScreen screen, ConfigCategory category, ScreenRectangle area) {
+            super(screen, category, area);
+        }
+
+        @Override public void doLayout(ScreenRectangle area) {
+            // YACL starts the right pane one GUI pixel below the tab area.
+            super.doLayout(new ScreenRectangle(area.left(), area.top() + 1, area.width(), area.height() - 1));
+        }
+    }
+
     @Override public Component name() { return options.name(); }
     @Override public Component tooltip() { return options.tooltip(); }
     @Override public ImmutableList<OptionGroup> groups() { return options.groups(); }
