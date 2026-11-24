@@ -1,5 +1,6 @@
 package me.micahcode.hqtiers.client.mixin;
 
+import me.micahcode.hqtiers.client.nametag.StatPosition;
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.nametag.NametagDuplicateDetector;
@@ -30,7 +31,7 @@ public class LunarPlayerEntityMixin {
     private void hqtiers$appendLunarNametagStats(CallbackInfoReturnable<Component> cir) {
         try {
             if (!FabricLoader.getInstance().isModLoaded(LUNAR_MOD_ID)) return;
-            if (!HqTiersClientConfig.nametagEnabled) return;
+            if (!HqTiersClientConfig.nametagEnabled || HqTiersClientConfig.statPosition != StatPosition.INLINE) return;
 
             Player player = (Player) (Object) this;
 

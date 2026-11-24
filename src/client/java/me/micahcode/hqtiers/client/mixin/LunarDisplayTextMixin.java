@@ -1,5 +1,6 @@
 package me.micahcode.hqtiers.client.mixin;
 
+import me.micahcode.hqtiers.client.nametag.StatPosition;
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
 import me.micahcode.hqtiers.client.nametag.NametagDuplicateDetector;
@@ -23,6 +24,25 @@ public class LunarDisplayTextMixin {
     // as Lunar changes mixins so ye
     @Unique
     private static final String LUNAR_MOD_ID = "ichor";
+
+    @Unique private Display.TextDisplay.CachedInfo hqtiers$sourceLines;
+    @Unique private Display.TextDisplay.CachedInfo hqtiers$currentLines;
+    @Unique private Component hqtiers$currentText;
+
+    @Inject(method = "cacheDisplay", at = @At("RETURN"), cancellable = true)
+    private void hqtiers$refreshDisplayLines(Display.TextDisplay.LineSplitter splitter, CallbackInfoReturnable<Display.TextDisplay.CachedInfo> cir) {
+        if (!FabricLoader.getInstance().isModLoaded(LUNAR_MOD_ID)) return;
+        Display.TextDisplay self = (Display.TextDisplay) (Object) this;
+        if (!(self.getVehicle() instanceof Player) || self.textRenderState() == null) return;
+        Component text = self.getText();
+        if (text.equals(self.textRenderState().text())) return;
+        if (hqtiers$sourceLines != cir.getReturnValue() || !text.equals(hqtiers$currentText)) {
+            hqtiers$sourceLines = cir.getReturnValue();
+            hqtiers$currentText = text;
+            hqtiers$currentLines = splitter.split(text, self.textRenderState().lineWidth());
+        }
+        cir.setReturnValue(hqtiers$currentLines);
+    }
 
     @Inject(
             method = "getText",
@@ -51,10 +71,12 @@ public class LunarDisplayTextMixin {
                 return;
             }
 
-            Component tier = HqTiersFormatter.compact(statsOpt.get());
+            StatPosition position = HqTiersClientConfig.statPosition;
+            Component tier = HqTiersFormatter.parts(statsOpt.get(), position != StatPosition.INLINE).combined();
             if (tier.getString().isEmpty()) return;
 
-            Component merged = HqTiersFormatter.decorateName(statsOpt.get(), original);
+            Component merged = position == StatPosition.INLINE ? HqTiersFormatter.decorateName(statsOpt.get(), original)
+                    : position.insertIntoDisplay(original, scoreboardName, tier);
 
             cir.setReturnValue(merged);
         } catch (Throwable ignored) {

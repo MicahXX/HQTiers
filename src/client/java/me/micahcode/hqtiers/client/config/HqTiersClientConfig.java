@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import me.micahcode.hqtiers.client.nametag.StatPosition;
 import me.micahcode.hqtiers.Hqtiers;
 import me.micahcode.hqtiers.client.model.HqTiersRanks;
 import net.fabricmc.loader.api.FabricLoader;
@@ -43,6 +44,7 @@ public final class HqTiersClientConfig {
     public static Map<NametagComponent, NametagAlignment> componentSides = new EnumMap<>(NametagComponent.class);
     public static List<NametagAlignment> separatorSides = new ArrayList<>();
     public static boolean iconSpacing = true;
+    public static StatPosition statPosition = StatPosition.INLINE;
     public static boolean nameSeparator = true;
     public static boolean gamemodeIconEnabled = true;
     public static boolean tierEnabled = true;
@@ -162,6 +164,7 @@ public final class HqTiersClientConfig {
             separatorSides = new ArrayList<>();
             if (data.separatorSides != null) data.separatorSides.forEach(side -> separatorSides.add(parseSide(side)));
             iconSpacing = data.iconSpacing;
+            statPosition = data.statPosition == null ? StatPosition.INLINE : data.statPosition;
             nameSeparator = data.nameSeparator;
             suppressRankedDuplicates = data.suppressRankedDuplicates;
             if (data.nametagOrder != null && (data.editableLayout || !data.nametagOrder.isEmpty())) {
@@ -348,6 +351,7 @@ public final class HqTiersClientConfig {
         Map<String, String> componentSides;
         List<String> separatorSides;
         boolean iconSpacing = true;
+        StatPosition statPosition = StatPosition.INLINE;
         boolean nameSeparator = true;
         boolean editableLayout;
         List<String> nametagOrder = null;
@@ -387,6 +391,7 @@ public final class HqTiersClientConfig {
             HqTiersClientConfig.componentSides.forEach((key, value) -> data.componentSides.put(key.name(), value.name()));
             data.separatorSides = HqTiersClientConfig.separatorSides.stream().map(Enum::name).toList();
             data.iconSpacing = HqTiersClientConfig.iconSpacing;
+            data.statPosition = HqTiersClientConfig.statPosition;
             data.nameSeparator = HqTiersClientConfig.nameSeparator;
             data.editableLayout = true;
             data.nametagOrder = HqTiersClientConfig.nametagOrder.stream()
