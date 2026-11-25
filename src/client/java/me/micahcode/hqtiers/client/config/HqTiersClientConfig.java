@@ -55,6 +55,7 @@ public final class HqTiersClientConfig {
     public static boolean globalRankEnabled = false;
     public static boolean globalRankLabelEnabled = true;
     public static boolean suppressRankedDuplicates = false;
+    public static IconSet iconSet = IconSet.ORIGINAL;
     public static TierPalettes palettes = TierPalettes.DEFAULTS;
     public static final Map<HqTiersRanks, Integer> tierColors = new EnumMap<>(HqTiersRanks.class);
     public static boolean coloredTier = true;
@@ -135,8 +136,11 @@ public final class HqTiersClientConfig {
                 tierEnabled = false;
             }
             showUnranked = data.showUnranked;
+            iconSet = data.iconSet == null ? IconSet.ORIGINAL : data.iconSet;
             palettes = data.palettes;
             if (palettes == null) palettes = data.customTierColors ? TierPalettes.DEFAULTS.selectCustom() : TierPalettes.DEFAULTS;
+            else if (data.paletteRevision < 1) palettes = palettes.withNewPresets();
+            else if (data.paletteRevision == 1) palettes = palettes.updateMaterialPreset();
             tierColors.clear();
             if (data.tierColors != null) data.tierColors.forEach((name, rgb) -> {
                 var tier = HqTiersRanks.fromString(name);
@@ -208,7 +212,7 @@ public final class HqTiersClientConfig {
     }
 
     public enum DisplayMode {
-        PREFERRED_LADDER, HIGHEST_TIER, GLOBAL;
+        PREFERRED_LADDER, HIGHEST_TIER, GLOBAL, CURRENT_KIT;
 
         public static DisplayMode fromName(String name) {
             if (name == null) return HIGHEST_TIER;
@@ -358,6 +362,8 @@ public final class HqTiersClientConfig {
         List<Boolean> nametagSeparatorStates = null;
         boolean suppressRankedDuplicates = false;
         boolean customTierColors; // Compatibility with existing 5.3 configurations.
+        IconSet iconSet = IconSet.ORIGINAL;
+        int paletteRevision;
         TierPalettes palettes;
         Map<String, Integer> tierColors;
         boolean coloredTier = true;
@@ -398,6 +404,8 @@ public final class HqTiersClientConfig {
                     .map(Enum::name).collect(Collectors.toList());
             data.nametagSeparatorStates = new ArrayList<>(HqTiersClientConfig.nametagSeparatorStates);
             data.suppressRankedDuplicates = HqTiersClientConfig.suppressRankedDuplicates;
+            data.iconSet = HqTiersClientConfig.iconSet;
+            data.paletteRevision = 2;
             data.palettes = HqTiersClientConfig.palettes;
             data.customTierColors = data.palettes.isCustom();
             data.tierColors = new java.util.HashMap<>();

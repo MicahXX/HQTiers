@@ -137,13 +137,13 @@ public final class HqTiersKeybinds {
 
     private static void cycleLadder(net.minecraft.client.Minecraft client, int direction) {
         Object current = switch (HqTiersClientConfig.displayMode) {
-            case GLOBAL -> HqTiersClientConfig.DisplayMode.GLOBAL;
-            case HIGHEST_TIER -> HqTiersClientConfig.DisplayMode.HIGHEST_TIER;
+            case GLOBAL, HIGHEST_TIER, CURRENT_KIT -> HqTiersClientConfig.displayMode;
             case PREFERRED_LADDER -> HqTiersLadder.fromString(HqTiersClientConfig.preferredLadder);
         };
 
-        int idx = Math.max(0, CYCLE.indexOf(current));
-        Object next = CYCLE.get(((idx + direction) % CYCLE.size() + CYCLE.size()) % CYCLE.size());
+        int idx = CYCLE.indexOf(current);
+        if (idx < 0) idx = direction > 0 ? -1 : 0;
+        Object next = CYCLE.get(Math.floorMod(idx + direction, CYCLE.size()));
 
         // could be done with switch case
         String label;
