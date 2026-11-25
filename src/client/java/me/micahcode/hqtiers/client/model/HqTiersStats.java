@@ -27,6 +27,13 @@ public record HqTiersStats(UUID uuid, String name, Map<String, LadderStats> ladd
             return bestLadder();
         }
 
+        if (HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.CURRENT_KIT) {
+            var kit = PvphqKit.current();
+            if (kit == null) return bestLadder();
+            return ladder(kit.name()).filter(l -> !l.unranked() && l.tier() != null
+                    && l.placementGames() >= l.placementTarget()).or(this::bestLadder);
+        }
+
         Optional<LadderStats> preferred = ladder(HqTiersClientConfig.preferredLadder)
                 .filter(l -> l.placementGames() >= l.placementTarget());
 

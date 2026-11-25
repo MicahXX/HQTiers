@@ -54,6 +54,7 @@ final class NametagLayoutOptions {
     private final Option<DisplayMode> mode;
     private final Option<HqTiersLadder> ladder;
     private final TierColorOptions colors;
+    private final Option<IconSet> icons;
     private final Option<List<Row>> order;
     private final Option<StatPosition> statPosition = Option.<StatPosition>createBuilder().name(Component.literal("Stat position"))
             .description(OptionDescription.of(Component.literal("Show stats beside the player name or on a separate line above or below it.")))
@@ -71,10 +72,11 @@ final class NametagLayoutOptions {
     private final Option<Boolean> globalLabel = toggle("Global rank prefix", "Show # before the additional global rank.", true,
             () -> HqTiersClientConfig.globalRankLabelEnabled, v -> HqTiersClientConfig.globalRankLabelEnabled = v);
 
-    NametagLayoutOptions(Option<DisplayMode> mode, Option<HqTiersLadder> ladder, TierColorOptions colors) {
+    NametagLayoutOptions(Option<DisplayMode> mode, Option<HqTiersLadder> ladder, TierColorOptions colors, Option<IconSet> icons) {
         this.mode = mode;
         this.ladder = ladder;
         this.colors = colors;
+        this.icons = icons;
         var defaults = HqTiersClientConfig.defaultNametagOrder().stream()
                 .map(kind -> new Row(kind, kind == NametagComponent.GAMEMODE_ICON || kind == NametagComponent.TIER, LEFT)).toList();
         order = Option.<List<Row>>createBuilder().name(Component.literal("Stat placement"))
@@ -226,12 +228,12 @@ final class NametagLayoutOptions {
                 continue;
             }
             Component value = switch (row.kind()) {
-                case GAMEMODE_ICON -> HqTiersFormatter.icon(sampleLadder);
+                case GAMEMODE_ICON -> HqTiersFormatter.icon(sampleLadder, icons.pendingValue());
                 case TIER -> global ? Component.literal("#3299") : sample("HT3", colors.tier, rgb);
                 case ELO -> global ? Component.empty() : sample(trLabel.pendingValue() ? "125 TR" : "125", colors.rating, rgb);
                 case POSITION -> global && hasTier ? Component.empty() : global ? Component.literal("#3299")
                         : sample(posLabel.pendingValue() ? "#123" : "123", colors.position, rgb);
-                case GLOBAL_RANK -> global ? Component.empty() : Component.empty().append(HqTiersFormatter.icon("GLOBAL"))
+                case GLOBAL_RANK -> global ? Component.empty() : Component.empty().append(HqTiersFormatter.icon("GLOBAL", icons.pendingValue()))
                         .append(globalLabel.pendingValue() ? " #3299" : " 3299");
                 case SEPARATOR -> throw new IllegalStateException("Divider already handled");
             };
