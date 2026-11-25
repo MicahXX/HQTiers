@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "priority": 2000,
   "mixins": [
+    "TextDisplayAccessor",
     "GuiMessageMixin",
     "ChatComponentMixin",
     "PlayerEntityMixin",

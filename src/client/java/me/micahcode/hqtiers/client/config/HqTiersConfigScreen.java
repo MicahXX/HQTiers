@@ -1,5 +1,6 @@
 package me.micahcode.hqtiers.client.config;
 
+import dev.isxander.yacl3.api.ButtonOption;
 import dev.isxander.yacl3.api.ConfigCategory;
 import dev.isxander.yacl3.api.Option;
 import dev.isxander.yacl3.api.OptionDescription;
@@ -26,6 +27,7 @@ public final class HqTiersConfigScreen {
                 .description(value -> description(switch (value) {
                     case HIGHEST_TIER -> "Show each players strongest ranked gamemode.";
                     case PREFERRED_LADDER -> "Use your chosen gamemode. If the player has no completed placement there, use their strongest gamemode.";
+                    case CURRENT_KIT -> "On PvPHQ, use your inventory to identify the current kit. Fall back to each player’s highest tier when the kit or their tier is unknown.";
                     case GLOBAL -> "Show each players overall leaderboard position.";
                 }))
                 .binding(DisplayMode.HIGHEST_TIER, () -> HqTiersClientConfig.displayMode, value -> HqTiersClientConfig.displayMode = value)
@@ -33,9 +35,15 @@ public final class HqTiersConfigScreen {
                         .formatValue(value -> Component.literal(switch (value) {
                             case HIGHEST_TIER -> "Highest tier";
                             case PREFERRED_LADDER -> "Preferred gamemode";
+                            case CURRENT_KIT -> "Current PvPHQ kit (experimental)";
                             case GLOBAL -> "Global rank";
                         })))
                 .build();
+        var icons = Option.<IconSet>createBuilder().name(Component.literal("Gamemode icons"))
+                .description(description("Choose the icons used for gamemodes throughout HQTiers."))
+                .binding(IconSet.ORIGINAL, () -> HqTiersClientConfig.iconSet, value -> HqTiersClientConfig.iconSet = value)
+                .controller(option -> EnumControllerBuilder.create(option).enumClass(IconSet.class)
+                        .formatValue(value -> Component.literal(value.label))).build();
         var ladder = Option.<HqTiersLadder>createBuilder()
                 .name(Component.literal("Preferred gamemode"))
                 .description(description("Choose the ladder used by the Preferred gamemode display mode."))
@@ -43,22 +51,29 @@ public final class HqTiersConfigScreen {
                         () -> Objects.requireNonNullElse(HqTiersLadder.fromString(HqTiersClientConfig.preferredLadder), HqTiersLadder.SWORD),
                         value -> HqTiersClientConfig.preferredLadder = value.name())
                 .controller(option -> EnumControllerBuilder.create(option).enumClass(HqTiersLadder.class)
-                        .formatValue(value -> Component.empty().append(HqTiersFormatter.icon(value.name())).append(" " + value.displayName())))
+                        .formatValue(value -> Component.empty().append(HqTiersFormatter.icon(value.name(), icons.pendingValue())).append(" " + value.displayName())))
                 .build();
         var colors = new TierColorOptions();
         var config = YetAnotherConfigLib.createBuilder().title(Component.literal("HQTiers"))
-                .category(display(mode, ladder))
-                .category(new NametagLayoutOptions(mode, ladder, colors).category())
+                .category(display(mode, ladder, icons))
+                .category(new NametagLayoutOptions(mode, ladder, colors, icons).category())
                 .category(colors.category())
-                .save(HqTiersClientConfig::save)
+                .save(() -> {
+                    HqTiersClientConfig.save();
+                    if (HqTiersClientConfig.iconSet == IconSet.CUSTOM) CustomIcons.enable();
+                })
                 .build();
         return config.generateScreen(parent);
     }
 
-    private static ConfigCategory display(Option<DisplayMode> mode, Option<HqTiersLadder> ladder) {
+    private static ConfigCategory display(Option<DisplayMode> mode, Option<HqTiersLadder> ladder, Option<IconSet> icons) {
         var display = ConfigCategory.createBuilder().name(Component.literal("Display"))
                 .group(OptionGroup.createBuilder().name(Component.literal("Player ranking"))
                         .option(mode).option(ladder)
+                        .option(icons)
+                        .option(ButtonOption.createBuilder().name(Component.literal("Custom icon folder")).text(Component.literal("Open"))
+                                .description(description("Replace the PNGs, select Custom and save. Use F3 + T to reload later edits."))
+                                .action((screen, option) -> CustomIcons.openFolder()).build())
                         .option(toggle("Show unranked", "Show an Unranked label for players without a tier.", false,
                                 () -> HqTiersClientConfig.showUnranked, value -> HqTiersClientConfig.showUnranked = value))
                         .build())

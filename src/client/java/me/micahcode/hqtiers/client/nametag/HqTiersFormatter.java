@@ -1,6 +1,6 @@
 package me.micahcode.hqtiers.client.nametag;
 
-import me.micahcode.hqtiers.client.HqTiersMinecraftCompat;
+import me.micahcode.hqtiers.client.config.IconSet;
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.model.HqTiersLadder;
 import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
@@ -9,7 +9,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -131,9 +130,11 @@ public final class HqTiersFormatter {
     }
 
     public static Component icon(String ladder) {
-        return Component.literal(String.valueOf(iconGlyph(ladder)))
-                .setStyle(HqTiersMinecraftCompat.fontStyle(Identifier.fromNamespaceAndPath("hqtiers", "default"))
-                        .withColor(0xFFFFFF));
+        return icon(ladder, HqTiersClientConfig.iconSet);
+    }
+
+    public static Component icon(String ladder, IconSet icons) {
+        return Component.literal(String.valueOf(iconGlyph(ladder))).setStyle(icons.style);
     }
 
     public static String ratingText(int rating) {

@@ -62,7 +62,7 @@ public class TextDisplayEntityRendererMixin {
 
                 if (plain.isBlank() || !plain.contains(scoreboardName)) continue;
                 if (HqTiersClientConfig.suppressRankedDuplicates
-                        && NametagDuplicateDetector.hasTierLabel(plain, scoreboardName)) return;
+                        && (NametagDuplicateDetector.hasTierLabel(plain, scoreboardName) || NametagDuplicateDetector.hasPassengerTier(player))) return;
 
                 Optional<HqTiersStats> statsOpt = HqTiersClientState.cache().get(player.getUUID());
                 if (statsOpt.isEmpty()) {
