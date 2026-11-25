@@ -5,6 +5,7 @@ import me.micahcode.hqtiers.client.fetching.HqTiersCache;
 import me.micahcode.hqtiers.client.input.HqTiersCommands;
 import me.micahcode.hqtiers.client.input.HqTiersKeybinds;
 import me.micahcode.hqtiers.client.leaderboard.HqTiersClientState;
+import me.micahcode.hqtiers.client.model.PvphqKit;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
@@ -19,7 +20,9 @@ public class HqTiersClient implements ClientModInitializer {
         HqTiersCommands.register(cache);
         HqTiersKeybinds.register();
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            if (++prefetchTicks % 5 != 0 || client.player == null || client.level == null) return;
+            if (++prefetchTicks % 5 != 0) return;
+            PvphqKit.update(client);
+            if (client.player == null || client.level == null) return;
             if (!leaderboardWarmed) {
                 HqTiersClientState.leaderboardClient().load("GLOBAL");
                 leaderboardWarmed = true;

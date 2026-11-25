@@ -13,13 +13,18 @@ public record TierPalettes(List<Preset> presets, int active) {
     // Selector order: PvPHQ, named presets, Custom.
     private static final List<HqTiersRanks> CHART_ORDER = List.of(
             HT1, MT1, LT1, HT2, MT2, LT2, HT3, MT3, LT3, HT4, MT4, LT4, HT5, MT5, LT5);
+    private static final Preset MATERIAL_PRESET = chart("Preset 4", 0x966EB3, 0x78598F, 0x604674, 0x8CE8FF, 0x52C6EC, 0x329ACC,
+                    0x71EAA2, 0x3BC87D, 0x269C62, 0xE1E8EF, 0xADB9C4, 0x788997, 0xF5AF82, 0xD98B59, 0xB36A40);
     static final TierPalettes DEFAULTS = new TierPalettes(List.of(
             chart("Preset 1", 0x9EEFFE, 0x56CDDF, 0x39A9CC, 0xA359DA, 0x9146C6, 0x8534BF,
                     0x55D483, 0x36BC67, 0x1C9D4B, 0xFFCA45, 0xE0B03A, 0xC29830, 0xDB8B6E, 0xB4684D, 0x8C4E38),
             chart("Preset 2", 0xFFCA45, 0xE0B03A, 0xC29830, 0xBDE2FF, 0x9DBCF0, 0x7E96C6,
                     0xE08249, 0xC27040, 0xA15C33, 0x90979B, 0x747A7E, 0x585C5F, 0x977145, 0x735635, 0x4F3A23),
             chart("Preset 3", 0xC78DF2, 0x9A5CC6, 0x744796, 0x9EEFFE, 0x56CDDF, 0x39A9CC,
-                    0x5CF293, 0x17DD62, 0x11A047, 0xE04F49, 0xD34B45, 0xC0433D, 0xDB8B6E, 0xB4684D, 0x8C4E38)
+                    0x5CF293, 0x17DD62, 0x11A047, 0xE04F49, 0xD34B45, 0xC0433D, 0xDB8B6E, 0xB4684D, 0x8C4E38),
+            MATERIAL_PRESET,
+            chart("Preset 5", 0xFFC3DD, 0xF28FB7, 0xDA679F, 0xE3D2FF, 0xBBA1F2, 0x987BD9,
+                    0xAAD9FF, 0x7AB9F1, 0x5696D9, 0xA4F5E9, 0x70D7C9, 0x45B2AB, 0xFFF3B0, 0xE8D385, 0xC8AC65)
     ), 0);
 
     public record Preset(String name, Map<HqTiersRanks, Integer> colors) {
@@ -43,6 +48,28 @@ public record TierPalettes(List<Preset> presets, int active) {
         var colors = new EnumMap<HqTiersRanks, Integer>(HqTiersRanks.class);
         for (int i = 0; i < rgb.length; i++) colors.put(CHART_ORDER.get(i), rgb[i]);
         return new Preset(name, colors);
+    }
+
+    TierPalettes withNewPresets() {
+        var next = new ArrayList<>(presets);
+        for (var preset : DEFAULTS.presets.subList(3, 5)) {
+            String name = preset.name();
+            for (int suffix = 2; !nameAvailable(name, false); suffix++) name = preset.name() + " (" + suffix + ")";
+            next.add(new Preset(name, preset.colors()));
+        }
+        return new TierPalettes(next, isCustom() ? next.size() + 1 : active);
+    }
+
+    TierPalettes updateMaterialPreset() {
+        var previous = chart("Preset 4", 0x966EB3, 0x78598F, 0x604674, 0x8CE8FF, 0x52C6EC, 0x329ACC,
+                    0x71EAA2, 0x3BC87D, 0x269C62, 0xFFDB64, 0xE9B83E, 0xE1E8EF, 0xADB9C4, 0xE79A63, 0xC67A48);
+        var updated = presets.stream().map(preset -> {
+            if (preset.colors().equals(previous.colors()) && preset.name().matches("Preset 4(?: \\(\\d+\\))?")) {
+                return new Preset(preset.name(), MATERIAL_PRESET.colors());
+            }
+            return preset;
+        }).toList();
+        return new TierPalettes(updated, active);
     }
 
     boolean isCustom() { return active == presets.size() + 1; }
