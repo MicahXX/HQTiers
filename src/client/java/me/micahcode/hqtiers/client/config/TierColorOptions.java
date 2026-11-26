@@ -106,7 +106,7 @@ final class TierColorOptions {
     }
 
     private static ButtonOption action(String label, Consumer<YACLScreen> callback) {
-        return ButtonOption.createBuilder().name(Component.literal(label)).text(Component.literal("…"))
+        return ButtonOption.createBuilder().name(Component.literal(label)).text(Component.literal("\u2026"))
                 .action((screen, option) -> callback.accept(screen)).build();
     }
 
@@ -122,6 +122,28 @@ final class TierColorOptions {
                         palettes.requestSet(current.add(name, snapshot));
                     }
                 }));
+    }
+
+    void onPaletteChange(Runnable listener) {
+        palettes.addEventListener((option, event) -> listener.run());
+        for (var color : colors.values()) color.addEventListener((option, event) -> listener.run());
+    }
+
+    TierPalettes.Preset paletteSnapshot() {
+        return snapshot(palettes.pendingValue());
+    }
+
+    private TierPalettes.Preset snapshot(TierPalettes value) {
+        if (value.active() == 0) return new TierPalettes.Preset("PvPHQ", java.util.Map.of());
+        if (value.isPreset()) return value.presets().get(value.active() - 1);
+        var rgb = new EnumMap<HqTiersRanks, Integer>(HqTiersRanks.class);
+        for (var rank : RANKS) rgb.put(rank, colors.get(rank).pendingValue().getRGB() & 0xFFFFFF);
+        return new TierPalettes.Preset("Custom", rgb);
+    }
+
+    void selectSnapshot(TierPalettes.Preset wanted) {
+        var value = palettes.pendingValue();
+        palettes.requestSet(value.selectSnapshot(wanted, snapshot(value.selectCustom())));
     }
 
     int previewRgb(HqTiersRanks rank) {
