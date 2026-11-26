@@ -14,7 +14,7 @@ import static me.micahcode.hqtiers.client.config.HqTiersClientConfig.NametagComp
 
 record NametagPresets(List<Entry> saved, String selected, Layout custom, TierPalettes.Preset defaultPalette, IconSet defaultIcons) {
     record Layout(List<Row> rows, StatPosition position, boolean spacing, boolean divider,
-                  boolean ratingSuffix, boolean positionPrefix, boolean globalPrefix, TierPalettes.Preset palette) {
+                  boolean ratingSuffix, boolean redNegativeTr, boolean positionPrefix, boolean globalPrefix, TierPalettes.Preset palette) {
         Layout {
             rows = rows == null ? List.of() : rows.stream().filter(row -> row != null && row.kind() != null && row.side() != null).toList();
             if (palette == null) palette = new TierPalettes.Preset("PvPHQ", Map.of());
@@ -22,7 +22,7 @@ record NametagPresets(List<Entry> saved, String selected, Layout custom, TierPal
         }
         boolean matches(Layout other, boolean matchPalette) {
             return rows.equals(other.rows) && position == other.position && spacing == other.spacing && divider == other.divider
-                    && ratingSuffix == other.ratingSuffix && positionPrefix == other.positionPrefix && globalPrefix == other.globalPrefix
+                    && ratingSuffix == other.ratingSuffix && redNegativeTr == other.redNegativeTr && positionPrefix == other.positionPrefix && globalPrefix == other.globalPrefix
                     && (!matchPalette || palette.colors().equals(other.palette.colors()));
         }
     }
@@ -72,7 +72,7 @@ record NametagPresets(List<Entry> saved, String selected, Layout custom, TierPal
             rows.add(new Row(kind, enabled, kind == POSITION && enabled ? RIGHT : LEFT));
             if (kind == SEPARATOR) firstDivider = false;
         }
-        return new Entry(name, new Layout(rows, position, true, visible.length > 1, false, shown.contains(POSITION), true,
+        return new Entry(name, new Layout(rows, position, true, visible.length > 1, isPvphq(name), isPvphq(name), shown.contains(POSITION), true,
                 palette == 0 ? new TierPalettes.Preset("PvPHQ", Map.of()) : TierPalettes.DEFAULTS.presets().get(palette - 1)));
     }
 
@@ -82,8 +82,12 @@ record NametagPresets(List<Entry> saved, String selected, Layout custom, TierPal
         return entries;
     }
 
+    static boolean isPvphq(String name) {
+        return "PvPHQ".equals(name) || "PvPHQ 2".equals(name);
+    }
+
     static boolean usesDefaultPalette(String name) {
-        return "Default".equals(name) || "PvPHQ".equals(name) || "PvPHQ 2".equals(name);
+        return "Default".equals(name) || isPvphq(name);
     }
 
     TierPalettes.Preset rememberPalette(Layout current) {
