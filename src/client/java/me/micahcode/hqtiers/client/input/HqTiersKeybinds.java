@@ -171,7 +171,7 @@ public final class HqTiersKeybinds {
                     .withStyle(ChatFormatting.GOLD);
 
             if (next == HqTiersClientConfig.DisplayMode.HIGHEST_TIER) msg.append("\u2191");
-            else if (next == HqTiersClientConfig.DisplayMode.CURRENT_KIT) msg.append("\u2295");
+            else if (next == HqTiersClientConfig.DisplayMode.CURRENT_KIT) msg.append(HqTiersFormatter.kitIcon());
             else msg.append(HqTiersFormatter.icon(next instanceof HqTiersLadder ladder ? ladder.name() : "GLOBAL"));
 
             client.player.displayClientMessage(msg, true);

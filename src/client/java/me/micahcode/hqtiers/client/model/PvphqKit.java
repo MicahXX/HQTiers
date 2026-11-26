@@ -2,6 +2,7 @@ package me.micahcode.hqtiers.client.model;
 
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -17,18 +18,38 @@ import static me.micahcode.hqtiers.client.model.PvphqKit.Gear.*;
 public final class PvphqKit {
     private static final Tracker tracker = new Tracker();
 
+    private static final long ROUND_GRACE_NANOS = java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
+    private static ClientPacketListener connection;
+    private static HqTiersLadder displayed;
+    private static long lastSeen;
+
     public static HqTiersLadder current() {
-        return tracker.current;
+        return displayed;
     }
 
     public static void update(Minecraft client) {
         var server = client.getCurrentServer();
         var player = client.player;
+        var previous = displayed;
+        var activeConnection = client.getConnection();
         boolean enabled = HqTiersClientConfig.displayMode == HqTiersClientConfig.DisplayMode.CURRENT_KIT
-                && player != null && player.isAlive() && !player.isSpectator() && server != null && isPvphq(server.ip);
-        var previous = current();
-        tracker.observe(enabled ? player : null);
-        if (previous != current()) HqTiersClientConfig.changed();
+                && activeConnection != null && server != null && isPvphq(server.ip);
+        if (!enabled || connection != activeConnection) {
+            tracker.observe(null);
+            displayed = null;
+        }
+        connection = enabled ? activeConnection : null;
+        if (enabled) {
+            var kit = tracker.observe(player != null && player.isAlive() && !player.isSpectator() ? player : null);
+            long now = System.nanoTime();
+            if (kit != null) {
+                displayed = kit;
+                lastSeen = now;
+            } else if (now - lastSeen >= ROUND_GRACE_NANOS) {
+                displayed = null;
+            }
+        }
+        if (previous != displayed) HqTiersClientConfig.changed();
     }
 
     static boolean isPvphq(String address) {

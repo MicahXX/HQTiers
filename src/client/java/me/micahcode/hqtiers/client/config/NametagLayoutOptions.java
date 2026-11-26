@@ -67,8 +67,10 @@ final class NametagLayoutOptions {
             () -> HqTiersClientConfig.iconSpacing, v -> HqTiersClientConfig.iconSpacing = v);
     private final Option<Boolean> divider = toggle("Divider beside name", "Put a vertical bar between your name and the stats on each side.", true,
             () -> HqTiersClientConfig.nameSeparator, v -> HqTiersClientConfig.nameSeparator = v);
-    private final Option<Boolean> trLabel = toggle("Rating suffix", "Show TR after a numeric tier rating.", false,
+    private final Option<Boolean> trLabel = toggle("Rating suffix", "Show TR for tier rating and % for percentage progress.", false,
             () -> HqTiersClientConfig.eloLabelEnabled, v -> HqTiersClientConfig.eloLabelEnabled = v);
+    private final Option<Boolean> negativeTr = toggle("Red negative TR", "Show negative tier ratings in red.", false,
+            () -> HqTiersClientConfig.redNegativeTr, v -> HqTiersClientConfig.redNegativeTr = v);
     private final Option<Boolean> posLabel = toggle("Position prefix", "Show # before the gamemode position.", false,
             () -> HqTiersClientConfig.positionLabelEnabled, v -> HqTiersClientConfig.positionLabelEnabled = v);
     private final Option<Boolean> globalLabel = toggle("Global rank prefix", "Show # before the additional global rank.", true,
@@ -87,13 +89,13 @@ final class NametagLayoutOptions {
                 .binding(defaults, NametagLayoutOptions::loadRows, NametagLayoutOptions::saveRows)
                 .customController(LayoutController::new)
                 .build();
-        settings = List.of(statPosition, order, spacing, divider, trLabel, posLabel, globalLabel);
+        settings = List.of(statPosition, order, spacing, divider, trLabel, negativeTr, posLabel, globalLabel);
         presets = new NametagPresetOptions(this::snapshot, this::apply, icons);
     }
 
     private NametagPresets.Layout snapshot() {
         return new NametagPresets.Layout(order.pendingValue(), statPosition.pendingValue(), spacing.pendingValue(),
-                divider.pendingValue(), trLabel.pendingValue(), posLabel.pendingValue(), globalLabel.pendingValue(), colors.paletteSnapshot());
+                divider.pendingValue(), trLabel.pendingValue(), negativeTr.pendingValue(), posLabel.pendingValue(), globalLabel.pendingValue(), colors.paletteSnapshot());
     }
 
     private void apply(NametagPresets.Layout layout, TierPalettes.Preset palette) {
@@ -102,6 +104,7 @@ final class NametagLayoutOptions {
         spacing.requestSet(layout.spacing());
         divider.requestSet(layout.divider());
         trLabel.requestSet(layout.ratingSuffix());
+        negativeTr.requestSet(layout.redNegativeTr());
         posLabel.requestSet(layout.positionPrefix());
         globalLabel.requestSet(layout.globalPrefix());
         colors.selectSnapshot(palette);
@@ -110,7 +113,7 @@ final class NametagLayoutOptions {
     ConfigCategory category() {
         var visible = ConfigCategory.createBuilder().name(Component.literal("Nametag layout")).option(presets.selector).option(order)
                 .group(OptionGroup.createBuilder().name(Component.literal("Spacing and labels"))
-                        .option(spacing).option(divider).option(trLabel).option(posLabel).option(globalLabel).build())
+                        .option(spacing).option(divider).option(trLabel).option(negativeTr).option(posLabel).option(globalLabel).build())
                 .group(presets.management(settings, colors))
                 .build();
         var bindings = ConfigCategory.createBuilder().name(visible.name()).groups(visible.groups())
@@ -188,7 +191,7 @@ final class NametagLayoutOptions {
         }
     }
 
-    private static List<Row> loadRows() {
+    static List<Row> loadRows() {
         List<Row> rows = new ArrayList<>();
         int separator = -1;
         for (var kind : HqTiersClientConfig.nametagOrder) {
@@ -251,7 +254,8 @@ final class NametagLayoutOptions {
             Component value = switch (row.kind()) {
                 case GAMEMODE_ICON -> HqTiersFormatter.icon(sampleLadder, icons.pendingValue());
                 case TIER -> global ? Component.literal("#3299") : sample(sampleTier.name(), colors.tier, rgb);
-                case ELO -> global ? Component.empty() : sample(trLabel.pendingValue() ? "125 TR" : "125", colors.rating, rgb);
+                case ELO -> global ? Component.empty() : NametagComposer.rating(-4, false, trLabel.pendingValue(),
+                        negativeTr.pendingValue(), colors.rating.pendingValue() ? rgb : 0xFFFFFF);
                 case POSITION -> global && hasTier ? Component.empty() : global ? Component.literal("#3299")
                         : sample(posLabel.pendingValue() ? "#123" : "123", colors.position, rgb);
                 case GLOBAL_RANK -> global ? Component.empty() : Component.empty().append(HqTiersFormatter.icon("GLOBAL", icons.pendingValue()))

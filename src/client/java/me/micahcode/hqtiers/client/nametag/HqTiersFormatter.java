@@ -132,6 +132,10 @@ public final class HqTiersFormatter {
         };
     }
 
+    public static Component kitIcon() {
+        return Component.literal("\uE00D").setStyle(IconSet.ORIGINAL.style);
+    }
+
     public static Component icon(String ladder) {
         return icon(ladder, HqTiersClientConfig.iconSet);
     }

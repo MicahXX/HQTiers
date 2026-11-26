@@ -4,6 +4,7 @@ import me.micahcode.hqtiers.client.config.HqTiersClientConfig;
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig.NametagAlignment;
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig.NametagComponent;
 import me.micahcode.hqtiers.client.model.HqTiersStats;
+import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -93,13 +94,19 @@ public final class NametagComposer {
                     : Component.literal(HqTiersFormatter.tierLabel(ladder))
                             .withColor(HqTiersClientConfig.coloredTier ? ladder.tierColorInt() : 0xFFFFFF);
             case ELO -> !HqTiersClientConfig.eloEnabled || global ? Component.empty()
-                    : Component.literal(ladder.progressText(HqTiersClientConfig.eloLabelEnabled))
-                            .withColor(HqTiersClientConfig.coloredElo ? ladder.tierColorInt() : 0xFFFFFF);
+                    : rating(ladder.progress(), HqTiersRankSystem.usesPercent(ladder.tierName()),
+                            HqTiersClientConfig.eloLabelEnabled, HqTiersClientConfig.redNegativeTr,
+                            HqTiersClientConfig.coloredElo ? ladder.tierColorInt() : 0xFFFFFF);
             case POSITION -> !HqTiersClientConfig.positionEnabled || !ladder.hasPosition()
                     || (global && HqTiersClientConfig.tierEnabled) ? Component.empty()
                     : position(ladder, global || HqTiersClientConfig.positionLabelEnabled);
             case SEPARATOR, GLOBAL_RANK -> Component.empty();
         };
+    }
+
+    public static Component rating(Integer value, boolean percent, boolean suffix, boolean redNegativeTr, int color) {
+        String text = HqTiersRankSystem.progressText(value, percent && suffix, suffix);
+        return Component.literal(text).withColor(redNegativeTr && !percent && value != null && value < 0 ? 0xFF5555 : color);
     }
 
     private static Component position(HqTiersStats.LadderStats ladder, boolean label) {

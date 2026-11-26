@@ -32,7 +32,7 @@ public final class HqTiersConfigScreen {
                     case CURRENT_KIT -> "On PvPHQ, use your inventory to identify the current kit. Fall back to each player’s highest tier when the kit or their tier is unknown.";
                     case GLOBAL -> "Show each players overall leaderboard position.";
                 }))
-                .binding(DisplayMode.HIGHEST_TIER, () -> HqTiersClientConfig.displayMode, value -> HqTiersClientConfig.displayMode = value)
+                .binding(DisplayMode.CURRENT_KIT, () -> HqTiersClientConfig.displayMode, value -> HqTiersClientConfig.displayMode = value)
                 .controller(option -> EnumControllerBuilder.create(option).enumClass(DisplayMode.class)
                         .formatValue(value -> Component.literal(switch (value) {
                             case HIGHEST_TIER -> "Highest tier";
