@@ -131,6 +131,7 @@ public final class HqTiersKeybinds {
         List<Object> cycle = new ArrayList<>();
         cycle.add(HqTiersClientConfig.DisplayMode.GLOBAL);
         cycle.add(HqTiersClientConfig.DisplayMode.HIGHEST_TIER);
+        cycle.add(HqTiersClientConfig.DisplayMode.CURRENT_KIT);
         cycle.addAll(HqTiersLadder.ranked());
         return cycle;
     }
@@ -153,6 +154,9 @@ public final class HqTiersKeybinds {
         } else if (next == HqTiersClientConfig.DisplayMode.HIGHEST_TIER) {
             HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.HIGHEST_TIER;
             label = "Highest Tier";
+        } else if (next == HqTiersClientConfig.DisplayMode.CURRENT_KIT) {
+            HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.CURRENT_KIT;
+            label = "Current PvPHQ kit";
         } else {
             HqTiersLadder nextLadder = (HqTiersLadder) next;
             HqTiersClientConfig.displayMode = HqTiersClientConfig.DisplayMode.PREFERRED_LADDER;
@@ -166,8 +170,9 @@ public final class HqTiersKeybinds {
             net.minecraft.network.chat.MutableComponent msg = net.minecraft.network.chat.Component.literal("HQTiers: " + label + " ")
                     .withStyle(ChatFormatting.GOLD);
 
-            String iconLadderName = next instanceof HqTiersLadder ladder ? ladder.name() : HqTiersLadder.GLOBAL.name();
-            msg.append(HqTiersFormatter.icon(iconLadderName));
+            if (next == HqTiersClientConfig.DisplayMode.HIGHEST_TIER) msg.append("\u2191");
+            else if (next == HqTiersClientConfig.DisplayMode.CURRENT_KIT) msg.append("\u2295");
+            else msg.append(HqTiersFormatter.icon(next instanceof HqTiersLadder ladder ? ladder.name() : "GLOBAL"));
 
             client.gui.setOverlayMessage(msg, false);
         }

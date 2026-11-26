@@ -56,6 +56,7 @@ public final class HqTiersClientConfig {
     public static boolean globalRankLabelEnabled = true;
     public static boolean suppressRankedDuplicates = false;
     public static IconSet iconSet = IconSet.ORIGINAL;
+    static NametagPresets nametagPresets = NametagPresets.EMPTY;
     public static TierPalettes palettes = TierPalettes.DEFAULTS;
     public static final Map<HqTiersRanks, Integer> tierColors = new EnumMap<>(HqTiersRanks.class);
     public static boolean coloredTier = true;
@@ -137,6 +138,7 @@ public final class HqTiersClientConfig {
             }
             showUnranked = data.showUnranked;
             iconSet = data.iconSet == null ? IconSet.ORIGINAL : data.iconSet;
+            nametagPresets = data.nametagPresets == null ? NametagPresets.EMPTY : data.nametagPresets;
             palettes = data.palettes;
             if (palettes == null) palettes = data.customTierColors ? TierPalettes.DEFAULTS.selectCustom() : TierPalettes.DEFAULTS;
             else if (data.paletteRevision < 1) palettes = palettes.withNewPresets();
@@ -146,6 +148,14 @@ public final class HqTiersClientConfig {
                 var tier = HqTiersRanks.fromString(name);
                 if (tier != null && rgb != null && rgb >= 0 && rgb <= 0xFFFFFF) tierColors.put(tier, rgb);
             });
+            if ("PvPHQ".equals(nametagPresets.selected()) && nametagPresets.defaultIcons() == null) {
+                var previous = nametagPresets.defaultPalette();
+                if (previous != null && palettes.active() == 0) {
+                    palettes = palettes.selectSnapshot(previous, TierPalettes.customSnapshot(tierColors));
+                }
+                nametagPresets = new NametagPresets(nametagPresets.saved(), "PvPHQ", nametagPresets.custom(), previous, iconSet);
+                iconSet = IconSet.PVPHQ;
+            }
             coloredTier = data.coloredTier;
             coloredPosition = data.coloredPosition;
             shortTierNames = data.shortTierNames;
@@ -364,6 +374,7 @@ public final class HqTiersClientConfig {
         boolean customTierColors; // Compatibility with existing 5.3 configurations.
         IconSet iconSet = IconSet.ORIGINAL;
         int paletteRevision;
+        NametagPresets nametagPresets;
         TierPalettes palettes;
         Map<String, Integer> tierColors;
         boolean coloredTier = true;
@@ -406,6 +417,7 @@ public final class HqTiersClientConfig {
             data.suppressRankedDuplicates = HqTiersClientConfig.suppressRankedDuplicates;
             data.iconSet = HqTiersClientConfig.iconSet;
             data.paletteRevision = 2;
+            data.nametagPresets = HqTiersClientConfig.nametagPresets;
             data.palettes = HqTiersClientConfig.palettes;
             data.customTierColors = data.palettes.isCustom();
             data.tierColors = new java.util.HashMap<>();
