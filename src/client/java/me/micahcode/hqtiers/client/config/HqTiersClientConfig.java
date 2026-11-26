@@ -36,7 +36,7 @@ public final class HqTiersClientConfig {
     public static boolean versionCheckEnabled = true;
     public static boolean leaderboardHeads = false;
     public static String preferredLadder = "SWORD";
-    public static DisplayMode displayMode = DisplayMode.HIGHEST_TIER;
+    public static DisplayMode displayMode = DisplayMode.CURRENT_KIT;
     public static boolean rankSectionEnabled = true;
     public static boolean shortTierNames = false;
     public static boolean coloredElo = true;
@@ -50,6 +50,7 @@ public final class HqTiersClientConfig {
     public static boolean tierEnabled = true;
     public static boolean eloEnabled = false;
     public static boolean eloLabelEnabled = false;
+    public static boolean redNegativeTr;
     public static boolean positionEnabled = false;
     public static boolean positionLabelEnabled = false;
     public static boolean globalRankEnabled = false;
@@ -194,6 +195,15 @@ public final class HqTiersClientConfig {
                     ? new ArrayList<>(data.nametagSeparatorStates)
                     : new ArrayList<>();
             normalizeNametagOrder(data.editableLayout);
+            redNegativeTr = Boolean.TRUE.equals(data.redNegativeTr);
+            if (data.redNegativeTr == null && NametagPresets.isPvphq(nametagPresets.selected())) {
+                var prior = new NametagPresets.Layout(NametagLayoutOptions.loadRows(), statPosition, iconSpacing, nameSeparator,
+                        true, true, positionLabelEnabled, globalRankLabelEnabled, null);
+                if (nametagPresets.selected().equals(nametagPresets.active(prior))) {
+                    eloLabelEnabled = true;
+                    redNegativeTr = true;
+                }
+            }
             configVersion.incrementAndGet();
         } catch (IOException | com.google.gson.JsonParseException | IllegalArgumentException exception) {
             Hqtiers.logger.warn("Failed to load HqTiers config.", exception);
@@ -225,11 +235,11 @@ public final class HqTiersClientConfig {
         PREFERRED_LADDER, HIGHEST_TIER, GLOBAL, CURRENT_KIT;
 
         public static DisplayMode fromName(String name) {
-            if (name == null) return HIGHEST_TIER;
+            if (name == null) return CURRENT_KIT;
             try {
                 return DisplayMode.valueOf(name.trim().toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException ignored) {
-                return HIGHEST_TIER;
+                return CURRENT_KIT;
             }
         }
     }
@@ -349,13 +359,14 @@ public final class HqTiersClientConfig {
         boolean chatAlwaysLeft = true;
         Boolean versionCheckEnabled = true;
         String preferredLadder = "SWORD";
-        String displayMode = DisplayMode.HIGHEST_TIER.name();
+        String displayMode = DisplayMode.CURRENT_KIT.name();
         boolean rankSectionEnabled = true;
         boolean shortTierNames = false;
         boolean gamemodeIconEnabled = true;
         boolean tierEnabled = true;
         boolean eloEnabled = false;
         boolean eloLabelEnabled = false;
+        Boolean redNegativeTr;
         boolean coloredElo = true;
         boolean positionEnabled = false;
         boolean positionLabelEnabled = false;
@@ -398,6 +409,7 @@ public final class HqTiersClientConfig {
             data.shortTierNames = HqTiersClientConfig.shortTierNames;
             data.eloEnabled = HqTiersClientConfig.eloEnabled;
             data.eloLabelEnabled = HqTiersClientConfig.eloLabelEnabled;
+            data.redNegativeTr = HqTiersClientConfig.redNegativeTr;
             data.coloredElo = HqTiersClientConfig.coloredElo;
             data.positionEnabled = HqTiersClientConfig.positionEnabled;
             data.positionLabelEnabled = HqTiersClientConfig.positionLabelEnabled;
