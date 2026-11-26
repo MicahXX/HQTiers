@@ -1,5 +1,6 @@
 package me.micahcode.hqtiers.client.config;
 
+import me.micahcode.hqtiers.client.model.HqTiersRankSystem;
 import me.micahcode.hqtiers.client.model.HqTiersRanks;
 
 import java.util.ArrayList;
@@ -77,6 +78,28 @@ public record TierPalettes(List<Preset> presets, int active) {
     String name() { return active == 0 ? "PvPHQ" : isCustom() ? "Custom" : presets.get(active - 1).name(); }
     TierPalettes select(int index) { return new TierPalettes(presets, index); }
     TierPalettes selectCustom() { return select(presets.size() + 1); }
+
+    TierPalettes selectSnapshot(Preset wanted, Preset custom) {
+        if (wanted.colors().isEmpty()) return select(0);
+        int match = -1;
+        for (int i = 0; i <= presets.size(); i++) {
+            var candidate = i == presets.size() ? custom : presets.get(i);
+            if (!candidate.colors().equals(wanted.colors())) continue;
+            if (candidate.name().equals(wanted.name())) return select(i + 1);
+            if (match < 0) match = i + 1;
+        }
+        if (match > 0) return select(match);
+        String base = wanted.name().equalsIgnoreCase("Custom") ? "Saved layout colors" : wanted.name();
+        String name = base;
+        for (int suffix = 2; !nameAvailable(name, false); suffix++) name = base + " (" + suffix + ")";
+        return add(name, wanted.colors());
+    }
+
+    static Preset customSnapshot(Map<HqTiersRanks, Integer> overrides) {
+        var colors = new EnumMap<HqTiersRanks, Integer>(HqTiersRanks.class);
+        for (var rank : CHART_ORDER) colors.put(rank, overrides.getOrDefault(rank, HqTiersRankSystem.tierColor(rank)));
+        return new Preset("Custom", colors);
+    }
 
     public int rgb(HqTiersRanks tier, int base, int custom) {
         if (tier == null) return base;

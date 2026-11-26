@@ -56,6 +56,8 @@ final class NametagLayoutOptions {
     private final TierColorOptions colors;
     private final Option<IconSet> icons;
     private final Option<List<Row>> order;
+    private final NametagPresetOptions presets;
+    private final List<Option<?>> settings;
     private final Option<StatPosition> statPosition = Option.<StatPosition>createBuilder().name(Component.literal("Stat position"))
             .description(OptionDescription.of(Component.literal("Show stats beside the player name or on a separate line above or below it.")))
             .binding(StatPosition.INLINE, () -> HqTiersClientConfig.statPosition, value -> HqTiersClientConfig.statPosition = value)
@@ -85,12 +87,31 @@ final class NametagLayoutOptions {
                 .binding(defaults, NametagLayoutOptions::loadRows, NametagLayoutOptions::saveRows)
                 .customController(LayoutController::new)
                 .build();
+        settings = List.of(statPosition, order, spacing, divider, trLabel, posLabel, globalLabel);
+        presets = new NametagPresetOptions(this::snapshot, this::apply, icons);
+    }
+
+    private NametagPresets.Layout snapshot() {
+        return new NametagPresets.Layout(order.pendingValue(), statPosition.pendingValue(), spacing.pendingValue(),
+                divider.pendingValue(), trLabel.pendingValue(), posLabel.pendingValue(), globalLabel.pendingValue(), colors.paletteSnapshot());
+    }
+
+    private void apply(NametagPresets.Layout layout, TierPalettes.Preset palette) {
+        order.requestSet(layout.rows());
+        statPosition.requestSet(layout.position());
+        spacing.requestSet(layout.spacing());
+        divider.requestSet(layout.divider());
+        trLabel.requestSet(layout.ratingSuffix());
+        posLabel.requestSet(layout.positionPrefix());
+        globalLabel.requestSet(layout.globalPrefix());
+        colors.selectSnapshot(palette);
     }
 
     ConfigCategory category() {
-        var visible = ConfigCategory.createBuilder().name(Component.literal("Nametag layout")).option(order)
+        var visible = ConfigCategory.createBuilder().name(Component.literal("Nametag layout")).option(presets.selector).option(order)
                 .group(OptionGroup.createBuilder().name(Component.literal("Spacing and labels"))
                         .option(spacing).option(divider).option(trLabel).option(posLabel).option(globalLabel).build())
+                .group(presets.management(settings, colors))
                 .build();
         var bindings = ConfigCategory.createBuilder().name(visible.name()).groups(visible.groups())
                 .group(OptionGroup.createBuilder().name(statPosition.name()).option(statPosition).build()).build();
@@ -98,7 +119,6 @@ final class NametagLayoutOptions {
     }
 
     private final class LayoutTab extends SettingsCategory.AlignedTab {
-        private final List<Option<?>> settings = List.of(statPosition, order, spacing, divider, trLabel, posLabel, globalLabel);
         private final CycleButton<StatPosition> position;
         private final Button reset;
         private boolean controlsBelow;
@@ -110,7 +130,7 @@ final class NametagLayoutOptions {
                     .withValues(StatPosition.values()).displayOnlyValue()
                     .create(statPosition.name(), (button, value) -> statPosition.requestSet(value));
             position.setTooltip(Tooltip.create(Component.literal("Show stats beside, above, or below the player name.")));
-            reset = Button.builder(Component.literal("Reset layout"), button -> settings.forEach(Option::requestSetDefault))
+            reset = Button.builder(Component.literal("Reset layout"), button -> presets.reset())
                     .size(70, 18).build();
             reset.setTooltip(Tooltip.create(Component.literal("Restore the default order, placement, spacing and labels.")));
         }
@@ -164,7 +184,7 @@ final class NametagLayoutOptions {
             }
             pose.popMatrix();
             if (position.getValue() != statPosition.pendingValue()) position.setValue(statPosition.pendingValue());
-            reset.active = settings.stream().anyMatch(setting -> !setting.isPendingValueDefault());
+            reset.active = !presets.selector.isPendingValueDefault();
         }
     }
 
@@ -216,7 +236,8 @@ final class NametagLayoutOptions {
         boolean global = mode.pendingValue() == DisplayMode.GLOBAL ||
                 (mode.pendingValue() == DisplayMode.PREFERRED_LADDER && ladder.pendingValue() == HqTiersLadder.GLOBAL);
         String sampleLadder = global ? "GLOBAL" : mode.pendingValue() == DisplayMode.PREFERRED_LADDER ? ladder.pendingValue().name() : "SWORD";
-        int rgb = colors.previewRgb(HqTiersRanks.HT3);
+        var sampleTier = HqTiersRanks.HT3;
+        int rgb = colors.previewRgb(sampleTier);
         boolean hasTier = rows.stream().anyMatch(row -> row.kind() == NametagComponent.TIER && row.shown());
         var left = new NametagComposer.Line(spacing.pendingValue());
         var right = new NametagComposer.Line(spacing.pendingValue());
@@ -229,7 +250,7 @@ final class NametagLayoutOptions {
             }
             Component value = switch (row.kind()) {
                 case GAMEMODE_ICON -> HqTiersFormatter.icon(sampleLadder, icons.pendingValue());
-                case TIER -> global ? Component.literal("#3299") : sample("HT3", colors.tier, rgb);
+                case TIER -> global ? Component.literal("#3299") : sample(sampleTier.name(), colors.tier, rgb);
                 case ELO -> global ? Component.empty() : sample(trLabel.pendingValue() ? "125 TR" : "125", colors.rating, rgb);
                 case POSITION -> global && hasTier ? Component.empty() : global ? Component.literal("#3299")
                         : sample(posLabel.pendingValue() ? "#123" : "123", colors.position, rgb);

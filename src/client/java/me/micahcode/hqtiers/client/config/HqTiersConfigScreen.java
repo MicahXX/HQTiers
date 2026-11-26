@@ -11,6 +11,8 @@ import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import me.micahcode.hqtiers.client.config.HqTiersClientConfig.DisplayMode;
 import me.micahcode.hqtiers.client.model.HqTiersLadder;
 import me.micahcode.hqtiers.client.nametag.HqTiersFormatter;
+import dev.isxander.yacl3.gui.YACLScreen;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -35,7 +37,7 @@ public final class HqTiersConfigScreen {
                         .formatValue(value -> Component.literal(switch (value) {
                             case HIGHEST_TIER -> "Highest tier";
                             case PREFERRED_LADDER -> "Preferred gamemode";
-                            case CURRENT_KIT -> "Current PvPHQ kit (experimental)";
+                            case CURRENT_KIT -> "Current PvPHQ kit";
                             case GLOBAL -> "Global rank";
                         })))
                 .build();
@@ -63,7 +65,24 @@ public final class HqTiersConfigScreen {
                     if (HqTiersClientConfig.iconSet == IconSet.CUSTOM) CustomIcons.enable();
                 })
                 .build();
-        return config.generateScreen(parent);
+        return new YACLScreen(config, parent) {
+            @Override protected void init() {
+                super.init();
+                removeWidget(tabNavigationBar);
+                addWidget(tabNavigationBar);
+            }
+
+            @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {
+                int headerHeight = tabArea.top() + 1;
+                graphics.enableScissor(0, headerHeight, width, height);
+                super.render(graphics, mouseX, mouseY, delta);
+                graphics.disableScissor();
+                graphics.fill(0, 0, width, headerHeight, 0xFF080808);
+                graphics.enableScissor(0, 0, width, headerHeight);
+                tabNavigationBar.render(graphics, mouseX, mouseY, delta);
+                graphics.disableScissor();
+            }
+        };
     }
 
     private static ConfigCategory display(Option<DisplayMode> mode, Option<HqTiersLadder> ladder, Option<IconSet> icons) {
